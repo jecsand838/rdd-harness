@@ -1,6 +1,6 @@
 # Implementation preparation plan
 
-This plan consumes TODO-REQ revision 2 and frozen specification digest `c9e824bb4ebc7f1e28c18cd0dd49786c2e50e2249d52109e86254ad4eda745eb`. It creates no application behavior and reports no product check as passing. The accepted baseline is commit `98d09ce38523a8d6211894042157ebc4659c9b68` on `codex/todo-demo-baseline`; the active run is `R20261008T074537Z-459de7`. The controller owns task state, projections and all transitions.
+This plan consumes TODO-REQ revision 2 and frozen specification digest `271089c2a7960561069989afc826d3a9c50644c51a7a6815dc7e8af2d1935d55`. It creates no application behavior and reports no product check as passing. The accepted specification baseline is commit `be7cf4c130c6d60fe3c097571533e79cd52bc8dd` on `codex/todo-ci-python-baseline`; the active run is `R20261008T082014Z-913ee5`. The controller owns task state, projections and all transitions.
 
 ## Inspected baseline and reuse
 
@@ -45,3 +45,9 @@ Rollback/recovery preserves user data and full old/new outcomes under the frozen
 ## Preparation evidence bindings
 
 The manifest carries SHA-256 bindings to this note, the target inventory, capability graph, scenario mappings and independent review. These evidence files cannot introduce new authority after freeze. Their content identities are verified alongside controller `plan validate`, `prepare`, `anchors verify` and preservation of all frozen specification bytes. The desired prepared source/test files are comment-only shells; absent manifests/configuration/locks/binaries are represented only by task sidecars until their implementation task. The narrow PREP-POLICY-001 amendment now permits this safe materialization and adds the C-POLICY-SIDECARS proof. See preparation-blocker.md for resolution provenance; the earlier blocked draft is preserved in the prior-run archive. No production implementation or green suite is materialized.
+
+## CI fidelity amendment retention
+
+PREP-CI-PYTHON-001 repairs only hosted Python selection and one negative release-policy fixture clone. The newly frozen amendment and independent review are in `docs/specs/ci-python-amendment.md` and `docs/specs/ci-python-review.md`. This preparation reuses the previous 21 exact task definitions, seven verticals, one phase, all103 target paths and60 source-shell definitions. Direct source inspection still finds no application/test behavior: the existing shells are comment-only, and the controller removed prior task projections at new-run creation. Generated interfaces, dependency/fixture qualification and all original reuse rationales remain valid. No new product owner, dependency, task, capability, scenario or acceptance exception is introduced.
+
+Only specification/run/baseline references and supplementary evidence hashes change. The controller regenerates all21 markers and the implementation matrix from the same graph. Prior prepared-plan review and failed hosted CI remain archived with the old run; they are not the current preparation approval. All seven freeze proofs passed for the new amendment, including actual native package invocation. New prepared-baseline hosted CI must pass on its exact commit before P01 opens; no local result substitutes for that required verify outcome.

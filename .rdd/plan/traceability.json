@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "spec_digest": "c9e824bb4ebc7f1e28c18cd0dd49786c2e50e2249d52109e86254ad4eda745eb",
+  "spec_digest": "271089c2a7960561069989afc826d3a9c50644c51a7a6815dc7e8af2d1935d55",
   "status": "planned; no product evidence exists",
   "mapping_semantics": "Each row names a requirement/scenario obligation, direct source/test/handoff participants plus actual operation providers and separately recorded prerequisite closure. Verticals identify the behavior path; shared prerequisite participation is separate. Cross-cutting NFR rows cover the full operation inventory. This is planned coverage, never observed evidence.",
   "rows": [
