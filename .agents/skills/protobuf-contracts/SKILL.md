@@ -22,9 +22,9 @@ Run from the repository root. Use these only in the authorized workflow stage:
 
 ```sh
 # First authorized generation: resolve locks, generate, and compile.
-python3 tools/rdd/proto_traits.py --write --bootstrap-lock --target wasm32-unknown-unknown
+./rdd contracts generate --bootstrap-lock --target wasm32-unknown-unknown
 # Subsequent deterministic verification; no generated-source mutation.
-python3 tools/rdd/proto_traits.py --target wasm32-unknown-unknown
+./rdd contracts check --target wasm32-unknown-unknown
 ```
 
 Commit the generated crate and both Cargo.lock files after first qualification. Missing Rust/Buf/target/dependency access is blocked evidence. Read [contract design](references/contracts.md) and [generation](references/generation.md) before selecting adapters or changing generator behavior.

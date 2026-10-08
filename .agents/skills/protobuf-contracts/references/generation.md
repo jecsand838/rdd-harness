@@ -23,8 +23,8 @@ Subprocess output is captured within a fixed budget and deadlines terminate the 
 Install the repository-documented Rust and Buf versions and the WASM target required by the Rust frontend. From the repository root:
 
 ```sh
-python3 tools/rdd/proto_traits.py --write --bootstrap-lock --target wasm32-unknown-unknown
-python3 tools/rdd/proto_traits.py --target wasm32-unknown-unknown
+./rdd contracts generate --bootstrap-lock --target wasm32-unknown-unknown
+./rdd contracts check --target wasm32-unknown-unknown
 ```
 
 The first command resolves missing `tools/proto-codegen/Cargo.lock` and `gen/rust/Cargo.lock`; inspect and commit them. Later commands use `--locked`. If a dependency amendment changes the generator manifest, deliberately update locks and rerun qualification during specification. Do not use missing locks or a dependency network outage as a reason to remove `--locked` in a frozen run.

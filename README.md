@@ -129,15 +129,17 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
    ./rdd workflow preparation
    ```
 
-   The workflow reviews and freezes the task graph, then materializes the approved shells, markers, and matrix. Commit the prepared baseline. Unresolved design questions return to specification.
+   The workflow reviews and freezes the task graph, then materializes the approved shells, task packets, and matrix. This enters `preparing`; commit the materialized handoff before final review. A frozen specification defect stops affected work and is recorded as a critical harness regression.
 
-3. **Push the accepted baseline.** The first phase PR and its trusted CI policy need this remote base. Keep it outside `main`:
+3. **Publish and accept preparation.** Push the committed materialization outside `main`:
 
    ```sh
    git push origin YOUR_BASELINE_BRANCH
    ```
 
-   Verify that exact baseline push in CI, then require `verify` on the baseline. Later phase bases need the same required check only after they are sealed; do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for the setup commands.
+   Obtain successful preparation CI for that exact commit using the pinned `RDD_PREPARATION_HARNESS_SHA`, import any required external evidence, and run `./rdd readiness preparation`. Both independent final reviewers must inspect the committed handoff and current evidence; record their reports, then run `./rdd gate preparation`. Only a passing gate grants `prepared` and permits P01. See the [preparation protocol](docs/harness/workflow-guide.md#stage-two-preparation) for the exact sequence.
+
+   The first phase PR uses this accepted remote baseline. Require `verify` on it; later phase bases need the same required check only after they are sealed. Do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for setup commands.
 
 4. **Open implementation and activate native Goal mode.** Obtain the objective, then launch the implementation session:
 
