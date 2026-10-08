@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rdd:schema:checkpoint:v1",
+  "title": "RDD checkpoint v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source_commit": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 64
+    },
+    "source_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "state": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "baseline": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source_commit",
+    "source_digest",
+    "state",
+    "evidence",
+    "baseline"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,464 @@
+{
+  "format_version": 1,
+  "scope": "repository-local engineering skill pack",
+  "checked_date": "2026-10-07",
+  "examples": "Original illustrative examples; application names and signatures must follow frozen specifications.",
+  "implementation_validation": {
+    "skill_format": "13 skills passed the skill validator",
+    "python_orchestration": "8 stdlib tests passed",
+    "rust_codegen": "Not compiled in authoring environment: Cargo, Rust compiler, and Buf unavailable. Explicit bootstrap and compile checks are provided; never treat this status as project contract verification.",
+    "evidence_checks": "37 adversarial checks tests passed; combined checks and CI suite: 55 tests passed"
+  },
+  "sources": [
+    {
+      "url": "https://buf.build/docs/generate/",
+      "title": "Buf generation",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://buf.build/docs/reference/cli/buf/build/",
+      "title": "Buf build and descriptor flag",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/book/ch11-03-test-organization.html",
+      "title": "Rust test organization",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-testing",
+        "create-test-suite"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html",
+      "title": "Cargo reproducibility through lockfiles",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "documentation"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/cargo/reference/workspaces.html",
+      "title": "Cargo workspaces",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-testing",
+        "create-module"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rust-by-example/error.html",
+      "title": "Error handling",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-domain-types"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rust-by-example/fn/methods.html",
+      "title": "Associated functions and methods",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-domain-types",
+        "create-api"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rust-by-example/generics/bounds.html",
+      "title": "Generic bounds",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-domain-types"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rust-by-example/generics/new_types.html",
+      "title": "Newtype idiom",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-domain-types"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rust-by-example/index.html",
+      "title": "Rust By Example",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-domain-types"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rust-by-example/mod.html",
+      "title": "Rust modules",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "create-module"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rust-by-example/trait.html",
+      "title": "Traits",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-domain-types"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html",
+      "title": "Rustdoc documentation comments",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "documentation"
+      ]
+    },
+    {
+      "url": "https://doc.rust-lang.org/rustdoc/write-documentation/documentation-tests.html",
+      "title": "Rustdoc documentation tests",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "documentation"
+      ]
+    },
+    {
+      "url": "https://docs.rs/prost-build/0.14.4/prost_build/struct.Config.html#method.compile_fds",
+      "title": "Prost Config::compile_fds",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://docs.rs/prost-build/0.14.4/prost_build/struct.Method.html",
+      "title": "Resolved method types",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://docs.rs/prost-build/0.14.4/prost_build/struct.Module.html",
+      "title": "Prost package-to-module mapping",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://docs.rs/prost-build/0.14.4/prost_build/trait.ServiceGenerator.html",
+      "title": "Prost ServiceGenerator",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://docs.rs/prost-build/latest/prost_build/trait.ServiceGenerator.html",
+      "title": "Prost service generator",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-commands-events",
+        "create-module"
+      ]
+    },
+    {
+      "url": "https://docs.rs/tauri/latest/tauri/ipc/struct.Channel.html",
+      "title": "Channel API, ordering, and binary payloads",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-commands-events"
+      ]
+    },
+    {
+      "url": "https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html",
+      "title": "spawn_blocking",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio"
+      ]
+    },
+    {
+      "url": "https://docs.rs/tracing/latest/tracing/attr.instrument.html",
+      "title": "tracing instrument and field selection",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "observability"
+      ]
+    },
+    {
+      "url": "https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter",
+      "title": "Span enter and async warning",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "observability"
+      ]
+    },
+    {
+      "url": "https://docs.turso.tech/cloud/durability",
+      "title": "Cloud durability scope",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "turso-embedded"
+      ]
+    },
+    {
+      "url": "https://docs.turso.tech/sdk/rust/quickstart",
+      "title": "Rust quickstart",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "turso-embedded"
+      ]
+    },
+    {
+      "url": "https://docs.turso.tech/sdk/rust/reference",
+      "title": "Turso Rust reference",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-testing",
+        "turso-embedded"
+      ]
+    },
+    {
+      "url": "https://docs.turso.tech/sql-reference/compatibility",
+      "title": "SQLite compatibility",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "turso-embedded"
+      ]
+    },
+    {
+      "url": "https://docs.turso.tech/sql-reference/multiprocess-access",
+      "title": "Multiprocess constraints",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "turso-embedded"
+      ]
+    },
+    {
+      "url": "https://docs.turso.tech/sql-reference/statements/transactions",
+      "title": "Transactions",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "turso-embedded"
+      ]
+    },
+    {
+      "url": "https://github.com/neoeinstein/protoc-gen-prost",
+      "title": "Community Prost plugin source",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://protobuf.dev/best-practices/dos-donts/",
+      "title": "Protobuf evolution practices",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "create-api",
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://protobuf.dev/programming-guides/field_presence/",
+      "title": "Protobuf field presence",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "create-api",
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://protobuf.dev/programming-guides/proto3/",
+      "title": "Proto3 language guide",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "protobuf-contracts"
+      ]
+    },
+    {
+      "url": "https://rust-lang.github.io/api-guidelines/about.html",
+      "title": "Rust API Guidelines",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-domain-types",
+        "create-module"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/topics/shutdown",
+      "title": "Graceful shutdown",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/topics/testing",
+      "title": "Deterministic test time",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio",
+        "rust-testing",
+        "create-test-suite"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/topics/tracing",
+      "title": "Tokio tracing overview",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "observability"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/tutorial",
+      "title": "Tokio tutorial",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/tutorial/channels",
+      "title": "Channels and backpressure",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/tutorial/select",
+      "title": "Select and cancellation",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/tutorial/shared-state",
+      "title": "Shared state",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio"
+      ]
+    },
+    {
+      "url": "https://tokio.rs/tokio/tutorial/spawning",
+      "title": "Spawning, Send, and lifetimes",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-async-tokio"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/",
+      "title": "Tauri 2",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-application"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/develop/calling-frontend/",
+      "title": "Calling the frontend from Rust",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-commands-events",
+        "create-ui-page"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/develop/calling-rust/",
+      "title": "Calling Rust from the frontend",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-commands-events",
+        "create-api",
+        "create-ui-page"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/develop/state-management/",
+      "title": "Managed state",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-commands-events"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/develop/tests/webdriver/",
+      "title": "Tauri WebDriver",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "rust-testing",
+        "create-test-suite"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/distribute/",
+      "title": "Distribution",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-application",
+        "documentation"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/plugin/single-instance/",
+      "title": "Single instance",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-application"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/security/capabilities/",
+      "title": "Capabilities and custom command restrictions",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-application",
+        "tauri-commands-events"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/security/csp/",
+      "title": "Content security policy",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-application"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/start/frontend/",
+      "title": "Frontend configuration",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-application",
+        "create-ui-page"
+      ]
+    },
+    {
+      "url": "https://v2.tauri.app/start/prerequisites/",
+      "title": "Platform prerequisites",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "tauri-application"
+      ]
+    },
+    {
+      "url": "https://www.w3.org/TR/WCAG22/",
+      "title": "WCAG 2.2 normative criteria",
+      "checked_date": "2026-10-07",
+      "skills": [
+        "create-ui-page",
+        "create-test-suite"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Protobuf Contracts"
+  short_description: "Apply protobuf contracts practices for RDD"
+  default_prompt: "Use $protobuf-contracts for the current approved RDD task."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research Dependencies"
+  short_description: "Qualify dependencies with primary evidence"
+  default_prompt: "Use $research-dependencies for the active RDD run."

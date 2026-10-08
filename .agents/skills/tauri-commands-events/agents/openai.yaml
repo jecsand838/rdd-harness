@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tauri Commands Events"
+  short_description: "Apply tauri commands events practices for RDD"
+  default_prompt: "Use $tauri-commands-events for the current approved RDD task."

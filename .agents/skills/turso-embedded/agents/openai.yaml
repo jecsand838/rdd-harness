@@ -1,0 +1,4 @@
+interface:
+  display_name: "Turso Embedded"
+  short_description: "Apply turso embedded practices for RDD"
+  default_prompt: "Use $turso-embedded for the current approved RDD task."

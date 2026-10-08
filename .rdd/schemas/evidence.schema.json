@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rdd:schema:evidence:v1",
+  "title": "RDD evidence v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "check_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "phase": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "task_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_commit": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 64
+    },
+    "source_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "spec_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "plan_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 4000
+      },
+      "minItems": 0,
+      "uniqueItems": false
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "linux",
+        "windows",
+        "macos"
+      ]
+    },
+    "started_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "finished_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "returncode": {
+      "type": "integer"
+    },
+    "expectation": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "red",
+        "fail"
+      ]
+    },
+    "log_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "log_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "local",
+        "ci",
+        "manual"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "run_url": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "host_profile": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "actor",
+        "run_url",
+        "host_profile"
+      ],
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "check_id",
+    "phase",
+    "task_id",
+    "source_commit",
+    "source_digest",
+    "spec_digest",
+    "plan_digest",
+    "command",
+    "platform",
+    "started_at",
+    "finished_at",
+    "returncode",
+    "expectation",
+    "outcome",
+    "log_path",
+    "log_digest",
+    "origin",
+    "provenance",
+    "metrics"
+  ],
+  "additionalProperties": false
+}

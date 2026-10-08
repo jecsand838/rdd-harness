@@ -1,0 +1,195 @@
+name: rdd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, 'rdd/**']
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rdd-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  controller:
+    name: controller (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      RDD_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      RDD_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      RDD_HEAD_BRANCH: ${{ github.head_ref || github.ref_name }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RDD_HEAD_SHA }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out trusted base verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RDD_POLICY_SHA }}
+          path: baseline
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up controller Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Select trusted base or initial-import verifier
+        id: verifier
+        run: |
+          python - <<'RDD_SELECT_VERIFIER'
+          import os
+          from pathlib import Path
+          baseline = Path("baseline")
+          candidate = Path("candidate")
+          required = (".rdd/config.json", "tools/rdd/cli.py")
+          frozen = (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json")
+          if all((baseline / path).is_file() for path in required):
+              selected = "baseline"
+          else:
+              if any((baseline / path).exists() or (baseline / path).is_symlink()
+                     for path in (".rdd", "tools/rdd")):
+                  raise SystemExit("Trusted base contains a partial harness; bootstrap is forbidden")
+              if not all((candidate / path).is_file() for path in required):
+                  raise SystemExit("Initial import requires a complete candidate harness")
+              if any((candidate / path).exists() or (candidate / path).is_symlink() for path in frozen):
+                  raise SystemExit("Initial import cannot contain frozen specification, plan, or preparation artifacts")
+              if os.environ["RDD_HEAD_BRANCH"].startswith("rdd/"):
+                  raise SystemExit("Initial import cannot use an RDD phase branch")
+              selected = "candidate"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"root={selected}\n")
+          RDD_SELECT_VERIFIER
+
+      - name: Test selected harness
+        working-directory: ${{ steps.verifier.outputs.root }}
+        run: python tools/rdd/cli.py selftest
+
+      - name: Install the trusted Rust toolchain for a prepared application
+        if: hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
+        working-directory: baseline
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tomllib
+          toolchain = tomllib.loads(Path("rust-toolchain.toml").read_text(encoding="utf-8"))["toolchain"]
+          channel = toolchain["channel"]
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", channel):
+              raise SystemExit("A prepared application requires an exact stable Rust version")
+          argv = ["rustup", "toolchain", "install", channel, "--profile", "minimal"]
+          for component in toolchain.get("components", []):
+              if component not in {"rustfmt", "clippy", "rust-src"}:
+                  raise SystemExit("Unexpected trusted Rust component")
+              argv.extend(["--component", component])
+          for target in toolchain.get("targets", []):
+              if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]+", target):
+                  raise SystemExit("Invalid trusted Rust target")
+              argv.extend(["--target", target])
+          subprocess.run(argv, check=True, timeout=1200)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"RUSTUP_TOOLCHAIN={channel}\n")
+          PY
+
+      - name: Install pinned Buf without schema publishing or PR comments
+        if: hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
+        uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
+        with:
+          version: '1.73.0'
+          setup_only: 'true'
+          pr_comment: 'false'
+          push: 'false'
+          archive: 'false'
+
+      - name: Install Tauri Linux build prerequisites
+        if: runner.os == 'Linux' && hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config
+
+      - name: Record installed verification tools
+        if: hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
+        working-directory: baseline
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import platform
+          import subprocess
+          import sys
+          commands = {"rustc": ["rustc", "--version", "--verbose"], "cargo": ["cargo", "--version"], "buf": ["buf", "--version"]}
+          versions = {name: subprocess.run(argv, text=True, capture_output=True, check=True, timeout=30).stdout.strip() for name, argv in commands.items()}
+          receipt = {"schema_version": 1, "scope": "installed_ci_tools", "application_complete": False,
+                     "source_commit": os.environ["RDD_HEAD_SHA"], "policy_commit": os.environ["RDD_POLICY_SHA"],
+                     "python": sys.version, "platform": platform.platform(), "tools": versions}
+          destination = Path(os.environ["GITHUB_WORKSPACE"]) / "candidate/.rdd/evidence/toolchain.json"
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(receipt, indent=2))
+          PY
+
+      - name: Validate candidate with the selected controller and frozen check policy
+        working-directory: candidate
+        env:
+          RDD_VERIFIER_ROOT: ${{ steps.verifier.outputs.root }}
+        run: >-
+          python "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT/tools/rdd/cli.py"
+          --root "$GITHUB_WORKSPACE/candidate"
+          ci --policy-root "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT"
+          --branch "$RDD_HEAD_BRANCH"
+
+      - name: Preserve CI evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rdd-ci-${{ matrix.os }}-${{ env.RDD_HEAD_SHA }}
+          path: |
+            candidate/.rdd/evidence/ci.json
+            candidate/.rdd/evidence/toolchain.json
+            candidate/.rdd/evidence/checks/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  verify:
+    # Phase branches produce this check only through the base-bound PR workflow.
+    # Configure the required GitHub check using this exact name.
+    name: verify
+    needs: [controller]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      RDD_CONTROLLER_RESULT: ${{ needs.controller.result }}
+    steps:
+      - name: Require every controller and frozen policy check to pass
+        shell: bash
+        run: |
+          if [[ "$RDD_CONTROLLER_RESULT" != "success" ]]; then
+            echo "RDD prerequisite jobs did not all succeed: $RDD_CONTROLLER_RESULT"
+            exit 1
+          fi

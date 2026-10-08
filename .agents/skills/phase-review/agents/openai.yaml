@@ -1,0 +1,4 @@
+interface:
+  display_name: "Phase Review"
+  short_description: "Review phase evidence without task-level gates"
+  default_prompt: "Use $phase-review for the active RDD run."

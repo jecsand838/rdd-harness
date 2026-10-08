@@ -1,0 +1,4 @@
+interface:
+  display_name: "Amend Requirements"
+  short_description: "Trace requirement changes and retain valid work"
+  default_prompt: "Use $amend-requirements for the active RDD run."

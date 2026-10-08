@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Domain Types"
+  short_description: "Apply rust domain types practices for RDD"
+  default_prompt: "Use $rust-domain-types for the current approved RDD task."

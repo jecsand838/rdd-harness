@@ -1,0 +1,4 @@
+interface:
+  display_name: "Preparation Workflow"
+  short_description: "Plan dependency-closed implementation phases"
+  default_prompt: "Use $preparation-workflow for the active RDD run."

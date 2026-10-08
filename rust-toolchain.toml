@@ -1,0 +1,7 @@
+# Reviewed 2026-10-07 against the official Rust 1.99.0 release announcement.
+# Specification may change this pin after qualifying the complete dependency set.
+[toolchain]
+channel = "1.99.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]

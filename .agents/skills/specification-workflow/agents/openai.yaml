@@ -1,0 +1,4 @@
+interface:
+  display_name: "Specification Workflow"
+  short_description: "Derive frozen specifications from requirements"
+  default_prompt: "Use $specification-workflow for the active RDD run."

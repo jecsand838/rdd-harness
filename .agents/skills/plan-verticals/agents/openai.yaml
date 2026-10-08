@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Verticals"
+  short_description: "Map task prerequisites into ordered verticals"
+  default_prompt: "Use $plan-verticals for the active RDD run."

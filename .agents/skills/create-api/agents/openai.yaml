@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Api"
+  short_description: "Apply create api practices for RDD"
+  default_prompt: "Use $create-api for the current approved RDD task."

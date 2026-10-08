@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Testing"
+  short_description: "Apply rust testing practices for RDD"
+  default_prompt: "Use $rust-testing for the current approved RDD task."
