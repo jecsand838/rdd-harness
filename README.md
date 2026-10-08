@@ -1,269 +1,225 @@
 # RDD harness
 
-A runnable, repository-local Requirements Driven Development harness for Codex. It turns a formal requirements document into a frozen solution, a dependency-ordered implementation backlog, and a verified stack of phase pull requests.
+A repository-local **Requirements Driven Development (RDD)** harness for Codex. It turns formal requirements into a frozen solution, a scoped implementation plan, and a verified stack of phase pull requests, with evidence connecting the result back to the original requirements.
 
-The included `requirements/requirements.md` is the supplied Rust Todo requirements document, preserved byte for byte. The Todo application is intentionally not implemented. Run the three workflows to generate it, then use amendment runs to maintain it.
+This repository includes the supplied [Rust Todo requirements](requirements/requirements.md), preserved byte for byte. The Todo application has **not been implemented**. The harness supplies the controller, agent skills, artifact schemas, contract generator, CI, and regression tests needed to develop it through the workflows below.
 
-The harness contains executable orchestration and validation, 24 original skills, five Codex roles, JSON artifact schemas, a Rust Protobuf service-trait generator, CI, and regression tests. There is no Python package installation: the controller uses Python 3.11+ standard-library modules.
+[Understand the workflow](#how-the-workflow-fits-together) · [Prerequisites](#prerequisites) · [Get started](#get-started) · [Recovery](#follow-progress-and-recover) · [Completion](#what-counts-as-complete) · [Guides](#important-files-and-guides)
 
-## Quick start
+## What is RDD?
 
-Unzip the repository into its own directory. In a terminal:
+RDD keeps product obligations connected to design decisions, implementation work, and measured results. Functional requirements describe what the application must do. Quality constraints describe properties such as reliability, performance, privacy, and accessibility. Both become explicit solution specifications, contracts, scenarios, and verification checks before application implementation begins.
+
+The traceability chain is:
+
+**Requirement → scenario/check → scoped task → phase review and PR → project validation**
+
+A scenario describes the behavior or constraint to prove; a check supplies its executable test or evidence protocol. Tasks identify the exact work and allowed files. Phase review establishes whether that work satisfies the obligations being accepted. Final project validation combines the results across the whole application. A completed checklist or a model's success message cannot replace this evidence.
+
+## How the workflow fits together
+
+![Conceptual RDD flow: requirements become specifications and contracts, preparation organizes tasks into verticals and phases, and implementation repeats tests, tasks, and acceptance until project validation.](docs/harness/rdd-diagram.svg)
+
+[Open the full RDD diagram](docs/harness/rdd-diagram.svg).
+
+The diagram is conceptual; the controller and frozen artifacts define the operational rules. Its labels are outlined graphics, so the walkthrough below also describes the flow in text.
+
+1. **Specification** derives domain boundaries from functional requirements and measurable acceptance criteria from quality constraints. Research and real contract, native runtime, database, and UI qualification checks establish a viable solution before it is frozen. This stage defines scenarios and check protocols without implementing application behavior.
+2. **Preparation** turns that solution into concrete target paths, scoped tasks, dependencies, verticals, and phases. It creates approved empty or comment-only shells, task markers, and an implementation matrix. It verifies the frozen contracts; it does not implement the product.
+3. **Implementation** works through the phased backlog. Tests and benchmarks are implemented according to the scoped phase tasks, followed by production changes, independent review, and acceptance checks. Each accepted phase gets a PR and seal; the project gate evaluates the final result.
+
+| Stage | Input | Accepted output |
+| --- | --- | --- |
+| Specification | Canonical requirements and relevant existing code | Frozen solution documents, decisions, requirement coverage, scenarios/check definitions, qualified Protobuf contracts and generated interfaces |
+| Preparation | Frozen solution and contracts | Frozen task dependency graph, verticals, dependency-closed phases, exact write scopes, prepared shells/markers, and implementation matrix |
+| Implementation | Committed and pushed prepared baseline | Tested application changes, revision-bound evidence and independent reviews, one verified PR per phase, phase seals, and project validation |
+
+**Frozen artifacts** are approved files whose exact identities are recorded by the controller. Downstream work must preserve that authority; changing a contract or acceptance meaning requires a new specification run. Generated Rust messages and local unary service traits enforce interface shapes, while application checks must also prove that real providers and consumers use those boundaries. The seed contract in this boilerplate qualifies the generator; it is not the Todo domain model or a requirement to add a network server.
+
+A **vertical** is an ordered chain of dependent tasks toward a capability. A **phase** is a dependency-closed group of tasks: its accepted obligations may depend on earlier phases, but never on unfinished future work. An **acceptance gate** checks whether the current source, results, and review permit phase closure or project completion. See the [workflow guide](docs/harness/workflow-guide.md) for the detailed transitions.
+
+## What the harness controls
+
+Agents interpret requirements, research dependencies, author specifications and code, and review whether the result fulfills the intended behavior. The deterministic Python controller validates artifact structure, traceability, dependency order, task ownership, source identity, evidence, and state transitions. Structural validation supports semantic review; it cannot establish correctness by itself.
+
+The coordinator uses `gpt-6-astra` at `ultra`. Large implementors and the independent reviewer use `gpt-6.1-sol` at `xhigh`; small implementors use `gpt-6-luna` at `xhigh`. At most **two implementors** run concurrently, leaving room for the reviewer to observe progress and send corrections. The final independent review is bound to the exact phase revision.
+
+Workers receive bounded task packets and isolated Git worktrees with disjoint write scopes. The controller integrates committed work only from the leased base and declared files. Requirements, frozen artifacts, generated contracts, controller policy, skills, and CI cannot be rewritten by implementation tasks to weaken their own acceptance rules.
+
+Within each phase, tasks follow this order:
+
+**Tests → deletion → modification → addition → documentation**
+
+Tests must first reach an actual failing behavioral assertion (RED). Missing tools, compiler errors, and skipped tests are not RED. Test-only scaffolding may make the assertion executable, but cannot supply product behavior. Additions need a frozen reuse analysis explaining why existing code cannot reasonably provide the capability.
+
+Task markers such as `// RDD:P01:T001 [tests] ...` and sidecars for noncommentable files project the plan into source. The plan and transactional state remain authoritative. Use controller commands to complete tasks and reconcile markers; never edit SQLite state, locks, receipts, or unfinished markers to force progress. Review gates occur at phase completion, rather than after each task.
+
+## Prerequisites
+
+The controller uses the Python standard library; no Python package installation is needed. Python and Git are enough for initialization and offline harness tests. The full workflows also need the tools and access below.
+
+| Prerequisite | Purpose |
+| --- | --- |
+| Python 3.11+ and Git | Controller, regression suite, exact source identities, branches, and isolated worktrees |
+| Codex CLI with native Goals and custom subagents | Interactive workflows and configured agent roles |
+| Model/account access | The Astra/ultra, Sol/xhigh, and Luna/xhigh settings listed above; no silent model downgrade |
+| GitHub CLI `gh` and a writable GitHub `origin` remote | Phase PR publication, required checks, and stack verification |
+| Rustup with the [pinned Rust toolchain](rust-toolchain.toml) | Rust compiler, `rustfmt`, `clippy`, and `wasm32-unknown-unknown` for native and Rust/WASM work |
+| Buf CLI | Protobuf linting, descriptors, and contract verification |
+| Native Tauri development tools for each required OS | Actual desktop build, integration, and packaging qualification |
+
+Authenticate Codex and GitHub locally before starting development, and configure your own Git author identity. `doctor --full` inspects tool availability, client capabilities, and authentication. Advertised model support **does not prove account entitlement**: the doctor always reports `account_access_verified=false` because it performs no paid model invocation. Actual access is established when the model is used. Missing tools or model access are blockers, not permission to substitute a different configuration.
+
+The [runtime guide](docs/harness/codex-runtime.md) links installation references and explains the pinned CI tools. Specification selects and qualifies the application dependency versions, Rust UI framework, build tools, and platform testing route. Protoc is optional for the shipped generator because Buf emits descriptors that Prost can consume directly. Reference-device benchmarks and manual accessibility checks still require the actual specified environments; ordinary hosted CI does not replace them.
+
+## Get started
+
+### Initialize and inspect without starting development
+
+Clone your repository or fork using its actual URL, then initialize local state:
 
 ```sh
+git clone YOUR_GITHUB_REPOSITORY_URL rdd-harness
 cd rdd-harness
 ./rdd init
+./rdd status
+./rdd --help
 ./rdd selftest
 ./rdd doctor --full
-git add .
-git commit -m "Initialize RDD harness and Todo requirements"
 ```
 
-On Windows use `python tools/rdd/cli.py`, `rdd.cmd`, or `./rdd.ps1` in place of `./rdd`. If an extractor does not preserve the executable bit on Unix, use `python3 tools/rdd/cli.py` or `chmod +x rdd`.
+Run `init` before `status` on a fresh clone: Git does not carry the ignored local run locator. These commands initialize or inspect the harness and run its isolated regression fixtures; **they do not start an RDD development run**.
 
-`doctor --full` reports missing external prerequisites. Install the tools listed below and authenticate Codex/GitHub locally. A missing dependency is a concrete environment blocker, not a successful check. If Git has no author identity, configure your own repository-local name/email before the initial commit.
-
-Create your GitHub repository, then connect it using your actual repository URL:
-
-```sh
-git remote add origin YOUR_GITHUB_REPOSITORY_URL
-git push -u origin main
-```
-
-Run these in order:
-
-```sh
-./rdd workflow specification --mode regenerate
-./rdd workflow preparation
-git push origin main
-./rdd workflow implementation
-```
-
-The first two commands launch interactive Codex with the relevant skill. Specification may ask architectural questions; preparation must return unresolved requirements/solution issues to specification. Each workflow commits its accepted baseline. Push the prepared baseline before implementation so the first phase PR has the correct remote base and CI can use the trusted frozen artifacts.
-
-**Activate native goal mode for implementation.** The implementation launcher opens Codex and explains the handoff. In that Codex session, submit `/goal` followed by the exact output of:
-
-```sh
-./rdd goal
-```
-
-The objective is checked to be under 4,000 characters. The launcher does not pretend that an ordinary prompt or an invented `codex exec --goal` option activates native goal mode. You can also launch Codex yourself, invoke `$specification-workflow` and `$preparation-workflow` sequentially, then use the implementation objective with `/goal`.
-
-To inspect a launch prompt, use `./rdd workflow STAGE --print`. An explicitly supplied `--mode` starts that requested run before printing the packet. `./rdd status` is always the place to read current state and source identities.
-
-## Local prerequisites
-
-| Dependency | Purpose |
+| Command | Purpose and expected result |
 | --- | --- |
-| Python 3.11+ | Portable controller and offline regression suite; no third-party Python dependency |
-| Git | Exact source identity, isolated worker worktrees, phase branches and checkpoint recovery |
-| Codex CLI with native Goals and custom subagents | Interactive orchestration and multi-agent execution |
-| Model/account access | `gpt-6-astra` at `ultra`, `gpt-6.1-sol` at `xhigh`, and `gpt-6-luna` at `xhigh`; no silent downgrade |
-| GitHub CLI `gh` and an authenticated GitHub remote | One PR per phase, base/head checks, required CI status and stack verification |
-| Rustup and the repository's pinned Rust toolchain | Rust generator, native code, Rust/WASM UI and future application checks |
-| Buf CLI | Protobuf linting, descriptors and optional breaking checks |
-| Native Tauri platform dependencies | Actual desktop build, integration and packaging checks on each supported OS |
+| `./rdd init` | Creates local directories and the run locator; reports `status: initialized` |
+| `./rdd status` | Reports authoritative state and source identity; a fresh harness remains `not_started` with no active run |
+| `./rdd --help` | Lists controller commands; use a subcommand's `--help` for its arguments |
+| `./rdd selftest` | Runs offline controller/adapter regressions, including real subprocess and Git fixtures; success is harness verification, not Todo acceptance |
+| `./rdd doctor --full` | Reports tools, authentication, and advertised client capabilities; resolve reported blockers before workflow execution |
 
-`rust-toolchain.toml` pins Rust and includes `rustfmt`, `clippy`, and `wasm32-unknown-unknown`. The CI configuration pins its Buf setup and records actual tool versions. The embedded Turso dependency version, Rust UI framework, UI build tools and Tauri plugins are selected and locked during specification qualification against the supplied requirements. They are not silently predetermined as application code in this boilerplate.
+On Windows, replace `./rdd` with `python tools/rdd/cli.py`, `rdd.cmd` in Command Prompt, or `./rdd.ps1` in PowerShell, keeping the same arguments. On Unix, `python3 tools/rdd/cli.py` also works if a file extractor did not preserve executable permissions.
 
-Protoc is optional for the shipped generator: Buf produces a descriptor set, and Prost consumes it through `compile_fds`. The initial qualification resolves and commits real Cargo lockfiles; no lockfile or compiler output is fabricated in the archive.
+If starting from an archive rather than a clone, extract it into its own directory and run `init` there. After configuring your Git identity, make the initial source commit and connect a writable `origin` remote if one does not already exist. Clones already have history and a remote; they do not need an extra initialization commit.
 
-Install Tauri platform prerequisites from its official guide. Configure any licensed/test-only macOS UI driver, manual accessibility evaluation, and performance reference machines required by the final specification. Default hosted CI is not a substitute for reference hardware or an actual screen-reader evaluation.
-
-## What the three workflows do
-
-| Workflow | Accepted output | Controller transition |
-| --- | --- | --- |
-| Specification | Requirement coverage, complete solution documents, scenarios, module ownership/dependency graph, public/local contracts, executable verification definitions and qualified generated types | `spec init` → `spec validate` → `spec freeze` |
-| Preparation | Concrete target paths, task categories/write scopes, task DAG, verticals, dependency-closed phases, reuse decisions, phase checks, shells and inline/sidecar task projection | `plan init` → `plan validate` → `plan freeze` → `prepare` |
-| Implementation | TDD changes, live independent review, cumulative exact-source evidence, one verified PR per phase, immutable phase seals and final project report | `phase begin` → tasks/checks/review → `gate phase` → `stack publish` → `phase seal` → `gate project` |
-
-The model authors the reasoning and artifacts. The controller checks their structure, traceability, dependencies, source identity, task order, evidence and state transitions. It does not claim that a schema validator can judge every semantic requirement or replace an independent reviewer.
-
-### Specification and Protobuf qualification
-
-The specification workflow resolves ambiguity before freezing. It must derive every functional and non-functional obligation, including global data rules outside individual requirement IDs. Every functional requirement needs a golden path; negative, boundary, concurrency, fault, security, accessibility and benchmark coverage are added where required.
-
-The included `contracts/rdd/v1/harness.proto` is a toolchain qualification fixture. It is not a preselected Todo domain model. The specification workflow adds the actual application schemas and includes their complete source/generated inventories in `.rdd/spec.json`.
-
-First contract qualification within an active specification run:
+To inspect the specification launch prompt without opening Codex or starting a run:
 
 ```sh
-./rdd contracts generate --bootstrap-lock --target wasm32-unknown-unknown
-./rdd contracts check --target wasm32-unknown-unknown
+./rdd workflow specification --print
 ```
 
-Commit the resulting generator/generated-crate lockfiles and outputs before freezing. Keep `gen/rust/` absent or empty until first successful generation: the generator refuses to overwrite a nonempty directory it does not own.
+Use that command **without `--mode`**. Supplying an explicit mode can start a new run and archive prior artifacts even when `--print` is present.
 
-The generator emits Rust messages and **local unary service traits** from Protobuf. Its checks compile both valid providers and an intentionally wrong signature that must be rejected by the compiler. Ordinary message generation alone would not enforce provider method signatures. Application architecture checks must additionally prove that real module providers and consumers use these generated boundaries; the generator cannot infer that from a `.proto` file.
+### Start development deliberately
 
-Contracts and generated types are immutable downstream. Any needed signature/shape change returns to the specification workflow. No networking server is introduced merely to enforce an in-process boundary. Streaming interfaces require an explicit generator/specification amendment.
+Begin with a clean checkout on the named branch that will hold your accepted specification and preparation baseline. In the examples below, replace `YOUR_BASELINE_BRANCH` with that branch's actual name. The shipped CI runs for PRs targeting `main` or `rdd/**`, so `main` is the default baseline choice. To use another baseline branch outside those patterns, update the trusted workflow's branch filters before specification freeze so the first phase PR can receive its required `verify` check. Complete each workflow and commit its accepted output before continuing; these are separate interactive sessions, not a batch script.
 
-The supplied requirements also demand native/runtime/database/UI qualification before contract freeze. Register those real qualification commands among the specification's `contract_check_ids`, with their actual native `platforms`. After committing the complete draft, `./rdd check CHECK_ID` can execute these checks before a lock exists. The draft's prospective lock digest binds each receipt. Transfer the same Git draft and a run checkpoint to other native hosts, resume it there, and run their checks. Bring actual receipts/logs back with `./rdd check import FILE --local-host` (or the CI provenance route for a real CI runner). `spec freeze` requires every declared native platform, and a changed draft invalidates old qualification receipts.
+1. **Specify the solution.** For a first full solution, start a regenerate run:
 
-### Tasks, verticals, and phases
+   ```sh
+   ./rdd workflow specification --mode regenerate
+   ```
 
-Tasks carry stable IDs, requirements, solution references, exact file write sets, dependencies, acceptance statements and category. A vertical is an ordered chain of prerequisites in the task DAG. Every task belongs to at least one vertical, and each adjacent pair must be ordered by the dependency graph.
+   Resolve architectural questions in the Codex session. The workflow qualifies the solution and freezes the specification and contracts. Commit the accepted baseline before preparation.
 
-Phases are sequential dependency cuts. A task cannot depend on a future phase, and a requirement cannot close before its final scoped task and complete scenario checks. The phase reviewer also verifies semantic independence: no future work is required for obligations being accepted now.
+2. **Prepare the work.** From the frozen specification:
 
-Within each open phase, task selection is strictly:
+   ```sh
+   ./rdd workflow preparation
+   ```
 
-1. **Tests**: create actual failing behavioral assertions.
-2. **Deletion**: remove obsolete implementation deliberately.
-3. **Modification**: extend existing owners and behavior.
-4. **Addition**: add a missing capability only after the frozen reuse analysis justifies it.
-5. **Documentation**: reflect the accepted implementation and verified usage.
+   The workflow reviews and freezes the task graph, then materializes the approved shells, markers, and matrix. Commit the prepared baseline. Unresolved design questions return to specification.
 
-A dependency that conflicts with this order is rejected in planning. Move foundational prerequisites to an earlier phase or reformulate the test boundary; do not call a compilation failure a behavioral RED.
+3. **Push the accepted baseline.** The first phase PR and its trusted CI policy need this remote base:
 
-Preparation creates empty or comment-only shells. Tests-stage tasks may introduce test-only build fixtures and contract-consumer scaffolding required to make the first behavioral assertion execute. They cannot smuggle product behavior into preparation or label production implementation as test scaffolding.
+   ```sh
+   git push origin YOUR_BASELINE_BRANCH
+   ```
 
-Inline markers look like `// RDD:P01:T001 [tests] ...`. Noncommentable formats use `.rdd/plan/anchors/T001.md`. The frozen task manifest and transactional state are authoritative; comments are a projection. `anchors verify` catches missing, duplicate or misplaced markers. `anchors reconcile` performs recoverable projection cleanup; it never marks a task done merely because its comment disappeared.
+4. **Open implementation and activate native Goal mode.** Obtain the objective, then launch the implementation session:
 
-### Implementation and live review
+   ```sh
+   ./rdd goal
+   ./rdd workflow implementation
+   ```
 
-The coordinator uses `gpt-6-astra` / `ultra`. Large implementors and the independent reviewer use `gpt-6.1-sol` / `xhigh`; small implementors use `gpt-6-luna` / `xhigh`. At most two implementation leases run concurrently, leaving a subagent slot for live review.
+   In Codex, submit `/goal` followed by the exact objective printed by `./rdd goal`. The launcher provides the handoff; it does not activate native Goal mode itself. The objective is under 4,000 characters. Follow the [official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex) for the Goal lifecycle and the [workflow guide](docs/harness/workflow-guide.md#stage-three-implementation) for controller operations.
 
-Each worker receives a bounded packet and an isolated Git worktree. The controller only integrates a linear commit sequence that descends from the leased base and changes the declared files. Controller, requirements, specification, generated contracts, skill, CI and policy paths are protected from implementation tasks.
+## Follow progress and recover
 
-For example, the coordinator follows this pattern using real task/check IDs from the plan:
-
-```sh
-./rdd phase begin P01
-./rdd next
-./rdd task claim T001 --worker rdd_large --worktree
-# Worker implements its scoped test task in the returned worktree and commits it.
-./rdd task integrate T001 --commit FULL_WORKER_COMMIT_SHA
-./rdd check THE_FROZEN_TEST_CHECK --expect fail --task T001
-./rdd task complete T001 --evidence THE_RECORDED_EVIDENCE_ID
-# Commit the controller's marker cleanup before the next claim/integration.
-```
-
-Test task completion checks the actual behavioral RED receipt. Other task completions record integration and ownership; they do not introduce per-task review gates. The live reviewer observes progress, sends corrections and provides the independent final phase review. The coordinator runs phase checks before that final review so the reviewer can assess real evidence; the gate rechecks freshness.
-
-A completed task in the current open phase may be reopened for a scoped repair with `task reopen --reason`. Repair work uses the same category order and existing scope. A sealed phase cannot be reopened. A defect in a previously accepted obligation is a closure failure that starts a new requirements/specification amendment; this preserves the old run's failure history.
-
-### Review gates and stacked PRs
-
-At phase completion the candidate must be committed, task markers reconciled, cumulative checks passing, native/manual evidence present, and the independent review bound to the exact Git commit and source digest.
+Use `./rdd status` for the current run, active phase, tasks, blockers, and exact source identity. During an active run, preserve a checkpoint before moving or discarding the checkout:
 
 ```sh
-./rdd review record .rdd/runtime/phase-review.json
-./rdd gate phase P01
-./rdd stack publish P01
-./rdd stack verify
-./rdd phase seal P01
-```
-
-Each phase branch is `rdd/RUN_ID/pNN`. The first PR targets the committed preparation baseline branch. Each later PR targets the preceding sealed phase branch. Publication is idempotent and checks existing PRs in every state, branch identity and the recorded base SHA. The controller does not force-push or rewrite sealed branches.
-
-The default completion policy is **ready**: every phase PR exists, is open and non-draft, has required CI checks passing at the exact accepted head, and has the independent review. An actual GitHub changes request vetoes readiness; an additional human approval can be required in `.rdd/config.json` before specification freeze. Repository rules may require more approvals independently.
-
-PR merging and release publishing remain separate developer actions. Keep the stack unmerged while the run is active so the recorded bases remain stable. After final project validation, merge with your normal stack-aware process. A moved base or rewritten closed branch is reported as a blocker, not silently restacked.
-
-### CI and external evidence
-
-The workflow runs on Linux, macOS and Windows. The aggregate required check is named `verify`. It loads the controller and policy from the trusted base checkout, compares protected inventories and frozen locks before executing candidate checks, and publishes check receipts and raw logs.
-
-Before an application plan exists, CI explicitly reports `harness_only` and `application_complete=false`. A prepared baseline verifies its contracts and pending anchors. A phase PR executes the cumulative ordinary checks applicable to that native platform. Manual checks and reference-host benchmarks are listed as pending external evidence; they are enforced by the local phase/project gate and are never converted into hosted-CI success claims.
-
-On nonphase branches, CI accepts only a marker projection matching one complete phase prefix and runs the cumulative ordinary checks through that prefix. It reports `observed_through_phase` and uses `source_cumulative` scope when a phase prefix is present; `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents the candidate from reducing this coverage. This projection selects checks; it does not prove task completion, phase seals, review, or project acceptance. Push verification uses the pushed revision for both checkouts, so it cannot independently detect coverage rollback relative to an earlier revision.
-
-Protect the verification workflow and policy paths with repository review/rules, or an externally required workflow. A repository-local harness is not a security sandbox against a malicious actor who can rewrite its verifier, forge observers, or modify the local state database. Read `docs/harness/security-model.md` for the exact trust boundary.
-
-The first specification/preparation baseline must be deliberately committed to the trusted base branch. An implementation PR cannot introduce, replace or remove its own frozen policy to grant itself permission.
-
-## Amendments and regeneration
-
-For an amendment, edit the canonical requirements under your direction, commit that edit, and run:
-
-```sh
-./rdd workflow specification --mode amend
-./rdd workflow preparation
-git push origin YOUR_BASELINE_BRANCH
-./rdd workflow implementation
-```
-
-The controller compares the previous requirements index, preserves prior artifacts/run history, and requires a frozen impact analysis and bounded affected paths. Global glossary/data-rule changes conservatively expand requirement impact. The new plan may only modify the approved impact surface. Unaffected code is preserved.
-
-A regenerate run archives prior artifacts and clears the prior solution/plan artifacts for regeneration. It does **not** blindly delete application source. If existing code must be replaced, the new plan schedules explicit deletion/modification/addition tasks. This preserves reviewability and data safety.
-
-Regenerate changes the design baseline. Amend changes a defined part of that baseline. Both are new runs with their own phase seals; neither edits the historical meaning of a closed phase.
-
-## Recovery and completion
-
-```sh
-./rdd status
 ./rdd export-run .rdd/evidence/run-checkpoint.json
+```
+
+After resolving an interruption, resume local controller state with:
+
+```sh
 ./rdd resume
 ```
 
-SQLite transactions persist task state, attempt budgets and leases. CLI mutations are serialized by an OS lock, while read-only status remains available to the live reviewer. Worker branches/worktrees survive release and lease expiry. An interrupted integration records its intent before cherry-picking; recovery compares the actual result with the leased submission. Conflicts require explicit resolution or abort before resumption and are not discarded automatically.
+Worker branches and worktrees survive release and lease expiry. Interrupted integration is reconciled against the submitted commit; unresolved cherry-pick conflicts require deliberate resolution or abort before resume. An environment or review blocker can resume after its cause is fixed. Authority, planning, sealed-phase, and exhausted-budget blockers require a new specification run.
 
-To move a run, transfer the Git repository at the exact checkpoint commit plus the exported checkpoint. Recreate/preserve any outstanding worker branches separately. Then:
+To restore on another machine, transfer the Git repository at the checkpoint's exact revision and source contents plus the exported checkpoint. Preserve outstanding worker branches separately, then run:
 
 ```sh
 ./rdd resume --from PATH_TO_RUN_CHECKPOINT.json
 ```
 
-Imports verify source/lock identity, evidence paths and raw-log hashes. Checkpoints and local observer identities are trusted records, not cryptographic attestations. Environment/review blockers may resume after their underlying cause is fixed; authority, planning, closed-phase and exhausted-budget blockers require a new specification run.
+Runtime state and evidence are ignored by Git, so pushing source alone does not transfer them. The checkpoint carries run state and raw check logs; imports verify source/lock identity and log hashes. See [recovery procedures](docs/harness/workflow-guide.md#repairs-and-interruptions) and the [evidence guide](docs/harness/evidence-guide.md) for the full process.
 
-Final completion is accepted only when:
+For a bounded change to requirements or a sealed design/implementation defect, use `./rdd workflow specification --mode amend` from the selected baseline, then repeat preparation and implementation. Commit any authorized requirements edits first. The amendment must record impact and preserve unaffected work and history. Use `--mode regenerate` for a fresh full solution: it archives prior active artifacts, but replacement of existing application code remains explicit planned work. A repair within an open phase can use existing scoped tasks; a sealed phase cannot be reopened. See [amendment and regeneration](docs/harness/workflow-guide.md#amendment-and-regeneration).
 
-```sh
-./rdd gate project
-```
+## What counts as complete?
 
-returns `status: passed` and `application_complete: true`. This requires all canonical tasks done, zero remaining task markers, every phase sealed, the entire stack currently verified, all cumulative/project tests and independently evaluated benchmarks passing, and current evidence for every required platform/observer.
+### Phase readiness and project acceptance
 
-Outputs:
+A phase closes only when its committed source has completed tasks, reconciled markers, passing cumulative checks, required native/manual evidence, and an independent review of that exact revision. The coordinator gates the phase, publishes its PR, verifies the stack, and seals it. The first PR targets the preparation baseline branch; each later PR targets its preceding sealed phase branch.
 
-- `.rdd/evidence/project-validation.json`: requirement coverage, exact source/baselines, checks, metrics, reviews and PR identities.
+The default PR completion policy is **ready**: open, non-draft, reviewed, and passing required checks at the accepted head. GitHub changes requests veto readiness; additional human approval can be configured before specification freeze. Keep the stack unmerged while the run is active. The controller does not force-push or silently restack sealed phases.
+
+Only `./rdd gate project` returning **`status: passed` and `application_complete: true`** establishes application completion. It requires all canonical tasks done, no remaining task markers, every phase sealed, the stack currently verified, and all required cumulative/project tests, benchmarks, and platform/observer evidence. It writes:
+
+- `.rdd/evidence/project-validation.json`: source identities, requirement coverage, checks, metrics, reviews, and PRs.
 - `.rdd/evidence/project-validation.md`: readable acceptance report.
-- `.rdd/evidence/completed-run.json`: portable run state and raw-log checkpoint.
+- `.rdd/evidence/completed-run.json`: portable checkpoint with run state and raw check logs.
 
-Evidence and runtime state are ignored by Git to avoid a tested revision invalidating itself when its receipt is written. Export them before discarding the working checkout. The controller's source digest covers tracked and nonignored source files; generated build caches, runtime, evidence and the active run locator are outside it. Build inputs must not be hidden in ignored locations.
+A paused Goal, a worker's prose, or passing harness tests cannot establish project acceptance. PR merging and release publishing are separate developer actions after validation.
 
-## Repository map
+### What CI proves
 
-| Path | Responsibility |
+CI runs on Linux, macOS, and Windows, with the aggregate check named **`verify`**. A PR uses the trusted base controller and policy to validate the candidate. The initial frozen specification/preparation baseline must be deliberately committed to that trusted base; an implementation PR cannot replace its own frozen policy to grant itself permission.
+
+Before a frozen application plan exists, CI reports `harness_only` with `application_complete=false`. An intact prepared baseline verifies contracts and pending markers. A phase PR runs cumulative ordinary checks for the applicable native platform. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
+
+On nonphase branches, CI accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; a same-revision push check cannot detect rollback against an earlier revision. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
+
+Protect the verification workflow and policy through repository rules and review. The harness trusts its local controller and evidence observers; it is not a sandbox against someone who can rewrite the verifier or state. See the [security model](docs/harness/security-model.md) for the trust boundary and the [runtime guide](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence) for CI and native evidence requirements.
+
+## Important files and guides
+
+| Path | What belongs here |
 | --- | --- |
-| `requirements/requirements.md` | Canonical supplied requirements |
-| `docs/specs/`, `docs/decisions/` | Solution and approved decisions produced by specification |
-| `contracts/`, `gen/` | Canonical schemas and qualified generated outputs |
-| `modules/`, `apps/` | Future language-appropriate application structure |
-| `tests/acceptance/`, `tests/integration/` | Future requirement and real-boundary verification |
-| `tests/harness/` | Existing harness regression tests |
-| `benchmarks/` | Future workload implementations; raw-metric and host-qualification guidance |
-| `.rdd/schemas/`, `.rdd/plan/` | Machine formats and the frozen implementation plan |
-| `.rdd/run.json` | Ignored active run/baseline locator, included inactive in the archive |
-| `.rdd/evidence/`, `.rdd/runtime/` | Revision-bound reports, transactional state and checkpoints |
-| `.rdd/baselines/` | Versioned historical artifact copies |
-| `.agents/skills/` | Three workflows and supporting skills |
-| `.codex/agents/` | Worker, reviewer, researcher and coordinator roles |
-| `.github/workflows/` | Trusted verification and native platform matrix |
-| `tools/rdd/`, `rdd` | Executable controller and CLI |
-| `tools/proto-codegen/` | Rust message and local service-trait generator |
-| `AGENTS.md` | Compact authority and navigation instructions |
+| [requirements/requirements.md](requirements/requirements.md) | Canonical product obligations |
+| `docs/specs/`, `docs/decisions/`, `.rdd/spec.json` | Solution and decisions produced by specification |
+| `contracts/`, `gen/` | Canonical Protobuf contracts and qualified generated outputs |
+| `.rdd/plan/`, `.rdd/prepared.json` | Frozen tasks, verticals, phases, matrix, markers, and preparation receipt |
+| `modules/`, `apps/`, `tests/`, `benchmarks/` | Future Rust Todo application and its verification; `tests/harness/` already tests the controller |
+| `.rdd/run.json`, `.rdd/runtime/`, `.rdd/evidence/` | Ignored local run locator, transactional state, and verification results |
+| `.rdd/baselines/` | Historical baseline artifact copies |
+| [.agents/skills/](.agents/skills/README.md), [.codex/agents/](.codex/agents/) | Workflow/supporting skills and Codex roles |
+| [tools/rdd/](tools/rdd/), [tools/proto-codegen/](tools/proto-codegen/) | Python controller and Rust contract generator |
+| [.rdd/config.json](.rdd/config.json), [AGENTS.md](AGENTS.md) | Controller policy, model allocation, and repository authority rules |
 
-## Skill inventory
+For deeper work, use the existing guides:
 
-| Group | Skills |
-| --- | --- |
-| Primary workflows | `specification-workflow`, `preparation-workflow`, `implementation-workflow` |
-| Planning and integrity | `research-dependencies`, `domain-boundaries`, `plan-verticals`, `plan-phases`, `reuse-analysis`, `amend-requirements`, `context-integrity`, `phase-review` |
-| Rust and platform | `rust-domain-types`, `rust-async-tokio`, `rust-testing`, `tauri-application`, `tauri-commands-events`, `turso-embedded`, `protobuf-contracts` |
-| Development operations | `create-module`, `create-api`, `create-ui-page`, `observability`, `documentation`, `create-test-suite` |
+- [Workflow guide](docs/harness/workflow-guide.md): stage procedures, task integration, review, repair, and recovery.
+- [Artifact guide](docs/harness/artifact-guide.md): manifests, schemas, frozen identities, and authoring boundaries.
+- [Evidence guide](docs/harness/evidence-guide.md): real check receipts, native/manual imports, metrics, and provenance.
+- [Codex runtime guide](docs/harness/codex-runtime.md): client setup, Goals, adapters, PR policy, and CI.
+- [Security model](docs/harness/security-model.md): trusted components and limits of verification.
+- [Skill guide](.agents/skills/README.md): the three primary workflows and supporting skills.
+- [Historical validation record](docs/harness/validation.md): checks performed when the original boilerplate was assembled, not a claim that the Todo application is complete.
 
-Each skill includes original examples and official-source references. The Tauri material covers Rust/WASM UI, commands versus events/channels, boundary validation, capabilities/CSP, platform packaging and listener lifetimes. Turso means the current embedded `turso` crate requested in the supplied requirements, with locally qualified transactions, migrations and backup/restore behavior.
-
-## Further documentation and validation scope
-
-Read `docs/harness/workflow-guide.md`, `artifact-guide.md`, `evidence-guide.md`, `codex-runtime.md`, and `security-model.md`. `docs/harness/validation.md` records what was actually exercised while this archive was built.
-
-The offline tests execute real Python processes, Git worktrees, state transitions, RED/GREEN assertions, metric evaluation and recovery. External GitHub/model operations use explicit fixtures where noted. Actual contract compilation needs Rust and Buf; live model invocation needs account entitlement; production Todo validation only exists after the three workflows have generated and tested that application. The harness reports missing evidence as a blocker.
-
-## Refining the harness
-
-Before specification freeze, adjust protected controller policy, budgets, tool versions, models/roles, checks and skills through deliberate review. Run `./rdd selftest` after changes. The configuration, schemas, roles, skills, verifier and generated contracts become part of the frozen authority for an implementation run; implementation tasks cannot silently change their own acceptance rules.
+Adjust protected harness policy, tools, models, or skills through deliberate review before specification freeze, and run `./rdd selftest` after harness changes. During implementation, those frozen rules remain part of the acceptance authority.
