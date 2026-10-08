@@ -5,7 +5,7 @@ description: Qualify a proposed SDK, service, framework, crate, generator, or pl
 
 # Research dependencies
 
-Read the governing requirement IDs and quality constraints first. Load [the qualification example](references/qualification-example.md) for a worked evidence record. Use `.rdd/templates/dependency-research.md` for results.
+Read the governing requirement IDs and quality constraints first. Load [the qualification example](references/qualification-example.md) for a worked evidence record. Use `.rdd/templates/dependency-research.md` for results. In specification, `rdd_researcher` gathers evidence read-only; `rdd_qualification_engineer` owns the S5 claim and disposable experiment writes. A research role cannot acquire authoring permission by running a probe. Route qualification findings to their responsible domain, verification or architecture owner and respond to live review.
 
 ## Research procedure
 

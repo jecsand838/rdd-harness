@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -60,7 +61,7 @@ class BranchGuardTests(unittest.TestCase):
             "plan freeze": self.c.plan_freeze,
             "prepare": self.c.prepare,
             "phase begin": lambda: self.c.phase_begin("P01"),
-            "task claim": lambda: self.c.task_claim("T001", "rdd_large", session_id="fixture-worker"),
+            "task claim": lambda: self.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker"),
             "task integrate": lambda: self.c.task_integrate("T001", "0" * 40),
             "task complete": lambda: self.c.task_complete("T001"),
             "task reopen": lambda: self.c.task_reopen("T001", "Repair within the frozen scope"),
@@ -69,6 +70,108 @@ class BranchGuardTests(unittest.TestCase):
             **{f"workflow {stage}": lambda stage=stage: self.c.workflow(stage)
                for stage in ("specification", "preparation", "implementation")},
         }
+
+    def test_historical_policy_rejects_state_only_mutation_without_side_effects(self):
+        state = self.c.state()
+        state.pop("agent_profile_digest", None)
+        self.c.store.put(state)  # Explicit historical fixture, never an operational migration.
+        self.rejected(lambda: self.c.block("environment", "Must not rewrite historical evidence"))
+
+    def test_profile_drift_rejects_all_continuing_mutations_before_side_effects(self):
+        profile = self.root / ".codex/agents/rdd_domain_analyst.toml"
+        profile.write_text(profile.read_text(encoding="utf-8") + "\n# Changed authoring policy\n", encoding="utf-8")
+        missing = self.root / ".rdd/runtime/not-submitted.json"
+        operations = {**self.source_operations(),
+            "init": self.c.init,
+            "save": lambda: self.c.save(self.c.state()),
+            "author": lambda: self.c.author_record("specification", "new-author"),
+            "workflow claim": lambda: self.c.workflow_claim("S0", "author", "rdd_coordinator", ["docs/specs/new.md"]),
+            "workflow record": lambda: self.c.workflow_record(missing),
+            "workflow release": lambda: self.c.workflow_release("S0", "preserve"),
+            "task release": lambda: self.c.task_release("T001", "preserve"),
+            "check": lambda: self.c.check("contract"),
+            "check import": lambda: self.c.check_import(missing),
+            "readiness": lambda: self.c.readiness("specification"),
+            "ensure checks": lambda: self.c.ensure_checks(self.c.state(), ["contract"]),
+            "review": lambda: self.c.review_record(missing),
+            "live review": lambda: self.c.review_live_record(missing),
+            "stage review": lambda: self.c.stage_review_record(missing),
+            "final findings": lambda: self.c.record_final_findings({}, "specification"),
+            "block": lambda: self.c.block("planning", "Policy mismatch is not an upstream escape"),
+            "gate preparation": self.c.gate_preparation,
+            "gate phase": lambda: self.c.gate_phase("P01"),
+            "gate project": self.c.gate_project,
+            "stack publish": lambda: self.c.stack_publish("P01"),
+            "stack verify": self.c.stack_verify,
+            "seal": lambda: self.c.phase_seal("P01"),
+        }
+        for name, operation in operations.items():
+            with self.subTest(operation=name):
+                self.rejected(operation)
+
+    def test_historical_status_export_keep_old_roles_without_profile_backfill(self):
+        state = self.c.state()
+        state.pop("agent_profile_digest")
+        state["workflow_graph_digest"] = "0" * 64
+        state["workflow_nodes"] = {"S1": {"status": "claimed", "claim": {"role": "rdd_large"}}}
+        self.c.store.put(state)
+        self.c.close()
+        # Historical inspection does not need a new profile installed.
+        (self.root / ".codex/agents/rdd_domain_analyst.toml").unlink()
+        before = copy.deepcopy(self.c.state())
+        status = self.c.status()
+        self.assertTrue(status["workflow_nodes"]["historical"])
+        self.assertEqual(status["workflow_nodes"]["nodes"], [{"id": "S1", **state["workflow_nodes"]["S1"]}])
+        checkpoint = self.root / ".rdd/runtime/historical.json"
+        self.c.export_run(checkpoint)
+        self.assertEqual(read_json(checkpoint)["state"], before)
+        self.assertEqual(self.c.state(), before)
+        self.assertNotIn("agent_profile_digest", before)
+        with self.assertRaisesRegex(RddError, "earlier workflow/profile"):
+            self.c.workflow_next()
+
+    def test_cli_policy_preflight_does_not_create_lock_or_automatic_blocker(self):
+        state = self.c.state()
+        state.pop("agent_profile_digest")
+        self.c.store.put(state)
+        for args in (("block", "--kind", "specification", "--reason", "must not auto-record"),
+                     ("check", "contract"), ("contracts", "check"), ("task", "release", "T001", "--reason", "preserve"),
+                     ("review", "record", "missing.json"), ("readiness", "specification"),
+                     ("workflow", "specification", "--mode", "regenerate", "--print")):
+            with self.subTest(args=args):
+                before = self.snapshot()
+                result = self.cli(*args)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("earlier workflow/profile", result.stdout)
+                self.assertEqual(self.snapshot(), before)
+
+    def test_explicit_fresh_start_preserves_old_policy_state(self):
+        state = self.c.state()
+        state.pop("agent_profile_digest")
+        self.c.store.put(state)
+        self.f.commit("Commit previous specification draft")
+        self.c.start("regenerate", "fresh-specialist-run")
+        self.assertEqual(read_json(self.root / ".rdd/baselines/fresh-specialist-run/previous-run.json"), state)
+        self.assertIn("agent_profile_digest", self.c.state())
+
+    def test_fresh_init_validates_profiles_before_creating_git_or_runtime(self):
+        with tempfile.TemporaryDirectory(prefix="rdd-init-policy-") as directory:
+            root = Path(directory)
+            write_json(root / ".rdd/config.json", self.f.config)
+            shutil.copytree(self.root / ".codex", root / ".codex")
+            (root / ".codex/agents/rdd_domain_analyst.toml").unlink()
+            def files():
+                return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+            before = files()
+            controller = Controller(root)
+            self.addCleanup(controller.close)
+            with self.assertRaisesRegex(RddError, "Required file is missing"):
+                controller.init()
+            result = self.cli("init", root=root)
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertEqual(files(), before)
+            self.assertFalse((root / ".git").exists())
+            self.assertFalse((root / ".rdd/runtime").exists())
 
     def test_main_rejects_source_operations_before_validation_or_state_writes(self):
         self.f.prepared()
@@ -121,7 +224,7 @@ class BranchGuardTests(unittest.TestCase):
 
     def test_integration_requires_the_recorded_worker_branch_before_intent(self):
         self.f.opened()
-        claim = self.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
+        claim = self.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         worker = self.root / claim["lease"]["worktree"]
         self.f.g("switch", "-c", "codex/worker-lookalike", root=worker)
         path = worker / "tests/behavior.py"
@@ -286,6 +389,7 @@ class BranchGuardTests(unittest.TestCase):
             root = Path(directory)
             subprocess.run(["git", "init", "-q", "-b", "main", str(root)], check=True)
             write_json(root / ".rdd/config.json", self.f.config)
+            shutil.copytree(self.root / ".codex", root / ".codex")
             result = self.cli("workflow", "specification", "--print", root=root)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(json.loads(result.stdout)["stage"], "specification")

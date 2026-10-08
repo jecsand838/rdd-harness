@@ -28,7 +28,9 @@ Every architectural module has a functional subdomain covering all allocated FRs
 
 ## Implementation roles and ordering
 
-Use `gpt-6-astra` with `ultra` to coordinate; `rdd_large` / `gpt-6.1-sol` with `xhigh` for large work; `rdd_small` / `gpt-6-luna` with `xhigh` for bounded smaller work. Keep a distinct `rdd_reviewer` / `gpt-6.1-sol` with `xhigh` reviewing progress live and sending course corrections. At most two implementors are active so review retains a slot. Do not silently downgrade unavailable models.
+Use the canonical named profiles; their TOMLs define model, effort and permissions, checked by `doctor`. Coordinator and contract architect use Astra/ultra; domain analyst, verification designer, qualification engineer, task planner, complex implementor, researcher and reviewer use Sol 6.1/xhigh; light implementor uses Luna/xhigh. Route S1 to `rdd_domain_analyst`, S2–S4 to `rdd_verification_designer`, S5 to `rdd_qualification_engineer`, S6 to `rdd_contract_architect`, and P1–P5 to `rdd_task_planner`. No coordinator substitution. Keep vertical/phase design with the planner; return upstream corrections to their original owner. Researchers and reviewers are read-only.
+
+Use `rdd_complex_implementor` for large or small work and `rdd_light_implementor` only for bounded, unambiguous small tasks. Keep a distinct `rdd_reviewer` live alongside at most two authors. Request exact native agent types; bounded execution must apply the same profile instructions. Requested settings are not backend attestation. Do not silently downgrade unavailable models. Runs bind graph/profile policy; historical status/export preserve original identities without aliases or approval migration.
 
 Open phases sequentially. Claim only tasks selected by `./rdd next`, using isolated leased worktrees and disjoint write sets. Workers edit only declared `writes`, preserve all task packets, and return committed source/evidence. Integrate through `task integrate`; record real behavioral RED for test tasks, then `task complete`. Commit all-site packet cleanup before further claims/integration.
 

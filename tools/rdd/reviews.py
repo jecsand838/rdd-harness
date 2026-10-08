@@ -7,6 +7,7 @@ from .common import RddError, digest, event, head, read_json, safe_path, source_
 class ReviewStream:
     def record_final_findings(self, review: dict, stage: str, phase: str | None = None) -> None:
         """Final-review issues join the immutable repair ledger; later pass cannot erase them."""
+        self.guard_run_policy()
         state = self.state(allow_blocked=True)
         findings = []
         for incoming in review["findings"]:
@@ -44,6 +45,7 @@ class ReviewStream:
 
     def review_live_record(self, file: Path) -> dict:
         self.guard_v2()
+        self.guard_run_policy()
         review = read_json(file)
         validate_artifact(self.root, "live-review", review)
         state = self.state(allow_blocked=True)
@@ -55,7 +57,7 @@ class ReviewStream:
         if (review["requirements_digest"] != state["requirements_digest"]
                 or review["spec_digest"] != state.get("spec_digest") or review["plan_digest"] != state.get("plan_digest")):
             raise RddError("Live observation references different authority", "review")
-        if review["reviewer"] != "rdd_reviewer" or review["model"] != self.config["models"]["reviewer"]["model"]:
+        if review["reviewer"] != "rdd_reviewer" or review["model"] != self.profile_settings("rdd_reviewer")["model"]:
             raise RddError("Live review needs the configured independent reviewer", "review")
         authors = {s for sessions in state.get("authors", {}).values() for s in sessions}
         authors.update(t.get("session_id") for t in state["tasks"].values())
@@ -154,7 +156,7 @@ class ReviewStream:
             if entry["sequence"] != sequence or entry["digest"] != digest({k: v for k, v in entry.items() if k != "digest"}):
                 raise RddError("Checkpoint live review stream identity is invalid")
             if (review["session_id"] in authors or review["reviewer"] != "rdd_reviewer"
-                    or review["model"] != self.config["models"]["reviewer"]["model"]
+                    or review["model"] != self.profile_settings("rdd_reviewer")["model"]
                     or review["requirements_digest"] != state["requirements_digest"]):
                 raise RddError("Live reviewer provenance is no longer independent or valid", "review")
             for finding in review["findings"]:

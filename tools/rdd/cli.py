@@ -15,6 +15,7 @@ if __package__ in {None, ""}:
 from rdd.adapters import RddAdapterError
 from rdd.common import RddError, operation_lock, require_source_branch
 from rdd.engine import Controller
+from rdd.profiles import IMPLEMENTOR_ROLES, WORKFLOW_AUTHOR_ROLES, profile_policy_digest
 
 
 def parser() -> argparse.ArgumentParser:
@@ -47,7 +48,7 @@ def parser() -> argparse.ArgumentParser:
     tasks = commands.add_parser("task").add_subparsers(dest="action", required=True)
     claim = tasks.add_parser("claim")
     claim.add_argument("task")
-    claim.add_argument("--worker", choices=("rdd_large", "rdd_small"), required=True)
+    claim.add_argument("--worker", choices=IMPLEMENTOR_ROLES, required=True)
     claim.add_argument("--session-id", help="Required actual implementor session ID; never reuse the reviewer ID")
     worktree = claim.add_mutually_exclusive_group()
     worktree.add_argument("--worktree", action="store_true", default=True, help="Create an isolated worktree (default)")
@@ -93,7 +94,7 @@ def parser() -> argparse.ArgumentParser:
     wf.add_argument("stage", choices=("specification", "preparation", "implementation", "nodes", "next", "claim", "record", "release"))
     wf.add_argument("target", nargs="?")
     wf.add_argument("--session-id")
-    wf.add_argument("--role", choices=("rdd_coordinator", "rdd_researcher", "rdd_large", "rdd_small"))
+    wf.add_argument("--role", choices=WORKFLOW_AUTHOR_ROLES)
     wf.add_argument("--write", action="append", default=[])
     wf.add_argument("--reason")
     wf.add_argument("--finding", help="Unresolved live finding authorizing a scoped corrective retry")
@@ -275,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
             require_source_branch(args.root)
         controller = Controller(args.root)
         legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run", "selftest"} or (
-            args.command == "workflow" and args.print_only and args.mode is None)
+            args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage == "nodes"))
         if not legacy_readonly:
             controller.guard_v2()
         if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"}:
@@ -289,6 +290,13 @@ def main(argv: list[str] | None = None) -> int:
         readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "selftest", "ci"} or (
             args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
             args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage in {"nodes", "next"}))
+        if args.command in {"start", "init"}:
+            profile_policy_digest(controller.root)
+            if args.command == "init":
+                controller.guard_run_policy()
+        elif not readonly and args.command != "export-run" and not (
+                args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"}):
+            controller.guard_run_policy()
         with contextlib.nullcontext() if readonly else operation_lock(controller.root):
             result = dispatch(controller, args)
         if args.command == "goal":

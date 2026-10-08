@@ -4,6 +4,7 @@ import unittest
 
 import test_engine as fixture
 from tools.rdd.common import RddError, digest, write_json
+from tools.rdd.nodes import NODES
 
 
 class NodeContractTests(unittest.TestCase):
@@ -15,7 +16,7 @@ class NodeContractTests(unittest.TestCase):
         self.f.live_review()
 
     def claim(self, node, path):
-        return self.c.workflow_claim(node, "fixture-author", "rdd_coordinator", [path])
+        return self.c.workflow_claim(node, "fixture-author", NODES[node]["responsible_roles"][0], [path])
 
     def record(self, node, claim):
         path = self.f.root / ".rdd/runtime/node-retirement.json"
@@ -32,7 +33,7 @@ class NodeContractTests(unittest.TestCase):
         self.f.commit("Preserve the qualification seed before actual specification")
         for node in ("S0", "S1", "S2", "S3", "S4", "S5"):
             self.f.node_complete(node)
-        claim = self.c.workflow_claim("S6", "fixture-author", "rdd_coordinator",
+        claim = self.c.workflow_claim("S6", "fixture-author", "rdd_contract_architect",
                                       [seed, ".rdd/spec.json"])["claim"]
         (self.f.root / seed).unlink()
         self.f.commit("Retire the seed in favor of the requirement-derived contract")
@@ -97,13 +98,35 @@ class NodeContractTests(unittest.TestCase):
                 self.c.workflow_release("S0", "Preserve the invalid retirement attempt")
 
     def test_role_and_output_family_are_node_specific(self):
-        with self.assertRaisesRegex(RddError, "responsible roles"):
+        with self.assertRaisesRegex(RddError, "supported role"):
             self.c.workflow_claim("S0", "fixture-author", "rdd_researcher", ["docs/specs/intake.md"])
         self.f.node_complete("S0")
         with self.assertRaisesRegex(RddError, "artifact paths"):
             self.claim("S1", "contracts/unreviewed.proto")
         with self.assertRaisesRegex(RddError, "artifact paths"):
             self.claim("S2", "modules/application.rs")
+
+    def test_every_authoring_node_has_exclusive_canonical_ownership(self):
+        expected = {"S0": "rdd_coordinator", "S1": "rdd_domain_analyst",
+            **dict.fromkeys(("S2", "S3", "S4"), "rdd_verification_designer"),
+            "S5": "rdd_qualification_engineer", "S6": "rdd_contract_architect", "S7": "rdd_coordinator",
+            "P0": "rdd_coordinator", **dict.fromkeys(("P1", "P2", "P3", "P4", "P5"), "rdd_task_planner")}
+        for prefix in ("S", "P"):
+            if prefix == "P":
+                self.f.stage_ready("specification")
+                self.c.spec_freeze()
+                self.f.commit("Freeze specification for planner routing")
+                self.f.live_review()
+            for node, owner in expected.items():
+                if not node.startswith(prefix):
+                    continue
+                self.assertEqual(NODES[node]["responsible_roles"], [owner])
+                wrong = "rdd_domain_analyst" if owner == "rdd_coordinator" else "rdd_coordinator"
+                path = "docs/specs/ownership.md" if prefix == "S" else ".rdd/plan/notes/ownership.md"
+                before = self.c.state()
+                with self.subTest(node=node), self.assertRaisesRegex(RddError, "responsible roles"):
+                    self.c.workflow_claim(node, "misrouted-author", wrong, [path])
+                self.assertEqual(self.c.state(), before)
 
     def test_third_ready_author_cannot_consume_reviewer_slot(self):
         for node in ("S0", "S1", "S2"):

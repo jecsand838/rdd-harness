@@ -15,8 +15,9 @@ from . import artifacts
 from .stages import StageWorkflow
 from .reviews import ReviewStream
 from .nodes import WorkflowNodes, NODES
+from .profiles import IMPLEMENTOR_SCOPES, load_profiles, profile_policy_digest, profile_settings
 from .readiness import validate_resources, validate_producers, required_probe_ids
-from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
+from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError, codex_config_string
 from .checks import execute_check, platform_name, verify_receipt
 from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, Store, assert_inventory, atomic_write, clean, digest, event,
                      file_hash, git, head, inventory, now, read_json, safe_path,
@@ -72,6 +73,25 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             if run_id and Store.read(self.root, run_id).get("workflow_version") != 2:
                 raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated v2 baseline.", "environment")
 
+    def profile_settings(self, role: str) -> dict:
+        return profile_settings(self.root, role)
+
+    def guard_run_policy(self, state: dict | None = None) -> None:
+        """Refuse historical continuation before any write, without migrating history."""
+        if state is None:
+            locator = self.root / ".rdd/run.json"
+            run_id = read_json(locator).get("run_id") if locator.is_file() else None
+            if not run_id:
+                return
+            state = Store.read(self.root, run_id)
+        if not isinstance(state, dict):
+            raise RddError("Run policy requires a valid recorded state", "environment")
+        if state.get("workflow_version") != 2:
+            raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated v2 baseline.", "environment")
+        if (state.get("workflow_version") != 2 or state.get("workflow_graph_digest") != digest(NODES)
+                or state.get("agent_profile_digest") != profile_policy_digest(self.root)):
+            raise RddError("This run belongs to an earlier workflow/profile policy. Inspect/export it, recover with its recorded source revision and matching harness, or start a fresh reviewed run.", "environment")
+
     def guard_source_write(self, state: dict | None = None, *, baseline: bool = False) -> str:
         """Admit only the recorded authoring/implementation checkout before writes."""
         require_source_branch(self.root)
@@ -80,8 +100,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             if not locator.get("run_id"):
                 raise RddError("No active run. Start with ./rdd start --mode regenerate.")
             state = Store.read(self.root, locator["run_id"])
-        if state.get("workflow_version") != 2:
-            raise RddError("Legacy runs are read/export only. Preserve history and start a fresh v2 regenerate baseline.", "environment")
+        self.guard_run_policy(state)
         base = state.get("base_branch")
         if not isinstance(base, str) or not base or base == "main":
             raise RddError("This run has no writable authoring baseline. Inspect/export it, then start a fresh amend/regenerate run on a dedicated baseline branch; its recorded baseline cannot be rewritten.", "environment")
@@ -115,8 +134,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         return state
 
     def save(self, state: dict) -> None:
-        if state.get("workflow_version") != 2:
-            raise RddError("Legacy state cannot be rewritten; export it and start a fresh v2 baseline", "environment")
+        self.guard_run_policy(state)
         self.store.put(state)
         write_json(self.root / ".rdd/run.json", {"schema_version": 1, "run_id": state["id"],
                    "status": state["status"], "baseline": f".rdd/baselines/{state['id']}"})
@@ -129,6 +147,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
 
     def frozen(self, *, planned: bool = True) -> tuple[dict, dict | None]:
         state = self.state()
+        self.guard_run_policy(state)
         spec_lock = verify_lock(self.root, ".rdd/spec.lock.json")
         if spec_lock["digest"] != state.get("spec_digest"):
             raise RddError("Active run/specification identity mismatch", "specification")
@@ -155,6 +174,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
 
     def init(self) -> dict:
         self.guard_v2()
+        self.guard_run_policy()
+        profile_policy_digest(self.root)
         if git(self.root, "rev-parse", "--show-toplevel", check=False) != str(self.root):
             git(self.root, "init", "-b", "main")
         for rel in (".rdd/runtime", ".rdd/evidence", ".rdd/plan/anchors", ".rdd/baselines"):
@@ -166,16 +187,19 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 "next": "Commit the boilerplate with your Git identity; run ./rdd doctor --full, then ./rdd workflow specification."}
 
     def doctor(self, full: bool = False) -> dict:
+        profiles = load_profiles(self.root)
+        roles = {role: (p["model"], p["effort"]) for role, p in profiles.items()}
         tools = {name: shutil.which(name) for name in ("git", "codex", "gh", "cargo", "rustc", "buf", "protoc")}
         result = {"python": sys.version.split()[0], "python_supported": sys.version_info >= (3, 11),
-                  "tools": tools, "requirements": len(artifacts.requirements(self.root, self.config["requirements"])["records"]),
+                  "tools": tools, "profiles": {role: self.profile_settings(role) for role in profiles},
+                  "requirements": len(artifacts.requirements(self.root, self.config["requirements"])["records"]),
                   "application_generated": (self.root / ".rdd/spec.lock.json").is_file(),
                   "notes": ["Client/catalog support is not account entitlement.",
                             "Platform packaging and reference-device qualification are application checks specified by the first workflow."]}
         if full:
             codex = tools["codex"]
             if codex:
-                result["codex"] = CodexAdapter(self.root, binary=codex).doctor()
+                result["codex"] = CodexAdapter(self.root, binary=codex).doctor(sorted(set(roles.values())), roles=profiles)
             else:
                 result["codex"] = {"status": "blocked", "reason": "codex is not on PATH"}
             if tools["gh"]:
@@ -194,6 +218,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
     def start(self, mode: str, run_id: str | None = None) -> dict:
         self.guard_v2()
         baseline_branch = require_source_branch(self.root)
+        profiles_digest = profile_policy_digest(self.root)
         if mode not in {"regenerate", "amend"}:
             raise RddError("Run mode must be regenerate or amend")
         clean(self.root)
@@ -263,7 +288,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if previous_plan.is_file():
             for task in read_json(previous_plan)["tasks"]:
                 artifacts.remove_anchor(self.root, task)
-        state = {"workflow_version": 2, "workflow_graph_digest": digest(NODES), "workflow_nodes": {}, "id": run_id, "mode": mode, "status": "specification", "created_at": now(),
+        state = {"workflow_version": 2, "workflow_graph_digest": digest(NODES), "agent_profile_digest": profiles_digest,
+                 "workflow_nodes": {}, "id": run_id, "mode": mode, "status": "specification", "created_at": now(),
                  "base_commit": head(self.root), "base_branch": baseline_branch,
                  "parent_spec_digest": old_lock["digest"] if old_lock else None,
                  "requirements_digest": reqs["digest"], "changed_requirements": changed,
@@ -554,10 +580,11 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         task, state = self.task(tid), self.state()
         pid = self.active(state)
         self.review_category_handoff(state, task)
-        if worker not in {"rdd_large", "rdd_small"}:
-            raise RddError("Implementation workers are rdd_large or rdd_small")
-        if task["scope"] == "large" and worker != "rdd_large":
-            raise RddError("Large scope tasks require the large implementor role")
+        if worker not in IMPLEMENTOR_SCOPES:
+            raise RddError("Implementation workers are rdd_complex_implementor or rdd_light_implementor")
+        if task["scope"] not in IMPLEMENTOR_SCOPES[worker]:
+            raise RddError("Large scope tasks require the complex implementor role")
+        requested_runtime = self.profile_settings(worker)
         with self.store.edit(state["id"]) as state:
             if tid not in {t["id"] for t in self.eligible(state)}:
                 raise RddError("Task is not ready in the active phase/category/dependency order")
@@ -572,7 +599,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             attempt = record["attempts"] + 1
             branch = f"rdd/{state['id']}/{tid.lower()}-a{attempt}"
             path = f".rdd/runtime/worktrees/{state['id']}/{tid}-a{attempt}"
-            record.update(status="claimed", attempts=attempt, worker=worker,
+            record.update(status="claimed", attempts=attempt, worker=worker, requested_runtime=requested_runtime,
                           session_id=session_id,
                           lease_expires=time.time() + self.config["limits"]["lease_seconds"],
                           base_commit=head(self.root), branch=branch, worktree=path if worktree else None,
@@ -609,7 +636,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         packet_path = f".rdd/runtime/packets/{state['id']}/{tid}-a{record['attempts']}.json"
         atomic_write(self.root / packet_path, packet_text.encode() + b"\n")
         return {"task": tid, "worker": worker, "packet": packet_path, "lease": record,
-                "model": self.config["models"]["large" if worker == "rdd_large" else "small"]}
+                "requested_runtime": requested_runtime}
 
     def task_integrate(self, tid: str, commit: str) -> dict:
         self.guard_source_write()
@@ -672,6 +699,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
 
     def check(self, cid: str, expectation: str = "pass", tid: str | None = None) -> dict:
         self.guard_v2()
+        self.guard_run_policy()
         clean(self.root)
         state, spec = self.state(), self.spec()
         checks = artifacts.unique(spec["checks"], "check")
@@ -708,6 +736,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
 
     def check_import(self, file: Path, local_host: bool = False) -> dict:
         self.guard_v2()
+        self.guard_run_policy()
         clean(self.root)
         state, evidence = self.state(), read_json(file)
         validate_artifact(self.root, "evidence", evidence)
@@ -777,6 +806,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         return {"task": tid, "status": "done", "next": "Commit the controller's marker cleanup before claiming or integrating more work."}
 
     def task_release(self, tid: str, reason: str) -> dict:
+        self.guard_run_policy()
         state, task = self.state(allow_blocked=True), self.task(tid)
         if task["phase"] != state["active_phase"] or state["tasks"][tid]["status"] not in {"claimed", "integrated"}:
             raise RddError("Only active claimed/integrated work can be released")
@@ -832,6 +862,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         raise RddError("Unknown phase")
 
     def ensure_checks(self, state: dict, ids: list[str], *, candidate_spec_digest: str | None = None, candidate_plan_digest: str | None = None) -> list[dict]:
+        self.guard_run_policy(state)
         checks = artifacts.unique(self.spec()["checks"], "check")
         spec_id = candidate_spec_digest or state["spec_digest"]
         plan_id = candidate_plan_digest if candidate_spec_digest else state["plan_digest"]
@@ -880,6 +911,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         return accepted
 
     def review_record(self, file: Path) -> dict:
+        self.guard_run_policy()
         if read_json(file).get("kind") == "live":
             return self.review_live_record(file)
         if "stage" in read_json(file):
@@ -892,7 +924,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         self.live_review_guard(final=True, cursor=review["review_cursor"], stage="implementation")
         if review["phase"] != pid or review["source_commit"] != head(self.root) or review["source_digest"] != source_digest(self.root):
             raise RddError("Review does not cover the exact current phase/source revision")
-        if review["reviewer"] != "rdd_reviewer" or review["model"] != self.config["models"]["reviewer"]["model"]:
+        if review["reviewer"] != "rdd_reviewer" or review["model"] != self.profile_settings("rdd_reviewer")["model"]:
             raise RddError("Final phase review must use the configured independent reviewer role/model")
         worker_sessions = {t["session_id"] for t in state["tasks"].values() if t["session_id"]}
         worker_sessions.update(s for authors in state.get("authors", {}).values() for s in authors)
@@ -1109,6 +1141,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 "checkpoint": ".rdd/evidence/completed-run.json", "source_commit": report["source_commit"]}
 
     def block(self, kind: str, reason: str, *, affected: dict | None = None, evidence: list[str] | None = None) -> dict:
+        self.guard_run_policy()
         state = self.state(allow_blocked=True)
         blocker = {"schema_version": 1, "run_id": state["id"], "kind": kind, "reason": reason,
                    "created_at": now(), "resolved": False}
@@ -1184,6 +1217,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             return None
         if file.stat().st_size > 128 * 1024 * 1024:
             raise RddError("Checkpoint exceeds import size budget", "budget")
+        self.guard_run_policy()
         checkpoint = read_json(file)
         validate_artifact(self.root, "checkpoint", checkpoint)
         self.guard_source_write(checkpoint["state"])
@@ -1250,6 +1284,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         return self.status()
 
     def validate_checkpoint_state(self, state: dict, checkpoint: dict) -> None:
+        self.guard_run_policy(state)
         required = {"id", "mode", "status", "tasks", "phases", "checks", "reviews", "blockers", "events",
                     "requirements_digest", "policy_inventory", "active_phase"}
         if not isinstance(state, dict) or not required <= state.keys():
@@ -1290,8 +1325,16 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             if set(state["tasks"]) != {t["id"] for t in plan["tasks"]} or set(state["phases"]) != {p["id"] for p in plan["phases"]}:
                 raise RddError("Checkpoint task/phase inventory differs from frozen plan")
             for tid, task in state["tasks"].items():
-                if task.get("status") not in {"todo", "claimed", "integrated", "done"} or type(task.get("attempts")) is not int:
+                if (task.get("status") not in {"todo", "claimed", "integrated", "done"}
+                        or type(task.get("attempts")) is not int or task["attempts"] < 0):
                     raise RddError("Checkpoint task status is invalid")
+                worker = task.get("worker")
+                claimed_before = task["attempts"] > 0 or task["status"] != "todo"
+                if claimed_before or worker is not None or task.get("requested_runtime") is not None:
+                    scope = next(t["scope"] for t in plan["tasks"] if t["id"] == tid)
+                    if (worker not in IMPLEMENTOR_SCOPES or scope not in IMPLEMENTOR_SCOPES[worker]
+                            or task.get("requested_runtime") != self.profile_settings(worker)):
+                        raise RddError("Checkpoint task requested runtime differs from its pinned implementor profile")
                 worktree = task.get("worktree")
                 if worktree:
                     if not worktree.startswith(".rdd/runtime/worktrees/"):
@@ -1345,6 +1388,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if print_only and not mode:
             return
         require_source_branch(self.root)
+        profile_policy_digest(self.root)
         if stage == "specification":
             locator = read_json(self.root / ".rdd/run.json")
             state = Store.read(self.root, locator["run_id"]) if locator.get("run_id") else None
@@ -1378,9 +1422,11 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         else:
             prompt += ("This session will use native goal mode. Print the exact output of ./rdd goal and ask the developer to submit it with /goal. "
                        "Do not claim that a normal prompt activated native goal mode. Once the goal is active, follow implementation-workflow through project validation.")
-        model = self.config["models"]["coordinator"]
+        profile = load_profiles(self.root)["rdd_coordinator"]
         return {"stage": stage, "prompt": prompt,
-                "argv": ["codex", "--model", model["model"], "-c", f'model_reasoning_effort="{model["effort"]}"', prompt],
+                "requested_runtime": self.profile_settings("rdd_coordinator"),
+                "argv": ["codex", "--model", profile["model"], "-c", "model_reasoning_effort=" + codex_config_string(profile["effort"]),
+                         "--sandbox", profile["sandbox"], "-c", "developer_instructions=" + codex_config_string(profile["developer_instructions"]), prompt],
                 "native_goal": self.goal() if stage == "implementation" else None}
 
 

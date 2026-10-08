@@ -27,7 +27,7 @@ The schemas in `.rdd/schemas/` and the controller's semantic validators define m
 | `.rdd/evidence/` | Ignored revision-bound check/review/gate evidence and final validation artifacts |
 | `.rdd/baselines/` | Versioned prior baseline copies retained by run transitions |
 | `.agents/skills/` | Repo-local procedural and language/framework skills |
-| `.codex/agents/` | Coordinator, implementation, research, and independent-review role definitions |
+| `.codex/agents/` | Canonical specialist, coordinator, implementation, read-only research and review profiles |
 | `.github/workflows/` | Verification automation and policy integration |
 | `tools/rdd/`, `rdd` | Deterministic controller and adapters |
 | `AGENTS.md` | Compact authority and navigation instructions |

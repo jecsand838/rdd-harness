@@ -1,5 +1,5 @@
-name = "rdd_large"
-description = "Implement a large, clearly bounded RDD target using Rust and the approved contracts. Own only explicitly leased files."
+name = "rdd_complex_implementor"
+description = "Implement complex or bounded small RDD tasks using approved contracts; own only explicitly leased files."
 model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"

@@ -161,7 +161,7 @@ class EngineTests(Fixture):
             phase=state.get("active_phase") if stage == "implementation" else None,
             source_commit=head(self.root), source_digest=source_digest(self.root),
             requirements_digest=state["requirements_digest"], spec_digest=state.get("spec_digest"), plan_digest=state.get("plan_digest"),
-            model=self.config["models"]["reviewer"]["model"], reviewer="rdd_reviewer", session_id="fixture-live-reviewer",
+            model=self.c.profile_settings("rdd_reviewer")["model"], reviewer="rdd_reviewer", session_id="fixture-live-reviewer",
             summary="Independent controller fixture observation of current work and authority.", findings=[], resolutions=[])
         record.update(changes)
         path = self.root / ".rdd/runtime/live-review.json"
@@ -169,10 +169,11 @@ class EngineTests(Fixture):
         return self.c.review_record(path)
 
     def node_complete(self, node, evidence=()):
+        from tools.rdd.nodes import NODES
         output = f".rdd/plan/notes/{node}.md" if node.startswith("P") else "docs/specs/fixture.md"
         if node.startswith("P") and not (self.root / output).is_file():
             self.fwrite_node(output, node)
-        claim = self.c.workflow_claim(node, "fixture-author", "rdd_coordinator", [output])["claim"]
+        claim = self.c.workflow_claim(node, "fixture-author", NODES[node]["responsible_roles"][0], [output])["claim"]
         record = dict(schema_version=2, node=node, attempt=claim["attempt"], session_id=claim["session_id"],
             input_digest=claim["input_digest"], outputs=claim["writes"], evidence_ids=list(evidence))
         path = self.root / ".rdd/runtime/node.json"
@@ -221,7 +222,7 @@ class EngineTests(Fixture):
             spec = self.c.spec()
             record = dict(schema_version=2, kind="final", review_cursor=cursor, stage=stage, perspective=perspective,
                 candidate=self.c.stage_candidate(stage), reviewer="rdd_reviewer",
-                model=self.config["models"]["reviewer"]["model"], session_id="fixture-"+perspective,
+                model=self.c.profile_settings("rdd_reviewer")["model"], session_id="fixture-"+perspective,
                 decision="pass", summary="Explicit independent fixture review for controller transition testing.",
                 evidence_ids=readiness["evidence"], findings=[], coverage=dict(
                     requirements=[r["requirement"] for r in spec["requirement_map"]],
@@ -253,7 +254,7 @@ class EngineTests(Fixture):
         self.live_review()
 
     def submit(self, tid, changes):
-        claim = self.c.task_claim(tid, "rdd_large", worktree=True, session_id=f"worker-{tid}")
+        claim = self.c.task_claim(tid, "rdd_complex_implementor", worktree=True, session_id=f"worker-{tid}")
         worker = self.root / claim["lease"]["worktree"]
         for rel, content in changes.items():
             p = worker / rel
@@ -295,7 +296,7 @@ class EngineTests(Fixture):
     def review(self, **changes):
         cursor = self.live_review()["review_cursor"]
         record = dict(schema_version=1, kind="final", review_cursor=cursor, phase="P01", source_commit=head(self.root),
-            source_digest=source_digest(self.root), model=self.config["models"]["reviewer"]["model"],
+            source_digest=source_digest(self.root), model=self.c.profile_settings("rdd_reviewer")["model"],
             reviewer="rdd_reviewer", session_id="independent-reviewer-fixture", decision="pass",
             summary="An independent fixture review covers the exact current phase behavior and evidence.",
             checks_reviewed=["behavior", "contract", "boundary"], findings=[])
@@ -326,6 +327,23 @@ class EngineTests(Fixture):
     def test_phase_cannot_begin_before_preparation(self):
         with self.assertRaises(RddError):
             self.c.phase_begin("P01")
+
+    def test_large_scope_requires_complex_profile_before_a_lease_is_created(self):
+        self.plan["tasks"][0]["scope"] = "large"
+        self.opened()
+        for role in ("rdd_light_implementor", "rdd_large", "rdd_small", "rdd_task_planner"):
+            before = self.c.state()
+            with self.subTest(role=role), self.assertRaises(RddError):
+                self.c.task_claim("T001", role, worktree=False, session_id="misrouted-worker")
+            self.assertEqual(self.c.state(), before)
+        result = self.c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="complex-worker")
+        self.assertEqual(result["requested_runtime"], self.c.profile_settings("rdd_complex_implementor"))
+
+    def test_small_scope_accepts_light_profile_and_retains_requested_identity(self):
+        self.opened()
+        result = self.c.task_claim("T001", "rdd_light_implementor", worktree=False, session_id="light-worker")
+        self.assertEqual(result["requested_runtime"], self.c.profile_settings("rdd_light_implementor"))
+        self.assertEqual(self.c.state()["tasks"]["T001"]["requested_runtime"], result["requested_runtime"])
 
     def test_two_phases_are_sequential_and_second_pr_targets_first_branch(self):
         foundation = check("foundation", red="AssertionError: EXPECTED_ASSERTION")
@@ -445,7 +463,7 @@ class EngineTests(Fixture):
         self.opened()
         self.assertEqual([t["id"] for t in self.c.next()["ready"]], ["T001"])
         with self.assertRaisesRegex(RddError, "not ready"):
-            self.c.task_claim("T003", "rdd_large", worktree=True, session_id="early-worker")
+            self.c.task_claim("T003", "rdd_complex_implementor", worktree=True, session_id="early-worker")
         with self.assertRaisesRegex(RddError, "integrated task"):
             self.c.task_complete("T001")
 
@@ -455,9 +473,9 @@ class EngineTests(Fixture):
         self.c.task_complete("T001", red["id"])
         self.commit("Preserve accepted RED and controller cleanup")
         with self.assertRaisesRegex(RddError, "observe completed tests integration"):
-            self.c.task_claim("T002", "rdd_large", session_id="deletion-worker")
+            self.c.task_claim("T002", "rdd_complex_implementor", session_id="deletion-worker")
         self.live_review()  # An observation carries no approval/pass field.
-        self.assertEqual(self.c.task_claim("T002", "rdd_large", session_id="deletion-worker")["task"], "T002")
+        self.assertEqual(self.c.task_claim("T002", "rdd_complex_implementor", session_id="deletion-worker")["task"], "T002")
 
     def test_green_test_cannot_be_used_as_red_evidence(self):
         self.opened()
@@ -480,7 +498,7 @@ class EngineTests(Fixture):
 
     def test_review_session_cannot_be_an_implementor(self):
         self.opened()
-        self.c.task_claim("T001", "rdd_large", worktree=True, session_id="same-session")
+        self.c.task_claim("T001", "rdd_complex_implementor", worktree=True, session_id="same-session")
         with self.assertRaisesRegex(RddError, "distinct"):
             self.review(session_id="same-session")
 

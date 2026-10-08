@@ -8,6 +8,7 @@ import unittest
 
 import test_engine as fixture
 from tools.rdd.common import RddError, digest, read_json, write_json
+from tools.rdd.nodes import NODES
 
 
 class WorkflowNodeTests(unittest.TestCase):
@@ -19,7 +20,7 @@ class WorkflowNodeTests(unittest.TestCase):
         self.f.live_review()
 
     def claim(self, node="S0", writes=None, **kwargs):
-        return self.c.workflow_claim(node, "fixture-author", "rdd_coordinator", writes or ["docs/specs/fixture.md"], **kwargs)
+        return self.c.workflow_claim(node, "fixture-author", NODES[node]["responsible_roles"][0], writes or ["docs/specs/fixture.md"], **kwargs)
 
     def record(self, node, claim):
         path = self.root / ".rdd/runtime/node-record.json"
@@ -35,6 +36,30 @@ class WorkflowNodeTests(unittest.TestCase):
         self.assertEqual(self.c.workflow_next()["ready"], ["S0"])
         self.f.node_complete("S0")
         self.assertEqual(self.c.workflow_next()["ready"], ["S1", "S2"])
+
+    def test_specialist_node_rejects_generic_coordinator(self):
+        self.f.node_complete("S0")
+        with self.assertRaisesRegex(RddError, "responsible roles"):
+            self.c.workflow_claim("S1", "generic-author", "rdd_coordinator", ["docs/specs/domain.md"])
+
+    def test_readonly_and_implementation_roles_cannot_author_workflow_nodes(self):
+        for role in ("rdd_researcher", "rdd_reviewer", "rdd_complex_implementor", "rdd_light_implementor"):
+            with self.subTest(role=role), self.assertRaisesRegex(RddError, "supported role"):
+                self.c.workflow_claim("S0", "wrong-role-session", role, ["docs/specs/domain.md"])
+        self.assertEqual(self.c.workflow_next()["ready"], ["S0"])
+
+    def test_specialist_claim_pins_requested_runtime_and_rejects_forged_checkpoint(self):
+        self.f.node_complete("S0")
+        claim = self.claim("S1")["claim"]
+        self.assertEqual(claim["role"], "rdd_domain_analyst")
+        self.assertEqual(claim["requested_runtime"], self.c.profile_settings("rdd_domain_analyst"))
+        self.record("S1", claim)
+        state = self.c.state()
+        self.c.validate_workflow_checkpoint(state)
+        state["workflow_nodes"]["S1"]["claim"]["requested_runtime"]["model"] = "unobserved-model"
+        state["workflow_nodes"]["S1"]["attempts"][-1]["claim"] = copy.deepcopy(state["workflow_nodes"]["S1"]["claim"])
+        with self.assertRaisesRegex(RddError, "requested runtime"):
+            self.c.validate_workflow_checkpoint(state)
 
     def test_cli_handoff_is_compact_and_preserves_canonical_claim(self):
         entry = Path(__file__).resolve().parents[2] / "tools/rdd/cli.py"

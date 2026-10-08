@@ -9,24 +9,6 @@
     "max_spec_words": 20000,
     "max_packet_characters": 32000
   },
-  "models": {
-    "coordinator": {
-      "model": "gpt-6-astra",
-      "effort": "ultra"
-    },
-    "large": {
-      "model": "gpt-6.1-sol",
-      "effort": "xhigh"
-    },
-    "small": {
-      "model": "gpt-6-luna",
-      "effort": "xhigh"
-    },
-    "reviewer": {
-      "model": "gpt-6.1-sol",
-      "effort": "xhigh"
-    }
-  },
   "github": {
     "remote": "origin",
     "required_checks": [

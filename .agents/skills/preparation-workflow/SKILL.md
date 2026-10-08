@@ -9,7 +9,7 @@ Read `AGENTS.md`, `docs/harness/workflow-guide.md`, and `docs/harness/artifact-g
 
 Register every actual artifact author with `./rdd author record --stage plan --session-id ID` and keep the manifest author inventory consistent. Registration records provenance; it does not authenticate a session or replace independent work.
 
-Follow P0–P8 with `workflow nodes`, `workflow next`, bounded claims and recorded artifact handoffs. Keep a read-only reviewer continuously comparing planning progress against the frozen specification and contracts. Send snapshots after task research, DAG/phase decisions and materialization. Record findings and reviewer-verified corrections; final dual reviews do not substitute for this steering.
+Follow P0–P8 with `workflow nodes`, `workflow next`, bounded claims and recorded artifact handoffs. Request `rdd_task_planner` for exclusive P1–P5 authorship: reuse, task decomposition, producers, classification, verticals, phases and work sites remain one reconciled graph. Use the existing `reuse-analysis`, `plan-verticals` and `plan-phases` procedures. `rdd_coordinator` owns the remaining controller/acceptance nodes; it cannot replace the required planner. `rdd_researcher` supplies read-only evidence. Keep a read-only `rdd_reviewer` continuously comparing planning progress against the frozen specification and contracts. Send snapshots after task research, DAG/phase decisions and materialization. Record findings and reviewer-verified corrections; final dual reviews do not substitute for this steering.
 
 ## Preserve the solution boundary
 

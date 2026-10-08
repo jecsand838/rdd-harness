@@ -24,16 +24,17 @@ Read `../amend-requirements/SKILL.md` for amendment handling and `../context-int
 
 Initialize a run with `./rdd start --mode regenerate` or `./rdd start --mode amend`, then run `./rdd requirements index` and `./rdd spec init` when those artifacts do not already exist. Record the requirement digest and baseline commit in the active run. Inspect repository paths, manifests, current public APIs, migrations, tests, and relevant accepted evidence. For the supplied Todo document, inspect all functional and non-functional IDs and the normative vocabulary, capacity, platform, benchmark, and verification sections; headings alone do not contain the complete obligations.
 
-Follow controller nodes S0–S8 from `workflow nodes` and claim only eligible authoring nodes returned by `workflow next`. Record actual artifact handoffs with `workflow record`; use the workflow guide for the fixed graph. Keep a read-only reviewer active from intake, comparing evolving artifacts against requirements and steering corrections at each handoff or significant experiment. Preserve a reviewer slot alongside the coordinator and at most two authors; the analyst and researcher responsibilities below can run sequentially in those author slots.
+Follow controller nodes S0–S8 from `workflow nodes` and claim only eligible authoring nodes returned by `workflow next`. Record actual handoffs with `workflow record`; use the workflow guide for the fixed graph. Request exact named native profiles, with bounded source packets and declared writes:
 
-Delegate independent analyses with bounded source packets:
+- `rdd_domain_analyst` owns S1: subdomains, behaviors, invariants, owners and interactions.
+- `rdd_verification_designer` owns S2–S4: measurable quality goals, independent golden/failure oracles, benchmarks and constraints.
+- `rdd_qualification_engineer` owns S5: executable disposable dependency, compiler, provisioning, host and evidence-transfer experiments. `rdd_researcher` supplies read-only official-source evidence and advice.
+- `rdd_contract_architect` owns S6: reconcile the architecture, complete target tree, canonical Protobuf bundle, bindings and solution candidate. It may advise earlier within an available author slot. Return upstream findings to the original owner; do not silently rewrite completed domain, verification or qualification handoffs.
+- `rdd_coordinator` owns intake, controller qualification and freeze execution. It cannot substitute for a required specialist author.
 
-1. A functional analyst produces obligation-to-scenario coverage, domain language, invariants, and state transitions.
-2. A quality analyst produces measurable NFR designs, threat boundaries, persistence/recovery semantics, accessibility verification, and platform qualification.
-3. A dependency researcher verifies official documentation, exact supported APIs, licenses, compatibility, failure modes, and a narrowly scoped feasibility experiment.
-4. The orchestrator reconciles the solution and records its authors. The continuous reviewer records revision-bound live findings and independently verifies corrections. At completion it may supply the semantic approval if it authored no artifacts; a distinct execution reviewer examines the same candidate in a released author slot. Both approvals require zero unresolved findings and current evidence. Live steering is not replaced by a final batch review.
+Keep a read-only `rdd_reviewer` active from intake, comparing evolving design/contracts against requirements and steering corrections at each handoff or significant experiment. Preserve its slot alongside at most two authors; run specialist responsibilities sequentially when needed. At completion, the live reviewer may supply semantic approval if it authored no candidate artifacts; use a distinct execution reviewer in a released author slot. Both approvals require zero unresolved findings on the same candidate with current evidence. Live steering is not replaced by a final batch review.
 
-Use the runtime roles available in the local Codex installation. Do not claim a subagent ran if the runtime cannot create one. Report a capability blocker when the required independent review cannot be performed.
+Use the canonical profiles and their checked runtime settings. Do not claim a subagent ran if the runtime cannot create it, or silently change the required role/model. Report a capability blocker. A bounded adapter must apply the same profile instructions; requested settings are not observed backend attestation.
 
 ## Procedure
 

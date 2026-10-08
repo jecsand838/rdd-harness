@@ -17,7 +17,7 @@ Requirements and frozen specifications are immutable in this workflow. The task/
 
 ## Allocate roles and write ownership
 
-Use the configured orchestrator, large implementor, small implementor, and independent reviewer roles. The requested model allocation is an account-specific preference; test availability and supported effort levels using the installed Codex runtime. A model name in configuration does not establish access. If the configured runtime cannot provide a required role, report the missing capability; do not silently claim equivalent multi-agent review.
+Request exact named profiles: `rdd_coordinator`, `rdd_complex_implementor`, `rdd_light_implementor` and `rdd_reviewer`. Large tasks require the complex implementor; small tasks permit either, with light work bounded and unambiguous. Canonical profile TOMLs own instructions, model, effort and permissions. The bounded adapter must apply those instructions too. Use `doctor` for advertised availability; requested settings are not backend attestation or account entitlement. If a required role is unavailable, report the capability blocker without silent substitution.
 
 Delegate a coherent large target to the large implementor. Use the smaller implementor for bounded edits with a clear oracle, such as a narrowly defined documentation or mapping change. Choose by dependency surface and ambiguity, not just line count. Each worker receives the already groomed full primary task packet, all local work sites, allowed write paths, predecessor capabilities, relevant contract/spec slices, expected evidence, category, phase and verticals. Do not ask an implementor to discover missing scope or refine an unfinished plan.
 

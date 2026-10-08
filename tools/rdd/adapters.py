@@ -19,6 +19,9 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
+from .common import RddError
+from .profiles import load_profiles
+
 
 class RddAdapterError(RuntimeError):
     """A concrete external capability or evidence blocker."""
@@ -648,22 +651,28 @@ def validate_structured_output(value: Any, schema: Mapping[str, Any], root: Mapp
             fail("number is outside exclusive bounds")
 
 
-class CodexAdapter:
-    DEFAULT_MODELS = (("gpt-6-astra", "ultra"), ("gpt-6.1-sol", "xhigh"), ("gpt-6-luna", "xhigh"))
+def codex_config_string(value: str) -> str:
+    """Encode one TOML basic-string CLI value without shell interpretation."""
+    return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
 
+
+class CodexAdapter:
     def __init__(self, repo: str | Path, binary: str = "codex", runner: Callable[..., CommandResult] = run_argv):
         self.repo = Path(repo).resolve()
         self.binary = binary
         self.runner = runner
 
-    def doctor(self, models: Sequence[tuple[str, str]] = DEFAULT_MODELS, *, refresh_catalog: bool = False) -> dict[str, Any]:
+    def doctor(self, models: Sequence[tuple[str, str]], *, refresh_catalog: bool = False,
+               roles: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any]:
         """Read client capabilities and authentication; never execute a model turn."""
         report: dict[str, Any] = {"ready": False, "blockers": [], "models": [], "catalog_scope": "refreshed" if refresh_catalog else "bundled"}
         try:
+            if not models:
+                raise RddAdapterError("missing-model-policy", "Doctor requires the explicit profile model/effort inventory.")
             version = _checked(self.runner([self.binary, "--version"], cwd=self.repo, timeout=15), "Read Codex version")
             report["version"] = version.stdout.strip()
             help_result = _checked(self.runner([self.binary, "exec", "--help"], cwd=self.repo, timeout=15), "Read Codex exec flags")
-            for flag in ("--json", "--output-schema", "--output-last-message"):
+            for flag in ("--json", "--config", "--output-schema", "--output-last-message"):
                 if flag not in help_result.stdout:
                     report["blockers"].append(f"Installed Codex lacks {flag}")
             args = [self.binary, "debug", "models"] + ([] if refresh_catalog else ["--bundled"])
@@ -672,13 +681,16 @@ class CodexAdapter:
             if not isinstance(rows, list):
                 raise RddAdapterError("invalid-model-catalog", "Codex did not return a model list.")
             by_name = {item.get("slug", item.get("id")): item for item in rows if isinstance(item, dict)}
-            for model, effort in models:
+            for model, effort in dict.fromkeys(models):
                 info = by_name.get(model, {})
                 supported = [level.get("effort") if isinstance(level, dict) else level for level in info.get("supported_reasoning_levels", [])]
                 ok = effort in supported
-                report["models"].append({"model": model, "effort": effort, "client_advertises": ok})
+                assigned = sorted(role for role, settings in (roles or {}).items()
+                                  if (settings["model"], settings["effort"]) == (model, effort))
+                report["models"].append({"model": model, "effort": effort, "client_advertises": ok, "roles": assigned})
                 if not ok:
-                    report["blockers"].append(f"Client catalog does not advertise {model} with {effort}; configure an explicit supported choice")
+                    affected = f" for {', '.join(assigned)}" if assigned else ""
+                    report["blockers"].append(f"Client catalog does not advertise {model} with {effort}{affected}; configure an explicit supported choice")
             login = self.runner([self.binary, "login", "status"], cwd=self.repo, timeout=15)
             report["authenticated"] = login.returncode == 0 and not login.timed_out
             if not report["authenticated"]:
@@ -691,8 +703,7 @@ class CodexAdapter:
         return report
 
     def exec(self, prompt: str, schema_path: str | Path, run_dir: str | Path,
-             model: str, effort: str, *, timeout: float = 1800,
-             sandbox: str = "workspace-write",
+             role: str, *, timeout: float = 1800, sandbox: str | None = None,
              validator: Callable[[Any, Mapping[str, Any]], None] = validate_structured_output) -> dict[str, Any]:
         """Run one bounded worker turn, saving JSONL, stderr, output, and receipt.
 
@@ -702,10 +713,21 @@ class CodexAdapter:
         """
         if not isinstance(prompt, str) or not prompt.strip():
             raise RddAdapterError("empty-prompt", "A worker prompt must contain a concrete target.")
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", model) or effort not in ("low", "medium", "high", "xhigh", "max", "ultra"):
-            raise RddAdapterError("invalid-model-setting", "Use an explicit model ID and supported reasoning-effort name.")
-        if sandbox not in ("read-only", "workspace-write"):
-            raise RddAdapterError("invalid-sandbox", "Workers use read-only or workspace-write sandboxing.")
+        try:
+            profiles = load_profiles(self.repo)
+            if role not in profiles:
+                raise RddError(f"Unknown RDD role: {role}", "environment")
+            profile = profiles[role]
+            requested = {"role": role, "profile_path": profile["path"], "profile_hash": profile["hash"],
+                         "model": profile["model"], "effort": profile["effort"], "sandbox": profile["sandbox"]}
+        except RddError as exc:
+            raise RddAdapterError("invalid-profile", str(exc)) from exc
+        model, effort = profile["model"], profile["effort"]
+        if sandbox is None:
+            sandbox = profile["sandbox"]
+        if sandbox not in ("read-only", "workspace-write") or (profile["sandbox"] == "read-only" and sandbox != "read-only"):
+            raise RddAdapterError("invalid-sandbox", "A runtime override may restrict a profile to read-only, never expand its permissions.")
+        requested["sandbox"] = sandbox
         schema_file = Path(schema_path).resolve()
         try:
             schema = _strict_json(schema_file.read_text(encoding="utf-8"))
@@ -749,9 +771,10 @@ class CodexAdapter:
 
         argv = [self.binary, "-a", "never", "exec", "--json", "--color", "never",
                 "--model", model, "--config", f'model_reasoning_effort="{effort}"',
+                "--config", "developer_instructions=" + codex_config_string(profile["developer_instructions"]),
                 "--sandbox", sandbox, "--cd", str(self.repo),
                 "--output-schema", str(snapshot), "--output-last-message", str(answer_path), "-"]
-        receipt: dict[str, Any] = {"model": model, "effort": effort, "status": "failed",
+        receipt: dict[str, Any] = {"requested_runtime": requested, "status": "failed",
                                    "argv": argv, "session_id": None}
         try:
             result = self.runner(argv, cwd=self.repo, timeout=timeout, input_text=prompt,
@@ -771,7 +794,8 @@ class CodexAdapter:
                 raise RddAdapterError("invalid-worker-answer", "Codex final answer is not valid JSON.") from exc
             validator(answer, schema)
             receipt["status"] = "completed"
-            return {"answer": answer, "session_id": events["session_id"], "run_dir": str(directory), "receipt": receipt}
+            return {"answer": answer, "session_id": events["session_id"], "run_dir": str(directory),
+                    "requested_runtime": requested, "receipt": receipt}
         except RddAdapterError as exc:
             receipt.update({"error_code": exc.code, "error": str(exc), **events})
             raise

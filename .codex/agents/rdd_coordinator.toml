@@ -10,13 +10,19 @@ transitions, validation, task leases, markers, phase PRs and closure. Never repl
 machine checks with a claim that work appears done. The primary interactive
 session normally already performs this role; avoid nested coordinator trees.
 
-Delegate independent read/research tasks and disjoint implementation targets when
-they save time or improve quality. Use rdd_large for large targets, rdd_small for
-small unambiguous targets. Retain one read-only rdd_reviewer in all workflows:
+Use exact registered agent types: rdd_domain_analyst for S1,
+rdd_verification_designer for S2-S4, rdd_qualification_engineer for S5,
+rdd_contract_architect for S6 and rdd_task_planner for P1-P5. Use rdd_researcher
+for bounded read-only evidence gathering, rdd_complex_implementor for complex or
+large leased tasks and rdd_light_implementor for small unambiguous leased tasks.
+These profiles own their node claims; do not substitute a generic author.
+Retain one read-only rdd_reviewer in all workflows:
 specification against requirements, preparation against frozen specs/contracts,
 implementation against frozen plans/contracts. Record live findings and verified
 corrections at node handoffs, generated changes, integrations and check results. Keep ownership disjoint. The
-default three child slots support two implementors and the reviewer. The reviewer
+default three child slots support two authors and the reviewer. A distinct final
+execution reviewer uses a released author slot. No profile may increase concurrency
+or spawn nested coordinators. The reviewer
 provides course correction without task-level review gates. Follow the fixed
 workflow nodes and bounded artifact claims; implementation nodes derive existing
 task/phase truth. Final specification/preparation acceptance needs two independent

@@ -9,12 +9,14 @@ import shutil
 import sys
 import tempfile
 import time
+import tomllib
 import unittest
 
 from tools.rdd.adapters import (
     CodexAdapter, CommandResult, GitAdapter, GitHubAdapter, RddAdapterError,
     phase_branch, run_argv, validate_structured_output,
 )
+from tools.rdd.profiles import load_profiles, profile_settings
 
 
 HEAD = "a" * 40
@@ -297,6 +299,8 @@ class CodexAdapterTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.addCleanup(self.temp.cleanup)
+        original = Path(__file__).resolve().parents[2]
+        shutil.copytree(original / ".codex", self.root / ".codex")
         self.schema = self.root / "answer.schema.json"
         self.schema.write_text(json.dumps({"type": "object", "properties": {"done": {"type": "boolean"}},
                                            "required": ["done"], "additionalProperties": False}))
@@ -325,7 +329,7 @@ class CodexAdapterTests(unittest.TestCase):
     def execute(self, attempt="attempt-1"):
         return CodexAdapter(self.root, runner=self.runner).exec(
             "Implement the leased target.", self.schema, self.root / ".rdd/runtime" / attempt,
-            "gpt-6.1-sol", "xhigh", timeout=60)
+            "rdd_complex_implementor", timeout=60)
 
     def test_bounded_exec_persists_session_and_schema_valid_answer(self):
         outcome = self.execute()
@@ -336,6 +340,67 @@ class CodexAdapterTests(unittest.TestCase):
         self.assertNotIn("--goal", self.calls[0])
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", self.calls[0])
         self.assertTrue((self.root / ".rdd/runtime/attempt-1/events.jsonl").exists())
+
+    def test_bounded_exec_delivers_profile_instructions(self):
+        profile = self.root / ".codex/agents/rdd_complex_implementor.toml"
+        instructions = 'Bounded instructions with "quotes", \\backslash and\nUnicode 🧪; $(touch INJECTED); `echo no`; $HOME.\x7f'
+        text = profile.read_text()
+        profile.write_text(text[:text.index("developer_instructions =")] +
+                           "developer_instructions = " + json.dumps(instructions, ensure_ascii=False).replace("\x7f", "\\u007f") + "\n")
+        outcome = self.execute()
+        applied = next(argument for argument in self.calls[0] if argument.startswith("developer_instructions="))
+        self.assertEqual(tomllib.loads(applied)["developer_instructions"], instructions)
+        self.assertEqual(outcome["requested_runtime"], profile_settings(self.root, "rdd_complex_implementor"))
+        self.assertNotIn("observed_model", outcome["receipt"])
+        self.assertFalse((self.root / "INJECTED").exists())
+
+    def test_readonly_profile_cannot_gain_writes(self):
+        with self.assertRaises(RddAdapterError) as error:
+            CodexAdapter(self.root, runner=self.runner).exec(
+                "Review", self.schema, self.root / ".rdd/runtime/unsafe",
+                "rdd_reviewer", sandbox="workspace-write")
+        self.assertEqual(error.exception.code, "invalid-sandbox")
+        self.assertFalse((self.root / ".rdd/runtime/unsafe").exists())
+
+    def test_writable_profile_can_be_restricted_to_readonly(self):
+        outcome = CodexAdapter(self.root, runner=self.runner).exec(
+            "Give bounded advice", self.schema, self.root / ".rdd/runtime/advice",
+            "rdd_contract_architect", sandbox="read-only")
+        self.assertEqual(outcome["requested_runtime"]["sandbox"], "read-only")
+        self.assertEqual(self.calls[0][self.calls[0].index("--sandbox") + 1], "read-only")
+
+    def test_real_subprocess_receives_exact_config_instructions(self):
+        """Exercise argv transport and TOML parsing, without a paid model call."""
+        receiver = self.root / "runtime_receiver.py"
+        receiver.write_text('''import json, pathlib, sys, tomllib
+args = sys.argv[1:]
+config = {}
+for index, argument in enumerate(args):
+    if argument == "--config":
+        config.update(tomllib.loads(args[index + 1]))
+profile = tomllib.loads(pathlib.Path(".codex/agents/rdd_complex_implementor.toml").read_text())
+correct = config.get("developer_instructions") == profile["developer_instructions"]
+sys.stdin.read()
+pathlib.Path(args[args.index("--output-last-message") + 1]).write_text(json.dumps({"done": correct}))
+print(json.dumps({"type": "thread.started", "thread_id": "subprocess-session"}))
+print(json.dumps({"type": "turn.completed"}))
+''', encoding="utf-8")
+
+        def subprocess_runner(argv, **kwargs):
+            return run_argv([sys.executable, str(receiver), *argv[1:]], **kwargs)
+
+        outcome = CodexAdapter(self.root, runner=subprocess_runner).exec(
+            "User text cannot replace developer instructions", self.schema,
+            self.root / ".rdd/runtime/process", "rdd_complex_implementor", timeout=10)
+        self.assertTrue(outcome["answer"]["done"])
+        self.assertEqual(outcome["session_id"], "subprocess-session")
+
+    def test_unknown_role_is_rejected_before_writing_runtime(self):
+        with self.assertRaises(RddAdapterError) as error:
+            CodexAdapter(self.root, runner=self.runner).exec(
+                "Target", self.schema, self.root / ".rdd/runtime/unknown", "custom_author")
+        self.assertEqual(error.exception.code, "invalid-profile")
+        self.assertFalse((self.root / ".rdd/runtime/unknown").exists())
 
     def test_reusing_a_worker_directory_cannot_reuse_old_answer(self):
         self.execute()
@@ -364,23 +429,49 @@ class CodexAdapterTests(unittest.TestCase):
     def test_output_cannot_escape_runtime_directory(self):
         with self.assertRaises(RddAdapterError) as error:
             CodexAdapter(self.root, runner=self.runner).exec("target", self.schema,
-                self.root / "public", "gpt-6-luna", "xhigh")
+                self.root / "public", "rdd_light_implementor")
         self.assertEqual(error.exception.code, "unsafe-runtime-path")
 
     def test_doctor_reports_client_support_without_claiming_entitlement(self):
+        profiles = load_profiles(self.root)
+        pairs = [(settings["model"], settings["effort"]) for settings in profiles.values()]
         def doctor_runner(argv, **kwargs):
             if "--version" in argv:
                 return result(argv, "codex-cli 0.159.2")
             if "--help" in argv:
-                return result(argv, "--json --output-schema --output-last-message")
+                return result(argv, "--json --config --output-schema --output-last-message")
             if "models" in argv:
                 return result(argv, {"models": [{"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
-                                               for model, effort in CodexAdapter.DEFAULT_MODELS]})
+                                               for model, effort in dict.fromkeys(pairs)]})
             return result(argv)
-        report = CodexAdapter(self.root, runner=doctor_runner).doctor()
+        report = CodexAdapter(self.root, runner=doctor_runner).doctor(pairs, roles=profiles)
         self.assertTrue(report["ready"])
         self.assertFalse(report["account_access_verified"])
         self.assertEqual(report["catalog_scope"], "bundled")
+        self.assertEqual(len(report["models"]), 3)
+        self.assertEqual(sorted(role for pair in report["models"] for role in pair["roles"]), sorted(profiles))
+
+    def test_doctor_cannot_succeed_with_omitted_model_inventory(self):
+        report = CodexAdapter(self.root, runner=self.runner).doctor([])
+        self.assertFalse(report["ready"])
+        self.assertIn("missing-model-policy", report["blockers"][0])
+        self.assertEqual(self.calls, [])
+
+    def test_doctor_reports_unsupported_pair_and_affected_roles(self):
+        def doctor_runner(argv, **kwargs):
+            if "--version" in argv:
+                return result(argv, "codex-cli 0.159.2")
+            if "--help" in argv:
+                return result(argv, "--json --config --output-schema --output-last-message")
+            if "models" in argv:
+                return result(argv, {"models": []})
+            return result(argv)
+        profiles = load_profiles(self.root)
+        report = CodexAdapter(self.root, runner=doctor_runner).doctor(
+            [("gpt-6.1-sol", "xhigh")], roles=profiles)
+        self.assertFalse(report["ready"])
+        self.assertIn("rdd_domain_analyst", report["blockers"][0])
+        self.assertFalse(report["account_access_verified"])
 
     def test_schema_unsupported_keywords_fail_closed(self):
         with self.assertRaises(RddAdapterError) as error:
@@ -404,7 +495,7 @@ class InstalledCodexSmokeTests(unittest.TestCase):
         self.assertEqual(catalog.returncode, 0, catalog.stderr)
         self.assertFalse(catalog.output_truncated)
         models = {item["slug"]: item for item in json.loads(catalog.stdout)["models"]}
-        for model, effort in CodexAdapter.DEFAULT_MODELS:
+        for model, effort in {(settings["model"], settings["effort"]) for settings in load_profiles(root).values()}:
             self.assertIn(model, models)
             self.assertIn(effort, [item["effort"] for item in models[model]["supported_reasoning_levels"]])
 

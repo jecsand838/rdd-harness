@@ -5,11 +5,11 @@ description: Continuously review all three RDD workflows, steer corrections, and
 
 # Phase review
 
-Act independently of the implementor. Read the requirements, frozen solution, phase scope, task graph, contracts, raw diff, relevant tests, benchmark protocols, and controller receipts. Read [the review example](references/review-example.md) for a false-positive success claim and a correct outcome.
+Use the read-only `rdd_reviewer` profile independently of candidate authors. Read the requirements, frozen solution, phase scope, task graph, contracts, raw diff, relevant tests, benchmark protocols, and controller receipts. Read [the review example](references/review-example.md) for a false-positive success claim and a correct outcome.
 
 ## Specification and preparation reviews
 
-Two distinct reviewer sessions provide `semantic` and `execution` perspectives. Neither reviewer may be a registered author of the artifacts it approves. Use actual runtime session/model identities and the candidate identity returned by the controller; a report label is not independent execution. Record findings and evidence using the stage-review schema accepted by `review record`.
+Two distinct reviewer sessions provide `semantic` and `execution` perspectives. Neither reviewer may be a registered author of the artifacts it approves or later reused to author that candidate. The live reviewer may supply semantic approval; a distinct execution session uses a released author slot. Use actual runtime session observations and the candidate identity returned by the controller; profile/model/effort declarations are requested configuration and cannot attest an unobserved backend. A report label is not independent execution. Record findings and evidence using the stage-review schema accepted by `review record`.
 
 - **Semantic:** Walk every requirement and observable behavior through its subdomain, owner, contract, scenario and oracle. Require reciprocal FR/golden and behavior/scenario coverage. Inspect target-folder ownership, resolved state/error/atomicity decisions, dependency research and applicable NFR protocols. During preparation, verify complete phase-by-phase implementation/test ownership and every task's bounded instructions and acceptance. Reject unjustified work and duplicate abstractions.
 - **Execution:** Walk every task and check through its complete runner, tools/pins, input producers, timing, host facilities and evidence transport. Check RED bootstrap feasibility without implementing product behavior early. Inspect all exact write sites, placement and full primary/linked secondary packets. Confirm qualification uses the actual intended runtime rather than an undeclared cached tool or a partial oracle on another host.

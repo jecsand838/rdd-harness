@@ -42,7 +42,7 @@ A **vertical** is an ordered chain of dependent tasks toward a capability. A **p
 
 Agents interpret requirements, research dependencies, author specifications and code, and review whether the result fulfills the intended behavior. The deterministic Python controller validates artifact structure, traceability, dependency order, task ownership, source identity, evidence, and state transitions. Structural validation supports semantic review; it cannot establish correctness by itself.
 
-The coordinator uses `gpt-6-astra` at `ultra`. Large implementors and the independent reviewer use `gpt-6.1-sol` at `xhigh`; small implementors use `gpt-6-luna` at `xhigh`. At most **two implementors** run concurrently, leaving room for the reviewer to observe progress and send corrections. The final independent review is bound to the exact phase revision.
+Named specialists own domain analysis, verification design, contract architecture, qualification and task planning. The [runtime roster](docs/harness/codex-runtime.md#runtime-contract) defines their assignments and models. `rdd_complex_implementor` handles large or small tasks; `rdd_light_implementor` handles small, unambiguous tasks. At most **two authors** run concurrently alongside a read-only live reviewer. Final independent review binds the exact candidate.
 
 Workers receive bounded task packets and isolated Git worktrees with disjoint write scopes. The controller integrates committed work only from the leased base and declared files. Requirements, frozen artifacts, generated contracts, controller policy, skills, and CI cannot be rewritten by implementation tasks to weaken their own acceptance rules.
 
@@ -223,7 +223,7 @@ Protect the verification workflow and policy through repository rules and review
 | `.rdd/baselines/` | Historical baseline artifact copies |
 | [.agents/skills/](.agents/skills/README.md), [.codex/agents/](.codex/agents/) | Workflow/supporting skills and Codex roles |
 | [tools/rdd/](tools/rdd/), [tools/proto-codegen/](tools/proto-codegen/) | Python controller and Rust contract generator |
-| [.rdd/config.json](.rdd/config.json), [AGENTS.md](AGENTS.md) | Controller policy, model allocation, and repository authority rules |
+| [.rdd/config.json](.rdd/config.json), [AGENTS.md](AGENTS.md) | Controller policy and repository authority rules |
 
 For deeper work, use the existing guides:
 
@@ -234,6 +234,5 @@ For deeper work, use the existing guides:
 - [Codex runtime guide](docs/harness/codex-runtime.md): client setup, Goals, adapters, PR policy, and CI.
 - [Security model](docs/harness/security-model.md): trusted components and limits of verification.
 - [Skill guide](.agents/skills/README.md): the three primary workflows and supporting skills.
-- [Historical validation record](docs/harness/validation.md): checks performed when the original boilerplate was assembled, not a claim that the Todo application is complete.
 
 Adjust protected harness policy, tools, models, or skills through deliberate review before specification freeze, and run `./rdd selftest` after harness changes. During implementation, those frozen rules remain part of the acceptance authority.

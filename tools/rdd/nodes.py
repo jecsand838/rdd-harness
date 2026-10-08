@@ -8,6 +8,7 @@ import subprocess
 import time
 
 from .common import RddError, digest, event, file_hash, git, head, inventory, read_json, safe_path, source_digest, validate_artifact
+from .profiles import WORKFLOW_AUTHOR_ROLES
 
 _SPEC = [
     ("S0", "Baseline intake", []), ("S1", "Domain modeling", ["S0"]),
@@ -52,8 +53,12 @@ def _prior_artifact(root: Path, claim: dict, path: str) -> bool:
     return bool(blob.returncode == 0 and blob.stdout and hashlib.sha256(blob.stdout).hexdigest() == value)
 
 # Fixed contracts for the three graphs, not an extensible workflow language.
-_AUTHOR_ROLES = ["rdd_coordinator", "rdd_large", "rdd_small"]
-_RESEARCH_ROLES = ["rdd_coordinator", "rdd_researcher"]
+SPECIALIST_OWNERS = {
+    "S1": "rdd_domain_analyst",
+    "S2": "rdd_verification_designer", "S3": "rdd_verification_designer", "S4": "rdd_verification_designer",
+    "S5": "rdd_qualification_engineer", "S6": "rdd_contract_architect",
+    **dict.fromkeys(("P1", "P2", "P3", "P4", "P5"), "rdd_task_planner"),
+}
 _OUTPUTS = {
     "S0": "Requirements baseline, capabilities, authors and live reviewer intake",
     "S1": "Functional subdomains, invariant owners, behaviors, modules and interactions",
@@ -82,8 +87,7 @@ _OUTPUTS = {
 }
 for _node, _definition in NODES.items():
     _definition.update(
-        responsible_roles=(["rdd_coordinator"] if _node in DERIVED or _node in {"S0", "P0", "S7"}
-                           else _RESEARCH_ROLES if _node in {"S5", "P1", "P2"} else _AUTHOR_ROLES),
+        responsible_roles=[SPECIALIST_OWNERS.get(_node, "rdd_coordinator")],
         max_parallel_authors=2,
         inputs=(["requirements", "capabilities", "live_review"] if _node.startswith("S")
                 else ["frozen_specification", "frozen_contracts", "live_review"] if _node.startswith("P")
@@ -168,11 +172,21 @@ class WorkflowNodes:
 
     def workflow_nodes(self) -> dict:
         state = self.state(allow_blocked=True)
+        try:
+            self.guard_run_policy(state)
+        except RddError as exc:
+            # Historical rows retain their original identities; no new graph is
+            # projected onto old claims, including when new profiles are absent.
+            return {"historical": True, "reason": str(exc), "graph_digest": state.get("workflow_graph_digest"),
+                    "agent_profile_digest": state.get("agent_profile_digest"),
+                    "nodes": [{"id": node, **row} for node, row in state.get("workflow_nodes", {}).items()]}
         records = self._node_records(state)
-        return {"graph_digest": digest(NODES), "nodes": [{**definition, **records[node]} for node, definition in NODES.items()]}
+        return {"historical": False, "graph_digest": digest(NODES), "agent_profile_digest": state["agent_profile_digest"],
+                "nodes": [{**definition, **records[node]} for node, definition in NODES.items()]}
 
     def workflow_next(self) -> dict:
         state = self.state()
+        self.guard_run_policy(state)
         records = self._node_records(state)
         stage = "specification" if state["status"] == "specification" else "preparation" if state["status"] in {"specified", "planned", "preparing"} else "implementation"
         ready = [node for node, definition in NODES.items() if definition["stage"] == stage
@@ -193,7 +207,7 @@ class WorkflowNodes:
             raise RddError("Authoring node belongs to a different or already frozen stage", "specification" if node.startswith("S") else "planning")
         self.live_review_guard(final=False, node=node, correction=finding)
         self.guard_author_identity(session_id)
-        if not session_id.strip() or role not in {"rdd_coordinator", "rdd_researcher", "rdd_large", "rdd_small"}:
+        if not session_id.strip() or role not in WORKFLOW_AUTHOR_ROLES:
             raise RddError("Node claims require the actual author session and supported role")
         definition = NODES[node]
         if role not in definition["responsible_roles"]:
@@ -221,7 +235,8 @@ class WorkflowNodes:
             if other.get("status") == "claimed" and set(other["claim"]["writes"]) & set(writes):
                 raise RddError("Workflow claims must have disjoint write ownership")
         inputs = self._node_input(state, node, records)
-        claim = {"session_id": session_id, "role": role, "writes": writes, "attempt": len(prior["attempts"]) + 1,
+        claim = {"session_id": session_id, "role": role, "requested_runtime": self.profile_settings(role),
+                 "writes": writes, "attempt": len(prior["attempts"]) + 1,
                  "inputs": inputs, "input_digest": digest(inputs), "source_commit": head(self.root),
                  "source_digest": source_digest(self.root), "sources": inventory(self.root),
                  "concurrent_writes": sorted({p for r in records.values() if r.get("status") == "claimed" for p in r["claim"]["writes"]}),
@@ -322,6 +337,7 @@ class WorkflowNodes:
         return {"node": node, "status": "pending", "preserved_outputs": row["claim"]["writes"]}
 
     def validate_workflow_checkpoint(self, state: dict) -> None:
+        self.guard_run_policy(state)
         if state.get("workflow_graph_digest") != digest(NODES):
             raise RddError("Checkpoint workflow graph differs from protected policy")
         for node, row in state.get("workflow_nodes", {}).items():
@@ -334,7 +350,7 @@ class WorkflowNodes:
                 raise RddError("Checkpoint workflow attempt history is invalid")
             for number, attempt in enumerate(attempts, 1):
                 claim = attempt.get("claim", {})
-                fields = {"session_id", "role", "writes", "attempt", "inputs", "input_digest", "source_commit", "source_digest",
+                fields = {"session_id", "role", "requested_runtime", "writes", "attempt", "inputs", "input_digest", "source_commit", "source_digest",
                           "sources", "concurrent_writes", "finding", "review_cursor", "expires"}
                 stage = "specification" if node.startswith("S") else "plan"
                 if (set(claim) != fields or claim.get("attempt") != number
@@ -349,6 +365,8 @@ class WorkflowNodes:
                         or not re.fullmatch(r"[0-9a-f]{40,64}", str(claim.get("source_commit")))
                         or attempt.get("status") not in {"claimed", "complete", "released"}):
                     raise RddError("Checkpoint node claim history is invalid")
+                if claim["requested_runtime"] != self.profile_settings(claim["role"]):
+                    raise RddError("Checkpoint node requested runtime differs from its pinned profile")
                 self._validate_node_writes(node, claim["writes"])
                 git(self.root, "cat-file", "-e", claim["source_commit"] + "^{commit}")
                 for path, value in claim["sources"].items():

@@ -54,7 +54,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertFalse(any((self.root / ".rdd/evidence").rglob("*")))
 
     def submission(self):
-        claim = self.f.c.task_claim("T001", "rdd_large", session_id="recovery-worker")
+        claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="recovery-worker")
         worker = self.root / claim["lease"]["worktree"]
         path = worker / "tests/behavior.py"
         path.write_text(engine_fixture.BEHAVIOR_TEST + "\n" + path.read_text())
@@ -110,6 +110,30 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(head(self.root), original_head)
         self.assertEqual(self.f.c.anchors_verify()["remaining"], 0)
 
+    def test_claimed_and_released_task_cannot_drop_or_forge_runtime_identity(self):
+        self.f.opened()
+        c = self.f.c
+        untouched = read_json(self.export())
+        c.validate_checkpoint_state(untouched["state"], untouched)
+        c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="actual-fixture-worker")
+        for release in (False, True):
+            if release:
+                c.task_release("T001", "Preserve the attempted work")
+            original = read_json(self.export())
+            c.validate_checkpoint_state(original["state"], original)
+            for field, value in (("worker", None), ("worker", "rdd_large"), ("requested_runtime", None),
+                                 ("requested_runtime", {"role": "rdd_complex_implementor", "verified": True})):
+                changed = copy.deepcopy(original)
+                changed["state"]["tasks"]["T001"][field] = value
+                with self.subTest(released=release, field=field, value=value), self.assertRaisesRegex(RddError, "requested runtime"):
+                    c.validate_checkpoint_state(changed["state"], changed)
+            changed = copy.deepcopy(original)
+            task = changed["state"]["tasks"]["T001"]
+            task.pop("worker")
+            task.pop("requested_runtime")
+            with self.assertRaisesRegex(RddError, "requested runtime"):
+                c.validate_checkpoint_state(changed["state"], changed)
+
     def test_export_rejects_changed_raw_log_without_creating_checkpoint(self):
         self.f.prepared()
         receipt = next(iter(self.f.c.state()["checks"].values()))
@@ -157,7 +181,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_expired_lease_preserves_dirty_work_and_claims_a_distinct_attempt(self):
         self.f.opened()
-        claim = self.f.c.task_claim("T001", "rdd_large", session_id="expired-worker")
+        claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="expired-worker")
         worker = self.root / claim["lease"]["worktree"]
         draft = worker / "tests/behavior.py"
         content = "# Valuable unfinished test work\n" + draft.read_text()
@@ -170,7 +194,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.f.c.state()["tasks"]["T001"]["status"], "todo")
         self.assertEqual(draft.read_text(), content)
         self.assertEqual(head(self.root), before)
-        next_claim = self.f.c.task_claim("T001", "rdd_large", session_id="fresh-worker")
+        next_claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fresh-worker")
         self.assertEqual(next_claim["lease"]["attempts"], 2)
         self.assertNotEqual(next_claim["lease"]["worktree"], claim["lease"]["worktree"])
         self.assertEqual(draft.read_text(), content)
@@ -189,7 +213,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_new_run_preserves_prior_worktree_and_packet(self):
         self.f.opened()
-        first = self.f.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
+        first = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         worker = self.root / first["lease"]["worktree"]
         draft = worker / "tests/behavior.py"
         content = "# Preserve this unfinished work\n" + draft.read_text()
@@ -197,7 +221,7 @@ class RecoveryTests(unittest.TestCase):
         packet = (self.root / first["packet"]).read_bytes()
         self.f.c.task_release("T001", "Preserve work before regeneration")
         self.regenerate_fixture()
-        second = self.f.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
+        second = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         self.assertEqual(second["lease"]["attempts"], 1)
         self.assertNotEqual(first["lease"]["worktree"], second["lease"]["worktree"])
         self.assertNotEqual(first["packet"], second["packet"])
@@ -208,11 +232,11 @@ class RecoveryTests(unittest.TestCase):
 
     def test_new_run_preserves_packets_without_worktrees(self):
         self.f.opened()
-        first = self.f.c.task_claim("T001", "rdd_large", worktree=False, session_id="fixture-worker")
+        first = self.f.c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="fixture-worker")
         packet = (self.root / first["packet"]).read_bytes()
         self.f.c.task_release("T001", "Preserve packet before regeneration")
         self.regenerate_fixture()
-        second = self.f.c.task_claim("T001", "rdd_large", worktree=False, session_id="fixture-worker")
+        second = self.f.c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="fixture-worker")
         self.assertEqual(second["lease"]["attempts"], 1)
         self.assertIsNone(second["lease"]["worktree"])
         self.assertNotEqual(first["packet"], second["packet"])
@@ -220,7 +244,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_checkpoint_accepts_historical_worktree_path(self):
         self.f.opened()
-        claim = self.f.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
+        claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         legacy = ".rdd/runtime/worktrees/T001-a1"
         if claim["lease"]["worktree"] != legacy:
             self.f.g("worktree", "move", claim["lease"]["worktree"], legacy)

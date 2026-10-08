@@ -64,6 +64,7 @@ class Fixture(unittest.TestCase):
         subprocess.run(["git", "config", "core.autocrlf", "false"], cwd=self.root, check=True,
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         shutil.copytree(REPO / ".rdd/schemas", self.root / ".rdd/schemas")
+        shutil.copytree(REPO / ".codex", self.root / ".codex")
         self.config = json.loads((REPO / ".rdd/config.json").read_text())
         self.write("requirements/requirements.md", "# Fixture requirements\n\n**FR-001 Preserve a value**\n\n"
             "The fixture shall preserve an accepted value.\n\nAcceptance: Read the accepted value after the operation.\n")

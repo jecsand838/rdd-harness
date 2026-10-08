@@ -4,7 +4,7 @@
 
 ## Identity
 
-Record active run, current branch/commit/source digest, worker role, task IDs, phase, category, sorted vertical membership, primary/secondary work-site IDs, and lease/worktree locator.
+Record active run, current branch/commit/source digest, canonical worker role, controller-provided requested runtime/profile identity, task IDs, phase, category, sorted vertical membership, primary/secondary work-site IDs, and lease/worktree locator. Keep actual observed session/events separate from requested settings; do not label the backend model verified without evidence.
 
 ## Bounded context
 

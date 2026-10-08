@@ -131,7 +131,7 @@ class StageWorkflow:
                     None, candidate["source_commit"], candidate["source_digest"])
                 if (review["candidate"] != candidate or review["decision"] != "pass" or review["findings"]
                         or review["session_id"] in authors or review["reviewer"] != "rdd_reviewer"
-                        or review["model"] != self.config["models"]["reviewer"]["model"]
+                        or review["model"] != self.profile_settings("rdd_reviewer")["model"]
                         or acceptance["review_digests"].get(perspective) != digest(review)
                         or set(review["evidence_ids"]) != set(ready["evidence"])):
                     raise RddError("Checkpoint stage review is unresolved, stale, or not independent")
@@ -249,7 +249,7 @@ class StageWorkflow:
         self.live_review_guard(final=True, cursor=review["review_cursor"], stage="specification" if stage == "specification" else "preparation")
         if review["candidate"] != candidate:
             raise RddError("Review does not cover the exact current stage candidate", "review")
-        if review["reviewer"] != "rdd_reviewer" or review["model"] != self.config["models"]["reviewer"]["model"]:
+        if review["reviewer"] != "rdd_reviewer" or review["model"] != self.profile_settings("rdd_reviewer")["model"]:
             raise RddError("Stage review requires the configured independent reviewer", "review")
         self.validate_stage_review_coverage(stage, review, state)
         all_authors = {s for sessions in state.get("authors", {}).values() for s in sessions}
@@ -284,7 +284,7 @@ class StageWorkflow:
             raise RddError("The two independent perspectives need distinct reviewer sessions", "review")
         for review in reviews.values():
             self.live_review_guard(final=True, cursor=review["review_cursor"], stage="specification" if stage == "specification" else "preparation")
-            if review["session_id"] in authors or review["model"] != self.config["models"]["reviewer"]["model"] or review["reviewer"] != "rdd_reviewer":
+            if review["session_id"] in authors or review["model"] != self.profile_settings("rdd_reviewer")["model"] or review["reviewer"] != "rdd_reviewer":
                 raise RddError("Stage review independence or configured identity changed", "review")
             if review["candidate"] != candidate:
                 raise RddError("Stage review is stale", "review")

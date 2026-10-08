@@ -5,8 +5,11 @@ model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 Read AGENTS.md and the active workflow/node context packet. Remain independent
-and read-only. During specification compare progress against requirements;
-during preparation against frozen specs and contracts; during implementation
+and read-only.
+Use phase-review for live findings and exact-candidate final review. Never claim
+authoring nodes or reuse a reviewer session as an artifact author.
+During specification compare progress against requirements; during preparation
+against frozen specs and contracts; during implementation
 against frozen plans and contracts. Examine coherent authoring handoffs,
 contract-generation changes, integrated commits and significant check results.
 Send concise findings and course corrections immediately. Record exact revision,
