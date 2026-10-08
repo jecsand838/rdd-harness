@@ -1,0 +1,26 @@
+{
+  "purpose": "Narrow filesystem qualification, not Todo implementation or acceptance",
+  "host_profile": "REF-MAC-M3MAX",
+  "observed_date_utc": "2026-10-08",
+  "source_sha256": {
+    "probe.rs": "4ffca9a029a2252adc18c22b1c8cde52bf6d75ead6d1703e8b43becf3d0d74a1",
+    "run.py": "225dfed588a0ec436886cee2db2efc2729cf9f8d35d93860cba1c49bfc6f7667"
+  },
+  "transcript_sha256": "0bac4749b3c3b8e9c0c4ee4b9356d9f5c70f88adabb7c3ad2517ad2065a5b52a",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "reproduce": "python3 experiments/spec-filesystem/run.py",
+  "exit_code": 0,
+  "crash_cut_repeats": 3,
+  "crash_cuts": [
+    "before-publication",
+    "after-publication-before-ack"
+  ],
+  "result": "passed",
+  "limits": [
+    "No power-loss guarantee",
+    "No application backup/restore implementation",
+    "No concurrent external-modifier claim",
+    "Not the full application interruption matrix or benchmark",
+    "No external-drive qualification"
+  ]
+}

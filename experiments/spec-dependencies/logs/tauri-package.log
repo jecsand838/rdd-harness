@@ -1,0 +1,14 @@
+        Warn --no-sign flag detected: Signing will be skipped.
+        Info Looking up installed tauri packages to check mismatched versions...
+   Compiling tokio v1.53.2
+   Compiling tauri v2.12.1
+   Compiling tauri-plugin-fs v2.6.0
+   Compiling tauri-plugin-dialog v2.8.1
+   Compiling dependency-desktop-probe v0.1.0 (/private/tmp/rdd-spec-dependencies/desktop)
+    Finished `release` profile [optimized] target(s) in 13.35s
+       Built application at: /private/tmp/rdd-spec-dependencies/target/release/dependency-desktop-probe
+    Bundling RDD Dependency Probe.app (/private/tmp/rdd-spec-dependencies/target/release/bundle/macos/RDD Dependency Probe.app)
+        Warn Skipping signing due to --no-sign flag.
+    Finished 1 bundle at:
+        /private/tmp/rdd-spec-dependencies/target/release/bundle/macos/RDD Dependency Probe.app (27.79 MiB)
+

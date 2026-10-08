@@ -1,0 +1,12 @@
+[package]
+name = "todo-contract-qualification"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+rdd-contracts = { path = "../../gen/rust" }
+prost = "=0.14.4"
+prost-types = "=0.14.4"

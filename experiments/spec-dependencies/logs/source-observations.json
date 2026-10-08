@@ -1,0 +1,58 @@
+[
+  {
+    "package_source": "turso-0.8.2/src/lib.rs",
+    "sha256": "34760904c217188bc5ed64aa39cdf89fb87b1ceeb69e957b9a875c0cf8fc2e57",
+    "supported_claim": "Builder::with_io_impl,new_local",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  },
+  {
+    "package_source": "turso-0.8.2/src/transaction.rs",
+    "sha256": "5410766b7dd565efb033d7ea5d9084e873ee3a9d7e483bc5462e16797fb68aed",
+    "supported_claim": "Transaction commit/rollback/Drop",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  },
+  {
+    "package_source": "turso_core-0.8.2/io/mod.rs",
+    "sha256": "f6a6345bc53b50dce657aa8f75abc29d83caaf29820eb29364afbf97151518b4",
+    "supported_claim": "IO/File sync public traits",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  },
+  {
+    "package_source": "turso_core-0.8.2/io/unix.rs",
+    "sha256": "220aca640d90607fb3502c0bfcc70ce6c37fef43f5269ab05c1ee04a73dd8220",
+    "supported_claim": "PlatformIO native F_FULLFSYNC",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  },
+  {
+    "package_source": "turso_core-0.8.2/translate/pragma.rs",
+    "sha256": "314657dd79a531dc20ffcee79f5a2114848885872d5e6d8276fdef30b91a87e7",
+    "supported_claim": "synchronous FULL/fullfsync readback",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  },
+  {
+    "package_source": "tauri-2.12.1/src/async_runtime.rs",
+    "sha256": "2e46673c2b396b34cc70e8a09cabce4ea9ef0eb517b782d1825299d2e998209c",
+    "supported_claim": "Tokio singleton",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  },
+  {
+    "package_source": "unicode-normalization-0.1.24/src/tables.rs",
+    "sha256": "69a0faad67afe03146d80ff5b2d889d1898cbfe8f7677a24f012148f6fd27348",
+    "supported_claim": "Unicode16 constant",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  },
+  {
+    "package_source": "caseless-0.2.2/src/case_folding_data.rs",
+    "sha256": "754464b24030c305d1ba8d2688a0be1a3299a67037aa1943d925c881979fdc74",
+    "supported_claim": "Unicode16 constant",
+    "access_date": "2026-10-08",
+    "channel": "Cargo published-source acquisition, lock checksum"
+  }
+]

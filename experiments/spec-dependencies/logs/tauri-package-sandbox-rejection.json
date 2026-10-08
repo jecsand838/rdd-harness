@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/private/tmp/rdd-spec-dependencies/tools/bin/cargo-tauri",
+    "build",
+    "--bundles",
+    "app",
+    "--no-sign",
+    "--ci"
+  ],
+  "cwd": "/private/tmp/rdd-spec-dependencies/desktop",
+  "exit": 1,
+  "seconds": 4.117
+}

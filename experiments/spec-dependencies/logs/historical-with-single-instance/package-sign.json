@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/usr/bin/codesign",
+    "--force",
+    "--deep",
+    "--sign",
+    "-",
+    "/private/tmp/rdd-spec-dependencies/target/release/bundle/macos/RDD Dependency Probe.app"
+  ],
+  "cwd": "/private/tmp/rdd-spec-dependencies",
+  "exit": 0,
+  "seconds": 0.093
+}

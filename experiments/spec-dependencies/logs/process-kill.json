@@ -1,0 +1,92 @@
+[
+  {
+    "cut": "before_commit",
+    "repetition": 0,
+    "kill_exit": -9,
+    "reopened": "count=0"
+  },
+  {
+    "cut": "before_commit",
+    "repetition": 1,
+    "kill_exit": -9,
+    "reopened": "count=0"
+  },
+  {
+    "cut": "before_commit",
+    "repetition": 2,
+    "kill_exit": -9,
+    "reopened": "count=0"
+  },
+  {
+    "cut": "before_commit",
+    "repetition": 3,
+    "kill_exit": -9,
+    "reopened": "count=0"
+  },
+  {
+    "cut": "before_commit",
+    "repetition": 4,
+    "kill_exit": -9,
+    "reopened": "count=0"
+  },
+  {
+    "cut": "during_commit_wal_sync",
+    "repetition": 0,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "during_commit_wal_sync",
+    "repetition": 1,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "during_commit_wal_sync",
+    "repetition": 2,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "during_commit_wal_sync",
+    "repetition": 3,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "during_commit_wal_sync",
+    "repetition": 4,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "after_ack",
+    "repetition": 0,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "after_ack",
+    "repetition": 1,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "after_ack",
+    "repetition": 2,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "after_ack",
+    "repetition": 3,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  },
+  {
+    "cut": "after_ack",
+    "repetition": 4,
+    "kill_exit": -9,
+    "reopened": "count=1"
+  }
+]

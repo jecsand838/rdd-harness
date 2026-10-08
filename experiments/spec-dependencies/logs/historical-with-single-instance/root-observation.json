@@ -1,0 +1,26 @@
+{
+  "access_date": "2026-10-08",
+  "observer": "independent root coordinator",
+  "observation_channel": "actual CUA AX tree + screenshot in root tooltrace; separate packaged process runner",
+  "root_session": 6104,
+  "initial_observation": {
+    "document": "Dependency qualification",
+    "url": "tauri://localhost",
+    "body_pass_visible": false,
+    "runner_timeout_seconds": 60,
+    "result": "failed initial launch, omitted local fetch CSP allowance corrected"
+  },
+  "final_observation": {
+    "heading": "Dependency qualification",
+    "body": "PASS packaged Rust WASM invoke + generated QueryRequest/QueryResponse + Turso commit",
+    "process_exit": 0,
+    "runner_seconds": 30.823,
+    "deliberate_observation_hold_seconds": 30,
+    "screenshot_file": null,
+    "screenshot_location": "root CUA tool trace"
+  },
+  "qualified_binary_sha256": "1ca3121dd7217c4c5df4afb005f71c8b4670e96f26ad57dcabcb9359f812a416",
+  "source_hash_record": "qualified-source-hashes.json",
+  "runtime_record": "package-runtime.json",
+  "limitation": "instrumented dependency qualification app, not delivered Todo; no product timing or accessibility claim"
+}

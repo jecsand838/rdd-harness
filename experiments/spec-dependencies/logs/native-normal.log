@@ -1,0 +1,3 @@
+PASS transaction commit/reopen, explicit rollback, drop rollback, constraint-error rollback
+PASS synchronous=2 fullfsync=1, Unicode16 NFC+default-fold fixtures, local replacement+directory sync
+PASS pinned calendar/random/SHA256/strict-JSON APIs; native renameatx_np binding available

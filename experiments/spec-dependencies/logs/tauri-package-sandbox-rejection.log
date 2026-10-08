@@ -1,0 +1,11 @@
+        Warn --no-sign flag detected: Signing will be skipped.
+        Info Looking up installed tauri packages to check mismatched versions...
+    Updating crates.io index
+warning: failed to write cache, path: /Users/connorsanders/.cargo/registry/index/index.crates.io-1949cf8c6b5b557f/.cache/zc/he/zcheapstr, error: Operation not permitted (os error 1)
+ Downloading crates ...
+  Downloaded rfd v0.16.0
+error: failed to open `/Users/connorsanders/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/rfd-0.16.0.crate`
+
+Caused by:
+  Operation not permitted (os error 1)
+       Error failed to build app: failed to build app

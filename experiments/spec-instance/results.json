@@ -1,0 +1,21 @@
+{
+  "purpose": "Darwin file-lease feasibility; not Todo or packaged single-instance acceptance",
+  "host_profile": "REF-MAC-M3MAX",
+  "observed_date_utc": "2026-10-08",
+  "source_sha256": {
+    "probe.rs": "58573de2ae5db4820e6a5e99f6843d1cdf5f4594cc274247443ad6f31d26cd3d",
+    "run.py": "38c33c4cbdff6fe6b87eabb51ce803f3dc846ceab2b8bf6d145bbe8de6877303"
+  },
+  "transcript_sha256": "622d19f87da7450727427ea34a9c2dba641139a14019d1d650dbf2aa62be6d77",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "reproduce": "python3 experiments/spec-instance/run.py",
+  "exit_code": 0,
+  "simultaneous_children": 8,
+  "result": "passed",
+  "limits": [
+    "Activation callback is simulated, not window focus",
+    "No application/database implementation",
+    "No different-account access test",
+    "Not the full FR-024 packaged acceptance suite"
+  ]
+}

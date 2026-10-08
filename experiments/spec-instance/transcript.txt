@@ -1,0 +1,10 @@
+COMMAND rustc --edition=2024 -D warnings experiments/spec-instance/probe.rs -o target/spec-instance/instance-probe
+EXIT 0
+COMMAND target/spec-instance/instance-probe <fresh-owned-fixture-directory>
+PASS simultaneous-launch children=8 owners=1 secondaries=7 all-activation-acks=matched
+PASS sequential-launch no-owner-marker ack-after-simulated-activation=true
+PASS private-files mode=0600 directory=0700 no-network-endpoint=true
+PASS abrupt-owner-termination signal=SIGKILL new-owner-acquired=true lease-inode=preserved
+PASS independent-data-location independent-lease=true
+PASS instance-qualification cases=5 application-acceptance=false
+EXIT 0

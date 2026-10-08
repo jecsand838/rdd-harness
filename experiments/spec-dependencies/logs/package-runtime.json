@@ -1,0 +1,8 @@
+{
+  "command": [
+    "/private/tmp/rdd-spec-dependencies/target/release/bundle/macos/RDD Dependency Probe.app/Contents/MacOS/dependency-desktop-probe"
+  ],
+  "cwd": "/private/tmp/rdd-spec-dependencies",
+  "exit": 0,
+  "seconds": 30.369
+}

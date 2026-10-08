@@ -1,0 +1,226 @@
+{
+  "access_date": "2026-10-08",
+  "lock_package_count": 638,
+  "dependencies": [
+    {
+      "name": "turso",
+      "version": "0.8.2",
+      "license": "MIT",
+      "rust_version": null,
+      "source_url": "https://crates.io/crates/turso/0.8.2",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "93206d3b19ab53457db0a93bd596a752af51b4dff99db831ac6d582daecf4007",
+      "registry_checksum": "a2ebd8a76c2b005a9f42de15e0fe232cd9c17d7c8acb571ddfa294e6c9fa1e44"
+    },
+    {
+      "name": "tokio",
+      "version": "1.53.2",
+      "license": "MIT",
+      "rust_version": "1.71",
+      "source_url": "https://crates.io/crates/tokio/1.53.2",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "d5da534aec653dc20626a50578d87da105303bbcfd3adbc912054d9cf138dc57",
+      "registry_checksum": "e95f91fcc7a621e8b030f6aa23c71fe9838ae2fb4d8118b75602a328f5144044"
+    },
+    {
+      "name": "tauri",
+      "version": "2.12.1",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.90",
+      "source_url": "https://crates.io/crates/tauri/2.12.1",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "c7a328551449e54a9cc5c8ddc61a2b9eef3c6f85980bbccc7e1a5212133bafad",
+      "registry_checksum": "ed99ee9694a2deb776d91cae48ac7411ddfc89ecae2f9b5041111d8c88f2ace9"
+    },
+    {
+      "name": "tauri-build",
+      "version": "2.7.1",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.90",
+      "source_url": "https://crates.io/crates/tauri-build/2.7.1",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "95c8fa5daf33079c3087ab67dfe17a76c82448dc4f67b0199181ea991d693941",
+      "registry_checksum": "59563ca5b331fd97f27ee9672ec8d36d33bb3c9e2c9f6710a1a5687256052e45"
+    },
+    {
+      "name": "tauri-cli",
+      "version": "2.12.1",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.90",
+      "source_url": "https://crates.io/crates/tauri-cli/2.12.1",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "64e16c98e1c247dff229028aa55b39a5d96af9a875d05f174040c72e83bf56f0",
+      "registry_checksum": null
+    },
+    {
+      "name": "tauri-plugin-dialog",
+      "version": "2.8.1",
+      "license": "Apache-2.0 OR MIT",
+      "rust_version": "1.90",
+      "source_url": "https://crates.io/crates/tauri-plugin-dialog/2.8.1",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "5a7086e2b05dd9a9f54254dc86b53900acf619abeb3a69fc5dc1dba334aa425a",
+      "registry_checksum": "daf9a5c92e39bdd84f22f6be9230e39d0c4e140345f71ffe6058dca4f71127cf"
+    },
+    {
+      "name": "leptos",
+      "version": "0.8.22",
+      "license": "MIT",
+      "rust_version": "1.88",
+      "source_url": "https://crates.io/crates/leptos/0.8.22",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "7378ffc42a397474ebe860098d2de06362778f73aa7a1cdf8cba9bbf3b7434ee",
+      "registry_checksum": "713ee6895e3d1126ea9781280d01414f5643f3f201a949b71efffac07d735f00"
+    },
+    {
+      "name": "wasm-bindgen",
+      "version": "0.2.129",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.81",
+      "source_url": "https://crates.io/crates/wasm-bindgen/0.2.129",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "96843908592c36f81e731f634488401256cc45e23edbf6543895b2bd79813b32",
+      "registry_checksum": "9bb54f33acc68fd454578d9820b0bde1a1a3d17aa17bb7b6595806d02886d409"
+    },
+    {
+      "name": "wasm-bindgen-cli",
+      "version": "0.2.129",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.86",
+      "source_url": "https://crates.io/crates/wasm-bindgen-cli/0.2.129",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "77cb65a5306585f0c40bd0662f657a99e836f7abbd8fc46a736a631b0eee5da7",
+      "registry_checksum": null
+    },
+    {
+      "name": "wasm-bindgen-futures",
+      "version": "0.4.79",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.81",
+      "source_url": "https://crates.io/crates/wasm-bindgen-futures/0.4.79",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "b3ad8cff9fe068a9a483c74c1c085c9733c8d70f35b4a2bedd5c4fa70373d69d",
+      "registry_checksum": "3cbab34de2d982e9b48e18d216d04c4a6f641066ff19ffb699980f591ee3610e"
+    },
+    {
+      "name": "js-sys",
+      "version": "0.3.106",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.81",
+      "source_url": "https://crates.io/crates/js-sys/0.3.106",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "cdd44598eabfed5a9ada1ab03c32445c2f895389997454e3f9901d4bb05db9c2",
+      "registry_checksum": "7883d941dae510fb2d978fc3fe018c71c9e2892fd38854de3e8b92c2e5ad9cc5"
+    },
+    {
+      "name": "web-sys",
+      "version": "0.3.106",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.81",
+      "source_url": "https://crates.io/crates/web-sys/0.3.106",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "96caa0cf134f76c41d8f473b2a85276b896616baf14c298dcc588fbc83f31b8a",
+      "registry_checksum": "88261b9deccee56594c11a3460c462c41f58d148598fe70ad77070126a68aba4"
+    },
+    {
+      "name": "unicode-normalization",
+      "version": "0.1.24",
+      "license": "MIT/Apache-2.0",
+      "rust_version": "1.36",
+      "source_url": "https://crates.io/crates/unicode-normalization/0.1.24",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "c9b3a7c693bc221578c150ca0f889cb42a301b09258a33d42d5a2541104534e3",
+      "registry_checksum": "5033c97c4262335cded6d6fc3e5c18ab755e1a3dc96376350f3d8e9f009ad956"
+    },
+    {
+      "name": "caseless",
+      "version": "0.2.2",
+      "license": "MIT",
+      "rust_version": null,
+      "source_url": "https://crates.io/crates/caseless/0.2.2",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "a2382e2ed81474011899190a32894e4040fceab73e10966978e06eb4ab4eb9d1",
+      "registry_checksum": "8b6fd507454086c8edfd769ca6ada439193cdb209c7681712ef6275cccbfe5d8"
+    },
+    {
+      "name": "serde",
+      "version": "1.0.229",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.56",
+      "source_url": "https://crates.io/crates/serde/1.0.229",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "6883caefd46e86eb15d22d3a6d274ad304c5e7934ab70eb58d81b7c4a29ef9db",
+      "registry_checksum": "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba"
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.151",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.71",
+      "source_url": "https://crates.io/crates/serde_json/1.0.151",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "00b920255c320a278bf25b962b491263a19d8c90e12e4a91c1d823db71eabb2f",
+      "registry_checksum": "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
+    },
+    {
+      "name": "chrono",
+      "version": "0.4.45",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.62.0",
+      "source_url": "https://crates.io/crates/chrono/0.4.45",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "89b7bdca1f8745c0894ff039971c04fc51e444becbc9eb87598509a32955b1b5",
+      "registry_checksum": "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
+    },
+    {
+      "name": "getrandom",
+      "version": "0.4.3",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.85",
+      "source_url": "https://crates.io/crates/getrandom/0.4.3",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "4f107fe4ceacee71d0068cfbbc69554b3d8523a1fcbb99b17e9fa0d008961ff9",
+      "registry_checksum": "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
+    },
+    {
+      "name": "sha2",
+      "version": "0.11.0",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.85",
+      "source_url": "https://crates.io/crates/sha2/0.11.0",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "bb187fe9b788b66dc91c717ace2a41b5da5518672a302696ab79bf4619d510a9",
+      "registry_checksum": "446ba717509524cb3f22f17ecc096f10f4822d76ab5c0b9822c5f9c284e825f4"
+    },
+    {
+      "name": "libc",
+      "version": "0.2.190",
+      "license": "MIT OR Apache-2.0",
+      "rust_version": "1.65",
+      "source_url": "https://crates.io/crates/libc/0.2.190",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "5d410962aefee7ac5916c9cdd915a717228576dbe3c8a09460fd58c4ec751e2c",
+      "registry_checksum": "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
+    },
+    {
+      "name": "prost",
+      "version": "0.14.4",
+      "license": "Apache-2.0",
+      "rust_version": "1.85",
+      "source_url": "https://crates.io/crates/prost/0.14.4",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "0d6f06dd96d0b54342ea7e1d9a3fdc8d166782bde60771b06c5cb0bb38a06592",
+      "registry_checksum": "528ac67416ff8646872a3c02cad9cc4ee5dc9f9540c9b10771855c95cb2e5ae1"
+    },
+    {
+      "name": "prost-types",
+      "version": "0.14.4",
+      "license": "Apache-2.0",
+      "rust_version": "1.85",
+      "source_url": "https://crates.io/crates/prost-types/0.14.4",
+      "access_date": "2026-10-08",
+      "published_manifest_sha256": "aa701710ee3e8753d09f0ef5d018944d30de0b1497422d2af7e02ba0782596cc",
+      "registry_checksum": "f94967dc7688f3054c7fac87473ffae4cc4c3904800e2d9f5b857246d8963b0a"
+    }
+  ]
+}

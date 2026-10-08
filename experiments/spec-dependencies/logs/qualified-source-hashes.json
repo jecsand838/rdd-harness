@@ -1,0 +1,33 @@
+{
+  "access_date": "2026-10-08",
+  "source_sha256": {
+    "Cargo.lock": "eee415379f84f9060163e96d618adb34139c19fefee6bb3a7d5ea2e491d41c5f",
+    "Cargo.toml": "8ec5753cac5ca9d4773a6254fb944be023ade29a14ac1122b0571c35a43c06f9",
+    "capture.py": "593daac5b9bfbd40c9d8e93a4855ef383acce6edb4105459c563197b69bf2065",
+    "desktop/Cargo.toml": "66cbe7524c94ecc47cd3f0b9cc308dcc10439297e0a28fa98e12bd27989e2ee4",
+    "desktop/build.rs": "3b01ba9a7a34270d09e00138b22d4ed0fd314a5bcc45db1136c3c5a3b8b2a99b",
+    "desktop/capabilities/probe.json": "3bb89fb20cb146768b058d4802ae1a6d578641b22dcbcc3628f5ebf2e6e22a1f",
+    "desktop/icons/icon.png": "c32060e2572287d0ce23701f2442c36c8ce700f1a390c0df42bc183705ab8c62",
+    "desktop/src/main.rs": "61041354fd75f215c2396c1e87dd987311062dec826d9b6e5b2c025e5307cfcb",
+    "desktop/tauri.conf.json": "d94cc8f8a643ef37a31d2710eab6a4c77dab95c6a4f7655073c9aa03adc5b4dc",
+    "native/Cargo.toml": "90bc769d449fd252b0e96b92cc8e5a747951b3fc624e57c433d324a6c6ae6127",
+    "native/src/commit_gate.rs": "6ff401e0179216e9185a9cb102f389728e406bdb99967e37bfad0536ab1b4e95",
+    "native/src/main.rs": "da2354f8f1d3b5c65dd955cc58e82c3e67b118a7cb357adec25e0c7ad7cd77c8",
+    "recheck.py": "978b56c6ece509cfcc2764902ec1c8ed7088ef533812a4b2a579669558acc1dd",
+    "rust-toolchain.toml": "2a2dee92d6754917d27a9a007a70a583bccc7e360eca5e21af90667a7a707421",
+    "ui/Cargo.toml": "daa6d49b4d3e3d48f6ee24dc994deb4a60b9857940a800669d0a04b508426a05",
+    "ui/boot.js": "b2426513e8d94924ba751df7a53593a49ae3c7571fb7ee625a7f55626398cfcd",
+    "ui/index.html": "2131bf6a384c73ae9ea95ef47f7e16605ccfc3c820c77388df52d318307df167",
+    "ui/src/lib.rs": "9517a15b908d66634912a7902501b0f30ce1eb86782a3a03c3c11482b934b2ce"
+  },
+  "generated_source_sha256": {
+    "Cargo.toml": "f760f99abe1e5ef96384034c3876e7cb84d20a59a6569e31fb05c77e30f7fdd8",
+    "src/generated/rdd.v1.rs": "7acb445140d814ea88d9af0adf528357e66fa6a6a0045e68630de03766a69e94",
+    "src/generated/todo.v1.rs": "36551f0a9c76ef9be6cd0c2c2d9eef933e63cf7c89c07e2f1f4dec44f0f488a7",
+    "src/lib.rs": "5082caa8ccc097fdcc54941dc85b65017d9f63cb2af1d5125067e0bd27b8e6df"
+  },
+  "packaged_binary_sha256": "b9bf2b96b34d2cc4956c9bf0c684f3328668a951ec8b7010e0842d443c9e82d1",
+  "runtime_record": "package-runtime.json",
+  "fresh_fixture_record": "package-runtime-fixture.json",
+  "selection": "single-instance plugin removed; finish_probe requires show and set_focus success"
+}

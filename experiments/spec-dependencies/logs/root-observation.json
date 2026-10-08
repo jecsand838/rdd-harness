@@ -1,0 +1,24 @@
+{
+  "access_date": "2026-10-08",
+  "current_measurement": {
+    "observer": "dependency researcher via fresh packaged process runner",
+    "package_binary_sha256": "b9bf2b96b34d2cc4956c9bf0c684f3328668a951ec8b7010e0842d443c9e82d1",
+    "process_exit": 0,
+    "runner_seconds": 30.369,
+    "deliberate_observation_hold_seconds": 30,
+    "stdout": "PASS packaged Rust WASM invoke + generated QueryRequest/QueryResponse + Turso commit",
+    "fresh_report": "PASS packaged Rust WASM invoke + generated QueryRequest/QueryResponse + Turso commit",
+    "fixture_record": "package-runtime-fixture.json",
+    "activation_api_result": "show() and set_focus() both returned Ok before fresh report was written"
+  },
+  "current_visual_observation": {
+    "observer": "independent root coordinator",
+    "heading": "Dependency qualification",
+    "body": "pending",
+    "counted_as_pass": false,
+    "limitation": "CUA-selected app launched a separate unconfigured process after instance plugin removal; root terminated exact orphan PID40096. No latest visual PASS is claimed."
+  },
+  "historical_visual_pass_record": "historical-with-single-instance/root-observation.json",
+  "source_hash_record": "qualified-source-hashes.json",
+  "limitation": "instrumented dependency qualification app, not delivered Todo; no product timing, instance protocol or accessibility claim"
+}

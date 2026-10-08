@@ -1,0 +1,22 @@
+syntax = "proto3";
+package todo.v1;
+
+import "todo/v1/model.proto";
+
+// Account-scoped native file adapter; opaque tokens are bound to one selected file.
+service BackupService {
+  rpc SelectDestination(SelectDestinationRequest) returns (SelectDestinationResponse);
+  rpc Publish(PublishRequest) returns (PublishResponse);
+  rpc SelectCandidate(SelectCandidateRequest) returns (SelectCandidateResponse);
+  rpc ReleaseCandidate(ReleaseCandidateRequest) returns (ReleaseCandidateResponse);
+}
+message SelectDestinationRequest {}
+message SelectedDestination { string token = 1; string display_location = 2; }
+message SelectDestinationResponse { oneof result { SelectedDestination value = 1; Failure failure = 2; } }
+message PublishRequest { string operation_id = 1; string destination_token = 2; Snapshot snapshot = 3; }
+message PublishResponse { oneof result { string display_location = 1; Failure failure = 2; } }
+message SelectCandidateRequest {}
+message SelectedCandidate { string token = 1; string display_location = 2; string sha256 = 3; Snapshot snapshot = 4; }
+message SelectCandidateResponse { oneof result { SelectedCandidate value = 1; Failure failure = 2; } }
+message ReleaseCandidateRequest { string token = 1; }
+message ReleaseCandidateResponse { Failure failure = 1; }

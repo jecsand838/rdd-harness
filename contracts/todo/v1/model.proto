@@ -1,0 +1,121 @@
+syntax = "proto3";
+package todo.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Identities are exactly 32 lowercase hexadecimal characters; comparison is bytewise.
+message Task {
+  string id = 1;
+  string title = 2;
+  string notes = 3;
+  optional string due_date = 4;
+  Status status = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+}
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OPEN = 1;
+  STATUS_COMPLETED = 2;
+}
+message Content {
+  string title = 1;
+  string notes = 2;
+  optional string due_date = 3;
+}
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INVALID_INPUT = 1;
+  ERROR_CODE_CAPACITY = 2;
+  ERROR_CODE_NOT_FOUND = 3;
+  ERROR_CODE_BUSY = 4;
+  ERROR_CODE_STORAGE_UNAVAILABLE = 5;
+  ERROR_CODE_UNSUPPORTED_FORMAT = 6;
+  ERROR_CODE_CORRUPT_STORAGE = 7;
+  ERROR_CODE_UNCERTAIN = 8;
+  ERROR_CODE_STALE_TOKEN = 9;
+  ERROR_CODE_CANCELLED = 10;
+  ERROR_CODE_UNSUPPORTED_DESTINATION = 11;
+  ERROR_CODE_FORBIDDEN = 12;
+  ERROR_CODE_INTERNAL = 13;
+}
+message Failure {
+  ErrorCode code = 1;
+  optional string field = 2;
+  optional uint32 record_index = 3;
+  string correlation_id = 4;
+}
+message Snapshot {
+  uint64 generation = 1;
+  repeated Task tasks = 2;
+}
+enum StatusView {
+  STATUS_VIEW_UNSPECIFIED = 0;
+  STATUS_VIEW_OPEN = 1;
+  STATUS_VIEW_COMPLETED = 2;
+  STATUS_VIEW_ALL = 3;
+}
+enum DateFilter {
+  DATE_FILTER_UNSPECIFIED = 0;
+  DATE_FILTER_ANY = 1;
+  DATE_FILTER_TODAY = 2;
+  DATE_FILTER_OVERDUE = 3;
+  DATE_FILTER_NONE = 4;
+}
+enum Ordering {
+  ORDERING_UNSPECIFIED = 0;
+  ORDERING_NEWEST = 1;
+  ORDERING_OLDEST = 2;
+  ORDERING_EARLIEST_DUE = 3;
+}
+message Query {
+  StatusView status = 1;
+  DateFilter date = 2;
+  Ordering ordering = 3;
+  string search = 4;
+}
+message QueryResult {
+  repeated TaskSummary tasks = 1;
+  uint32 matching_count = 2;
+  uint32 collection_count = 3;
+  string today = 4;
+  uint64 generation = 5;
+  // Filled by Application; absent in pure Collection results.
+  string session_id = 6;
+  uint32 offset = 7;
+}
+message TaskSummary {
+  string id = 1;
+  string title = 2;
+  optional string due_date = 3;
+  Status status = 4;
+}
+message Create { Content content = 1; }
+message Edit { string id = 1; Content content = 2; }
+message SetStatus { string id = 1; Status status = 2; }
+message Delete { string id = 1; string confirmation_token = 2; }
+message Mutation {
+  string operation_id = 1;
+  oneof action {
+    Create create = 2;
+    Edit edit = 3;
+    SetStatus set_status = 4;
+    Delete delete = 5;
+  }
+  string session_id = 6;
+}
+enum OutcomeState {
+  OUTCOME_STATE_UNSPECIFIED = 0;
+  OUTCOME_STATE_COMMITTED = 1;
+  OUTCOME_STATE_REJECTED = 2;
+  OUTCOME_STATE_PENDING = 3;
+  OUTCOME_STATE_UNCERTAIN = 4;
+}
+message Outcome {
+  string operation_id = 1;
+  OutcomeState state = 2;
+  uint64 generation = 3;
+  optional string affected_id = 4;
+  Failure failure = 5;
+}

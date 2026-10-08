@@ -1,0 +1,15 @@
+COMMAND rustc --edition=2024 -D warnings experiments/spec-filesystem/probe.rs -o target/spec-filesystem/filesystem-probe
+EXIT 0
+COMMAND target/spec-filesystem/filesystem-probe <fresh-owned-fixture-directory>
+PASS no-clobber existing-destination=unchanged candidate=unchanged error=EEXIST
+PASS confirmed-replacement exact-new-bytes file-sync=ok fullfsync=ok directory-sync=ok
+PASS no-clobber absent-destination=complete-new-file
+PASS alias-detection hardlink=device-inode symlink=canonical-path-and-device-inode
+PASS cut=before-publication signal=SIGKILL journal=pending reconciled=old exact_bytes=65568
+PASS cut=after-publication-before-ack signal=SIGKILL journal=pending reconciled=new exact_bytes=131106
+PASS cut=before-publication signal=SIGKILL journal=pending reconciled=old exact_bytes=65568
+PASS cut=after-publication-before-ack signal=SIGKILL journal=pending reconciled=new exact_bytes=131106
+PASS cut=before-publication signal=SIGKILL journal=pending reconciled=old exact_bytes=65568
+PASS cut=after-publication-before-ack signal=SIGKILL journal=pending reconciled=new exact_bytes=131106
+PASS filesystem-qualification cases=10 crash-cases=6 production-acceptance=false
+EXIT 0

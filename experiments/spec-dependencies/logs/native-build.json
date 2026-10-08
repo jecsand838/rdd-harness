@@ -1,0 +1,12 @@
+{
+  "command": [
+    "cargo",
+    "build",
+    "--locked",
+    "-p",
+    "dependency-native-probe"
+  ],
+  "cwd": "/private/tmp/rdd-spec-dependencies",
+  "exit": 0,
+  "seconds": 0.44
+}

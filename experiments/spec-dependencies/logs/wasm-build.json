@@ -1,0 +1,15 @@
+{
+  "command": [
+    "cargo",
+    "build",
+    "--locked",
+    "--release",
+    "-p",
+    "dependency-ui-probe",
+    "--target",
+    "wasm32-unknown-unknown"
+  ],
+  "cwd": "/private/tmp/rdd-spec-dependencies",
+  "exit": 0,
+  "seconds": 0.245
+}

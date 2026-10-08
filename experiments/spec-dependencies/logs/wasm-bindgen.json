@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/private/tmp/rdd-spec-dependencies/tools/bin/wasm-bindgen",
+    "--target",
+    "web",
+    "--out-dir",
+    "/private/tmp/rdd-spec-dependencies/dist",
+    "/private/tmp/rdd-spec-dependencies/target/wasm32-unknown-unknown/release/dependency_ui_probe.wasm"
+  ],
+  "cwd": "/private/tmp/rdd-spec-dependencies",
+  "exit": 0,
+  "seconds": 0.041
+}

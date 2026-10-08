@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/private/tmp/rdd-spec-dependencies/target/debug/dependency-native-probe",
+    "normal",
+    "/private/tmp/rdd-spec-dependencies/rdd-native-yx311bdr/normal.db"
+  ],
+  "cwd": "/private/tmp/rdd-spec-dependencies",
+  "exit": 0,
+  "seconds": 1.105
+}

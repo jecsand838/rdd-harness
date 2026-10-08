@@ -1,0 +1,29 @@
+{
+  "source_sha256": {
+    "Cargo.lock": "99ad767015e53abe85b9a9e11e5f2183c38cad62cd90f0d05f0611c502aef422",
+    "Cargo.toml": "8ec5753cac5ca9d4773a6254fb944be023ade29a14ac1122b0571c35a43c06f9",
+    "capture.py": "f0410a3f0b993436bd62accd9821dc72a5036862cc14fb611d8276cd531c15af",
+    "desktop/Cargo.toml": "8ae84a498c59f593e9146b9c00e7511e4a1fad7ca3bc23556f49c833663f46f0",
+    "desktop/build.rs": "3b01ba9a7a34270d09e00138b22d4ed0fd314a5bcc45db1136c3c5a3b8b2a99b",
+    "desktop/capabilities/probe.json": "3bb89fb20cb146768b058d4802ae1a6d578641b22dcbcc3628f5ebf2e6e22a1f",
+    "desktop/icons/icon.png": "c32060e2572287d0ce23701f2442c36c8ce700f1a390c0df42bc183705ab8c62",
+    "desktop/src/main.rs": "c83ac7a8f805004952d65cf2649ab73421ee8fa731ba1a54d2c8c00478e5e78a",
+    "desktop/tauri.conf.json": "d94cc8f8a643ef37a31d2710eab6a4c77dab95c6a4f7655073c9aa03adc5b4dc",
+    "native/Cargo.toml": "90bc769d449fd252b0e96b92cc8e5a747951b3fc624e57c433d324a6c6ae6127",
+    "native/src/commit_gate.rs": "6ff401e0179216e9185a9cb102f389728e406bdb99967e37bfad0536ab1b4e95",
+    "native/src/main.rs": "da2354f8f1d3b5c65dd955cc58e82c3e67b118a7cb357adec25e0c7ad7cd77c8",
+    "recheck.py": "79ee659ec526453ff6093392602052b6ff03c6b2138ba1c38fc7ecd5995e9698",
+    "rust-toolchain.toml": "2a2dee92d6754917d27a9a007a70a583bccc7e360eca5e21af90667a7a707421",
+    "ui/Cargo.toml": "daa6d49b4d3e3d48f6ee24dc994deb4a60b9857940a800669d0a04b508426a05",
+    "ui/boot.js": "b2426513e8d94924ba751df7a53593a49ae3c7571fb7ee625a7f55626398cfcd",
+    "ui/index.html": "2131bf6a384c73ae9ea95ef47f7e16605ccfc3c820c77388df52d318307df167",
+    "ui/src/lib.rs": "9517a15b908d66634912a7902501b0f30ce1eb86782a3a03c3c11482b934b2ce"
+  },
+  "generated_source_sha256": {
+    "Cargo.toml": "f760f99abe1e5ef96384034c3876e7cb84d20a59a6569e31fb05c77e30f7fdd8",
+    "src/lib.rs": "5082caa8ccc097fdcc54941dc85b65017d9f63cb2af1d5125067e0bd27b8e6df",
+    "src/generated/todo.v1.rs": "36551f0a9c76ef9be6cd0c2c2d9eef933e63cf7c89c07e2f1f4dec44f0f488a7",
+    "src/generated/rdd.v1.rs": "7acb445140d814ea88d9af0adf528357e66fa6a6a0045e68630de03766a69e94"
+  },
+  "packaged_binary_sha256": "1ca3121dd7217c4c5df4afb005f71c8b4670e96f26ad57dcabcb9359f812a416"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "tauri-plugin-single-instance",
+  "version": "2.5.2",
+  "decision": "rejected",
+  "access_date": "2026-10-08",
+  "source_url": "https://docs.rs/crate/tauri-plugin-single-instance/2.5.2/source/src/platform_impl/macos.rs",
+  "published_source_sha256": "b7e40fc1c0878d529024560e24014de3fa56162b8c47d5144f900e5119e3b490",
+  "findings": [
+    "global /tmp/<bundle identifier>_si.sock, no account/data-location discriminator",
+    "notify writes args and exits without acknowledgment",
+    "listener bind happens in spawned async task after setup continues",
+    "bind failure logs launching normally"
+  ]
+}

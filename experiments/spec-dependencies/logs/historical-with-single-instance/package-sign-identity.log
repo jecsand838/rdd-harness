@@ -1,0 +1,23 @@
+Executable=/private/tmp/rdd-spec-dependencies/target/release/bundle/macos/RDD Dependency Probe.app/Contents/MacOS/dependency-desktop-probe
+Identifier=dev.rdd.dependency-probe
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20400 size=57041 flags=0x2(adhoc) hashes=1776+3 location=embedded
+VersionPlatform=1
+VersionMin=720896
+VersionSDK=1769472
+Hash type=sha256 size=32
+CandidateCDHash sha256=a4cb3d707c70f31e58bb9129667ab1c826f9a2b9
+CandidateCDHashFull sha256=a4cb3d707c70f31e58bb9129667ab1c826f9a2b917aa507a37b1d7e0e49cfb21
+Hash choices=sha256
+CMSDigest=a4cb3d707c70f31e58bb9129667ab1c826f9a2b917aa507a37b1d7e0e49cfb21
+CMSDigestType=2
+Executable Segment base=0
+Executable Segment limit=17760256
+Executable Segment flags=0x1
+Page size=16384
+CDHash=a4cb3d707c70f31e58bb9129667ab1c826f9a2b9
+Signature=adhoc
+Info.plist entries=13
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=0
+Internal requirements count=0 size=12
