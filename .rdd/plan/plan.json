@@ -1,0 +1,1800 @@
+{
+  "schema_version": 1,
+  "spec_digest": "385fb3552e8f85ca1bdeea3cc1a67f3979431d1a498cc8c3488ce31d03f8f5a7",
+  "phases": [
+    {
+      "id": "P01",
+      "goal": "Deliver the complete offline Todo release on the frozen reference Mac, with every operation and all53Must requirements independently verified; no partial product availability is accepted.",
+      "tasks": [
+        "T001",
+        "T002",
+        "T003",
+        "T004",
+        "T005",
+        "T006",
+        "T007",
+        "T008",
+        "T009",
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014",
+        "T015",
+        "T016",
+        "T017",
+        "T018",
+        "T019",
+        "T020",
+        "T021"
+      ],
+      "checks": [
+        "C-CONTRACTS",
+        "C-SPEC-INPUTS",
+        "C-CONSUMER",
+        "C-FILESYSTEM",
+        "C-INSTANCE",
+        "C-QUALIFICATION",
+        "FUNCTIONAL",
+        "QUERY",
+        "BACKUP",
+        "RECOVERY",
+        "LIFECYCLE",
+        "C-CAPACITY",
+        "C-PENDING",
+        "C-DIAGNOSTICS",
+        "C-ARCH",
+        "C-BUILD",
+        "C-SECURITY",
+        "C-HANDOFF",
+        "C-PACKAGE",
+        "C-OFFLINE",
+        "C-PRIVACY",
+        "C-A11Y-KEYBOARD",
+        "C-A11Y-VOICEOVER",
+        "C-A11Y-VISUAL",
+        "C-PERF-LAUNCH",
+        "C-PERF-INTERACTIONS",
+        "C-PERF-BACKUP",
+        "C-POLICY-SIDECARS"
+      ],
+      "requirements_closed": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-006",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "FR-015",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "FR-024",
+        "FR-025",
+        "NFR-A11Y-001",
+        "NFR-A11Y-002",
+        "NFR-A11Y-003",
+        "NFR-ARCH-001",
+        "NFR-ARCH-002",
+        "NFR-DATA-001",
+        "NFR-DATA-002",
+        "NFR-DATA-003",
+        "NFR-DATA-004",
+        "NFR-MAINT-001",
+        "NFR-OBS-001",
+        "NFR-OFF-001",
+        "NFR-PERF-001",
+        "NFR-PERF-002",
+        "NFR-PERF-003",
+        "NFR-PERF-004",
+        "NFR-PERF-005",
+        "NFR-PLAT-001",
+        "NFR-PRIV-001",
+        "NFR-PRIV-002",
+        "NFR-QUAL-001",
+        "NFR-QUAL-002",
+        "NFR-SEC-001",
+        "NFR-SEC-002",
+        "NFR-TECH-001",
+        "NFR-TECH-002",
+        "NFR-TECH-003",
+        "NFR-TECH-004"
+      ],
+      "deliverables": [
+        "apps/desktop/src/runtime.rs",
+        "modules/core/src/application/mod.rs",
+        "apps/ui/src/views.rs",
+        "docs/release-handoff.md"
+      ],
+      "independent_evidence": [
+        "Baseline inputs are only frozen contracts/signatures, pinned toolchain/dependency/primitive qualifications, D1/D2/oracles and specified semantics. There is no Todo production baseline. No future phase exists; all producers/tests/build/evaluators/packaging/docs and human/reference-host evidence are inside P01.",
+        "Frozen full-suite commands and operation availability do not authorize intermediate unavailable product operations; therefore one dependency-closed phase with several bounded verticals is the honest partition. Tests then modification then addition then documentation; no deletion is necessary because inspected roots contain no prior application.",
+        "T001-T009 must each record actual newly authored kind=test behavioral RED through a buildable real native boundary before T010 removes scaffold providers. T010 proves only source wiring from frozen signatures; compilation/behavior are accepted only at the join of T011-T021. Source wiring never claims future implementation availability.",
+        "All28 frozen checks run at P01: complete nonzero automated suites, 360 real-engine crash trials, clean locked native/WASM/build and contract proofs; actual installed .app all golden journeys, blocked networking, process-attributed no-outbound and separate-account denial; keyboard/VoiceOver/rendered contrast and200percent; P1/P2/P3 raw samples at REF-MAC-M3MAX. No source-inspection or mock-only substitute is accepted.",
+        "Reference-host benchmark preconditions include20GiBfree/AC/normal mode/1280x720/internalSSD/no concurrent workload; the frozen free-space observation is insufficient and requires a fresh valid observation. Missing actual observer/VoiceOver/account/host evidence is an environment blocker at acceptance, not a preparation pass or skipped check.",
+        "One P01 PR targets the committed/pushed prepared baseline; all checks and independent review bind the exact candidate revision/package. Keep open-phase repair in scoped tasks/category sweeps; do not merge/deploy. Seal only after gate phase/stack publish/verify. Final gate project creates validation/checkpoint after seal.",
+        "Rollback means preserving old/new atomic database and selected-file states plus receipts under the frozen failure model, not resetting user data. Version1 has no prior released migration. Failed/future/unreadable storage preserves original bytes with retry/exit; source rollback cannot overwrite user data or reinterpret an uncertain result.",
+        "The authorized PREP-POLICY-001 amendment qualified safe absent-file sidecars in run R20261008T074537Z-459de7. Tasks T001/T004/T005/T006/T010/T012 use sidecars; their18noncommentable future targets remain absent until implementation. Only60comment-only source shells materialize. Prior blocked draft/review remain archived; all requirements/contract/generated identities are preserved.",
+        "Preparation evidence SHA-256: .rdd/plan/planning-notes.md = 0a0a5779b084f76ea67ee1705bb5720600f7122467ef0fac1de4c1703b94eeff. Supplementary evidence only; frozen requirements/spec/contracts and canonical task/phase obligations remain authoritative.",
+        "Preparation evidence SHA-256: .rdd/plan/target-tree.md = 170d847282caae5fe41ba9b1abe927151b24038d582e8879ef1c308c2eca80b3. Supplementary evidence only; frozen requirements/spec/contracts and canonical task/phase obligations remain authoritative.",
+        "Preparation evidence SHA-256: .rdd/plan/capabilities.json = 124b25bfb03f95e85e65508047d30d86e6215ba54f8a046b896569310a1433ff. Supplementary evidence only; frozen requirements/spec/contracts and canonical task/phase obligations remain authoritative.",
+        "Preparation evidence SHA-256: .rdd/plan/traceability.json = 4d3e853eefdeb7e9c16ba19b2a03d95c10bbff0ca1b87966516f36bb3825e9d0. Supplementary evidence only; frozen requirements/spec/contracts and canonical task/phase obligations remain authoritative.",
+        "Preparation evidence SHA-256: .rdd/plan/scenario-matrix.md = b15b14c11b51fa16b08a11154a0d45afc4a8986a2b9063b99397539f12bb9f37. Supplementary evidence only; frozen requirements/spec/contracts and canonical task/phase obligations remain authoritative.",
+        "Preparation evidence SHA-256: .rdd/plan/preparation-blocker.md = 3e9b309aed021602292b2a405fb494e0d22d6fead6b9f944667727cf01d52abd. Supplementary evidence only; frozen requirements/spec/contracts and canonical task/phase obligations remain authoritative.",
+        "PREP-CI-PYTHON-001 and PREP-CI-HOST-001 rebind the unchanged 21-task graph to specification 385fb3552e8f85ca1bdeea3cc1a67f3979431d1a498cc8c3488ce31d03f8f5a7 in run R20261008T085017Z-099ff9. All application obligations/category edges/write ownership remain retained. The execution projection matches all 28 current checks: 22 complete reference-host obligations and six ordinary proofs; hosted pending_external is not acceptance. Fresh independent preparation review, controller preparation and exact three-platform hosted baseline verify are mandatory.",
+        "Preparation evidence SHA-256: .rdd/plan/independent-review.md = df309ac235b450b92f27681970e46336553da2144ae4a2b30c97333478bfb02b. Supplementary evidence only; frozen requirements/spec/contracts and canonical task/phase obligations remain authoritative."
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Bootstrap runnable native-boundary assertions and exact locked build harness",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-006",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-014",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-022",
+        "NFR-ARCH-001",
+        "NFR-ARCH-002",
+        "NFR-MAINT-001",
+        "NFR-TECH-001",
+        "NFR-TECH-002",
+        "NFR-TECH-003",
+        "NFR-TECH-004"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [],
+      "writes": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "modules/core/Cargo.toml",
+        "modules/core/src/lib.rs",
+        "apps/desktop/Cargo.toml",
+        "apps/desktop/build.rs",
+        "apps/desktop/src/lib.rs",
+        "apps/desktop/src/main.rs",
+        "apps/desktop/tauri.conf.json",
+        "apps/desktop/capabilities/main.json",
+        "apps/desktop/permissions/application.toml",
+        "apps/ui/Cargo.toml",
+        "apps/ui/src/lib.rs",
+        "apps/ui/index.html",
+        "tests/acceptance/Cargo.toml",
+        "tests/acceptance/Cargo.lock",
+        "tests/acceptance/src/lib.rs",
+        "tests/acceptance/src/fixtures.rs",
+        "tests/acceptance/tests/functional.rs",
+        "tests/architecture/check.py",
+        "tests/release/build.py",
+        "apps/desktop/icons/icon.png"
+      ],
+      "checks": [
+        "FUNCTIONAL"
+      ],
+      "acceptance": [
+        "Create exact-version Cargo/test/build infrastructure with the three approved application units and a standalone acceptance harness; gen/rust and qualification projects remain excluded and unmodified. Commit real locks before invoking frozen --locked commands.",
+        "The only application entry scaffold is core/src/lib.rs generated-trait typed explicit not-implemented providers, desktop entry/command registration with actual Tauri byte decode/delegation/encode, and a minimal Rust/WASM invoke entry. No task validation, persistence, query, lifecycle or UI feature is implemented by the scaffold. Use the existing Failure taxonomy for safe explicit unavailable failures; do not alter contracts.",
+        "FUNCTIONAL executes named frozen scenarios through the actual native command boundary. First real-boundary valid Create assertion expects committed success and receives the explicit unavailable result; capture assertion/panic RED after successful compilation and startup. Missing tools, unexecuted/ignored cases, compilation errors and mock-only persistence are not RED.",
+        "Build evaluator runs locked native/WASM build, packaged ad-hoc signing and contract reproduction. Architecture evaluator inventories dependency/provider/consumer/command/SQL/filesystem ownership and proves rejection with forbidden fixtures in its own temporary directories. These evaluators can fail until production exists; they never print a fixed pass.",
+        "Every T001 product scaffold path is replaced or finalized by T010; test-only helpers remain under tests. Enumerate exact scenario IDs and executed counts and require nonzero cases; later functional/security additions preserve these assertions.",
+        "Set acceptance autobins=false and explicit runnable integration test targets; never import future helper shells into its library. Per-target helpers use #[path] once authored. T004/T005 own separate standalone child fixture crates and invoke their locked build at runtime, so future main-less shells cannot break first FUNCTIONAL. Copy the frozen qualified experiments/spec-dependencies/desktop/icons/icon.png as the minimal Tauri build asset into the declared app icon path; no future undeclared asset write is needed.",
+        "Declare the frozen exact optional test-instrumentation features/dependencies and child fixture isolation up front; all defaults and release builds exclude test-only turso_core hooks. Build-generated WASM/bindgen/package assets go only to ignored target/temp output directories and are consumed by configured resource paths, not undeclared source writes."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "Cargo.toml",
+        "mode": "sidecar"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T002",
+      "title": "Assert exact query, paging and calendar-independent selection oracles",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-007",
+        "FR-008",
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "FR-015",
+        "FR-018",
+        "NFR-PERF-001",
+        "NFR-SEC-001"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001"
+      ],
+      "writes": [
+        "tests/acceptance/tests/query.rs"
+      ],
+      "checks": [
+        "QUERY"
+      ],
+      "acceptance": [
+        "Exercise every QUERY-linked scenario with Q1/D1 hand-authored expected identities/order, separate normalization vectors and the 30000-scalar Hangul query; never generate expected results using product selection/normalization.",
+        "Cover AND combinations, timestamps/ID ties, notes-only literal punctuation, status/empty/count, stale replies, retained query controls/drafts and full paging. QUERY RED must be a newly authored valid Query expected-result assertion against the executable boundary stub, not another target failure."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/query.rs",
+        "mode": "inline"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T003",
+      "title": "Assert real backup parsing, publication and replacement boundaries",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-004",
+        "FR-006",
+        "FR-009",
+        "FR-016",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "NFR-DATA-002",
+        "NFR-PRIV-002"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001"
+      ],
+      "writes": [
+        "tests/acceptance/tests/backup.rs",
+        "tests/acceptance/src/backup_fixtures.rs"
+      ],
+      "checks": [
+        "BACKUP"
+      ],
+      "acceptance": [
+        "Cover all BACKUP-linked scenarios: strict required/unknown/duplicate fields, invalid/empty/capacity/clock-correction documents, retained candidates, stale tokens/generations, draft/confirmation and consistent snapshots.",
+        "Use real native selected-file adapters with narrowly controlled test-only chooser input and actual temporary APFS files; independently observe old/new bytes, aliases/hardlinks/symlinks, managed paths, unsupported destinations, overwrite cancellation and publication interruption. Retain full publication receipt/replay assertions; mocks cannot be sole acceptance provider.",
+        "BACKUP RED is a real executable valid selected candidate/export/restore expectation receiving unavailable from the boundary scaffold. Later GREEN must run full selected-file plus Turso integration and fresh-profile round trip."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/backup.rs",
+        "mode": "inline"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T004",
+      "title": "Assert durable acknowledgment, real commit interruption and storage preservation",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-004",
+        "FR-005",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-020",
+        "FR-023",
+        "NFR-DATA-001",
+        "NFR-DATA-002",
+        "NFR-DATA-003",
+        "NFR-DATA-004",
+        "NFR-OBS-001",
+        "NFR-TECH-003"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001"
+      ],
+      "writes": [
+        "tests/acceptance/tests/recovery.rs",
+        "tests/acceptance/src/commit_gate.rs",
+        "tests/acceptance/fixtures/recovery-child/src/main.rs",
+        "tests/acceptance/src/ledger.rs",
+        "tests/acceptance/fixtures/recovery-child/Cargo.toml",
+        "tests/acceptance/fixtures/recovery-child/Cargo.lock"
+      ],
+      "checks": [
+        "RECOVERY"
+      ],
+      "acceptance": [
+        "Implement independent acknowledgment ledger and real turso_core test-only delegating WAL-sync checkpoints qualified by frozen probes; no delay-before-commit or fake engine substitution. For create/edit/complete/reopen/delete/restore execute 20 kills at each before/during/after cut point: 360 trials, old/new whole-state and all previously acknowledged work preserved.",
+        "Cover confirmed rollback vs uncertainty, input digest/session/ID replay, no-op receipts, false first launch, inaccessible/corrupt/future databases and byte-preserving preflight, failed authorization/copy/validation, logging failure and safe RetryStorage. Preserve initial format fixtures; no old-release migration exists.",
+        "RECOVERY RED first reaches a newly authored acknowledged-create/reopen assertion using the executable native scaffold, yielding explicit unavailable instead of committed state. Full interruption corpus becomes GREEN only against the real production adapter; failure to reach a commit barrier is an error, never a skipped pass.",
+        "Own the separate explicit test-fixture child crate manifest/lock/main under tests/acceptance/fixtures/recovery-child; standalone [workspace] isolates it from the app/test workspaces. This test target builds that fixture explicitly with --locked before launch, from fully authored files. No acceptance auto-bin discovery or edits to shared manifests/library are needed; helper sources are imported with explicit #[path] from this target/child, and fixture outputs stay in ignored target/temp paths."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/recovery.rs",
+        "mode": "sidecar"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T005",
+      "title": "Assert instance arbitration, startup, close and local help lifecycle",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-006",
+        "FR-010",
+        "FR-015",
+        "FR-018",
+        "FR-019",
+        "FR-024",
+        "FR-025",
+        "NFR-ARCH-002",
+        "NFR-DATA-003",
+        "NFR-PRIV-001",
+        "NFR-PRIV-002"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001"
+      ],
+      "writes": [
+        "tests/acceptance/tests/lifecycle.rs",
+        "tests/acceptance/fixtures/instance-child/src/main.rs",
+        "tests/desktop/manual-protocols.md",
+        "tests/acceptance/fixtures/instance-child/Cargo.toml",
+        "tests/acceptance/fixtures/instance-child/Cargo.lock"
+      ],
+      "checks": [
+        "LIFECYCLE"
+      ],
+      "acceptance": [
+        "Cover every LIFECYCLE-linked scenario: fresh/reopen/storage-blocked retry, sequential/simultaneous eight-process launch, nonce ACK after activation, timeout/focus failure, crash takeover, different canonical data roots, draft preservation and lease retention until DB closure. Record actual separate-account isolation later through C-PRIVACY.",
+        "Calendar tests independently control test clocks and exercise midnight/leap/timezone/resume/focus limits. Normal close waits for pending/uncertain mutation and export resolution, cancels/joins calendar worker, distinguishes submitted input from draft and preserves retained drafts. Help/version checks use bundled resources.",
+        "LIFECYCLE RED uses runnable boundary Lifecycle/first-launch expected usable Ready state versus explicit unavailable. Manual protocols enumerate delivered installation, golden journeys, blocked networking, process attribution, actual separate OS account, VoiceOver and screenshots; they contain instructions/blank result fields, never invented outcomes.",
+        "Own the separate explicit test-fixture child crate manifest/lock/main under tests/acceptance/fixtures/instance-child; standalone [workspace] isolates it from the app/test workspaces. This test target builds that fixture explicitly with --locked before launch, from fully authored files. No acceptance auto-bin discovery or edits to shared manifests/library are needed; helper sources are imported with explicit #[path] from this target/child, and fixture outputs stay in ignored target/temp paths."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/lifecycle.rs",
+        "mode": "sidecar"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T006",
+      "title": "Assert full capacity and implement independent P1 P2 P3 evaluators",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-010",
+        "FR-012",
+        "FR-019",
+        "FR-023",
+        "NFR-PERF-001",
+        "NFR-PERF-002",
+        "NFR-PERF-003",
+        "NFR-PERF-004"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001"
+      ],
+      "writes": [
+        "tests/acceptance/tests/capacity.rs",
+        "tests/desktop/benchmark.py",
+        "tests/desktop/observer/Cargo.toml",
+        "tests/desktop/observer/Cargo.lock",
+        "tests/desktop/observer/src/main.rs",
+        "tests/desktop/evaluator.py",
+        "tests/desktop/test_evaluator.py"
+      ],
+      "checks": [
+        "C-CAPACITY"
+      ],
+      "acceptance": [
+        "C-CAPACITY asserts 9999/10000/10001 boundaries, 10000 maximum-length rows, all pages, expanded canonical query and exact identity/content retention. RED must be this task valid full-capacity Query/Mutation assertion on the runnable scaffold, not missing fixture loading or OOM.",
+        "Build a separate native test observer using approved libc Accessibility/CoreGraphics bindings, external monotonic action/AX timing and correct settled UI oracle. Record conservative pre-spawn P1 bracket, commit-ack P2, selected-validation-to-commit/render P3 with only confirmation pause removed. It must not require automation-only release mutation commands.",
+        "P1 retains 5 warmups/30 launches; P2 10/100 for each of 9 classes independently; P3 3/30 each export and distinct D1/D2 restore. Retain raw arrays, all errors, p50/nearest-rank p95/max and environment. Independent synthetic evaluator tests reject threshold failures, wrong/zero sample counts, missing arrays, operation errors, wrong host, missing correctness evidence and discarded slow samples.",
+        "Require REF-MAC-M3MAX/1280x720/AC/normal mode/local SSD/20GiB free/no concurrent builds; detect precondition failures, never substitute hosts or mark skipped passing. Full frozen benchmark commands are phase gates, not behavioral RED sources."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/capacity.rs",
+        "mode": "sidecar"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T007",
+      "title": "Assert pending responsiveness and accessibility feedback through native observation",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-006",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "NFR-A11Y-001",
+        "NFR-A11Y-002",
+        "NFR-A11Y-003",
+        "NFR-PERF-005"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001",
+        "T006"
+      ],
+      "writes": [
+        "tests/acceptance/tests/pending.rs",
+        "tests/desktop/accessibility.py"
+      ],
+      "checks": [
+        "C-PENDING"
+      ],
+      "acceptance": [
+        "Hold one actual storage operation for two seconds at the qualified instrumented boundary; externally measure busy by500ms and viewing/focus/window response within250ms while conflicting mutations are denied and close visibly waits. Delayed package is same-revision instrumentation, never a benchmark sample.",
+        "Use observer from T006 for AX labels/states/focus/contrast capture and keyboard journey assistance; human keyboard, VoiceOver speech and rendered contrast/200percent results remain external receipts, not simulated script passes. Cover focus containment/return, inline field associations, pending/uncertain/error/success, paging and text-size controls.",
+        "C-PENDING RED must execute a new valid mutation/pending-state assertion at the runnable boundary and fail on explicit unavailable, rather than waiting indefinitely for a nonexistent delay hook. Green requires actual delayed production operation and independent timings."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/pending.rs",
+        "mode": "inline"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T008",
+      "title": "Assert private bounded diagnostics and failure-independent operations",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-001",
+        "FR-017",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-023",
+        "NFR-DATA-002",
+        "NFR-OBS-001",
+        "NFR-PRIV-001",
+        "NFR-PRIV-002"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001"
+      ],
+      "writes": [
+        "tests/acceptance/tests/diagnostics.rs"
+      ],
+      "checks": [
+        "C-DIAGNOSTICS"
+      ],
+      "acceptance": [
+        "Seed distinct title/notes/search/absolute-path and rare due-date sentinels; inspect logs/stdout/stderr/panic output across startup, storage, backup, restore and future-format failures. Assert allowlisted metadata only, modes, five2MiB files and total10MiB including crash/rotation checkpoints.",
+        "Induce create/write/rotation failures and assert real operations remain valid and state correct; no diagnostics upload. C-DIAGNOSTICS RED is a new valid native operation under logging-failure injection expected to succeed versus explicit unavailable. No assertion merely checks that a future log file exists."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/diagnostics.rs",
+        "mode": "inline"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T009",
+      "title": "Assert direct invalid command inputs and implement security and handoff evaluators",
+      "phase": "P01",
+      "category": "tests",
+      "requirements": [
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-012",
+        "NFR-ARCH-001",
+        "NFR-ARCH-002",
+        "NFR-QUAL-001",
+        "NFR-QUAL-002",
+        "NFR-SEC-001",
+        "NFR-SEC-002",
+        "NFR-TECH-004"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001"
+      ],
+      "writes": [
+        "tests/acceptance/tests/functional.rs",
+        "tests/desktop/security.py",
+        "tests/release/handoff.py"
+      ],
+      "checks": [
+        "FUNCTIONAL"
+      ],
+      "acceptance": [
+        "Extend FUNCTIONAL with newly named direct-boundary invalid enum/oneof/ID/date/time/capacity/text/token tests and valid oversized-raw-but-normalized input. RED is this task malformed native command expecting a typed field validation failure and receiving explicit unavailable; do not use an unrelated T001 failure as proof.",
+        "Security evaluator drives actual IPC denied commands/windows/origins, CSP, shell/unrestricted file denial, SQL/markup inertness, token/resource/account scope, release command inventory and absence of instrumentation/dev servers. C-SECURITY is kind=security and cannot be used as expected-fail RED; it is mandatory GREEN at P01.",
+        "Handoff evaluator checks 53 requirement mappings, current source/package identities, all scenario/check and raw-evidence links, actual clean-checkout build transcript and user/compatibility/dependency docs. Reject skipped/stale/wrong-host or mock-only results. Inspect check receipts, not prose or controller harness selftests; keep evidence in ignored revision-bound storage. Final project report is generated by controller after phase acceptance, not self-issued by this evaluator.",
+        "C-HANDOFF produces and validates a complete ignored, exact-revision pre-gate handoff report from already recorded check/manual/benchmark results and clean-build evidence. It does not require its own receipt, future gate/PR/seal or final controller project-validation artifact. Missing upstream evidence fails; a list of unverified links is insufficient. Tracked docs link stable evidence locations rather than embedding self-invalidating current source/package identities.",
+        "The handoff report must not require the final phase-review/gate/PR/seal receipts; those are independently enforced by the controller after substantive checks. It may name independent source/evidence observers already obtained. Preserve authentic controller final artifacts after closure; until then label closure pending."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "tests/acceptance/tests/functional.rs",
+        "mode": "inline"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T010",
+      "title": "Replace test bootstrap providers with final source entry and packaging wiring",
+      "phase": "P01",
+      "category": "modification",
+      "requirements": [
+        "NFR-ARCH-001",
+        "NFR-ARCH-002",
+        "NFR-SEC-002",
+        "NFR-TECH-001",
+        "NFR-TECH-002",
+        "NFR-TECH-004"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T001",
+        "T002",
+        "T003",
+        "T004",
+        "T005",
+        "T006",
+        "T007",
+        "T008",
+        "T009"
+      ],
+      "writes": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "modules/core/Cargo.toml",
+        "modules/core/src/lib.rs",
+        "apps/desktop/Cargo.toml",
+        "apps/desktop/build.rs",
+        "apps/desktop/src/lib.rs",
+        "apps/desktop/src/main.rs",
+        "apps/desktop/tauri.conf.json",
+        "apps/desktop/capabilities/main.json",
+        "apps/desktop/permissions/application.toml",
+        "apps/ui/Cargo.toml",
+        "apps/ui/src/lib.rs",
+        "apps/ui/index.html",
+        "apps/desktop/icons/icon.png"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Replace every explicit unavailable provider and minimal WASM invocation in T001 with final module declarations, exact pinned manifests, AppManifest ten-command ACL/capability/CSP/build configuration, entrypoint calls and package resource paths from the frozen owner/service inventory. Replace core/lib.rs stubs with exports of Collection/Storage/Backup/Application owners; desktop/lib.rs with commands/runtime/instance/diagnostics declarations; UI/lib.rs with transport/state/views entry. No new domain/application behavior belongs in this wiring task.",
+        "Completion is source-shape evidence only: enumerate stub removals, dependency pins, ten command names, exact paths and exports against frozen signatures. No runnable build, service implementation, module availability, packaging or behavioral GREEN is claimed by this task. New files are owned by T011-T019, not silently added here.",
+        "It is permissible for source to be temporarily nonbuildable until the later additions and bundled help are integrated. Source-authoring inputs are T001 and frozen interfaces, not future implementations. The distinct compilation/acceptance join is T011-T021 and every P01 check; no integration milestone may be sealed or deployed before that join.",
+        "Preserve the valid qualified icon asset and finalize its declared packaging reference; no feature/design behavior is introduced by this asset. Icon and JSON/lock/manifests remain absent until implementation, with sidecar handling; preparation must not create invalid reservation files.",
+        "Declare docs/dependency-inventory.md as a bundled resource containing third-party notices/license attribution supplied by T021. This source-path wiring is finalized only at the complete package acceptance join; no early packaging success is claimed."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "Cargo.toml",
+        "mode": "sidecar"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T011",
+      "title": "Add the single invariant-owning collection and deterministic selection provider",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-007",
+        "FR-008",
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "NFR-MAINT-001",
+        "NFR-PERF-001",
+        "NFR-TECH-001"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T010"
+      ],
+      "writes": [
+        "modules/core/src/collection/mod.rs",
+        "modules/core/src/collection/types.rs",
+        "modules/core/src/collection/query.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Implement generated CollectionService via private validated TaskId/Title/Notes/CalendarDate/TaskStatus/Task types and one normalization/validation owner; support Unicode16 explicit whitespace/scalar limits, status/time presence, backward clocks, no-op transitions, collision/capacity checks and frozen Failure metadata.",
+        "Selection implements frozen literal NFC/full-fold predicates, all date/status combinations, exact stable orders/ties/counts/paging without truncating expanded raw queries. No IO/SQL/Tauri/clocks/randomness in Collection. Full FUNCTIONAL/QUERY/C-CAPACITY/BACKUP scenario oracles are the P01 acceptance join."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "modules/core/src/collection/mod.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No invariant-owning Todo domain or query implementation exists.",
+        "candidates": [
+          {
+            "path": "modules/README.md",
+            "reason": "Only navigation; neither Task value types nor generated-service provider exists."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          },
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T012",
+      "title": "Add sole embedded Turso owner with preflight and atomic receipt recovery",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-016",
+        "FR-017",
+        "FR-023",
+        "NFR-DATA-001",
+        "NFR-DATA-002",
+        "NFR-DATA-003",
+        "NFR-DATA-004",
+        "NFR-PRIV-002",
+        "NFR-TECH-003"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T011"
+      ],
+      "writes": [
+        "modules/core/src/storage/mod.rs",
+        "modules/core/src/storage/preflight.rs",
+        "modules/core/src/storage/schema.sql",
+        "modules/core/src/storage/receipts.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Implement generated StorageService with one native async lifecycle owner, actual local turso, qualified durable settings and parameterized SQL. Initialize version1 only if marker/database truly absent; preserve complete stable originals, check actual authorization, validate a private copy before opening original, never promote copy.",
+        "Transactional change/whole replacement plus generation/latest operation receipt is atomic; no-op receipts preserve timestamps/generation. Expose immutable committed snapshots only after confirmed commit; reopen validates Collection invariants; absent receipt means rejected only after authoritative recovery. Close and retry safely release handles without silently replacing corrupt/future files.",
+        "Use narrow test-only qualified IO injection for RECOVERY with production default engine untouched; private account/file permissions and managed preflight exclusions are enforced. Initial version fixtures/future rejection remain obligations; no migration from a prior release is invented."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "modules/core/src/storage/mod.rs",
+        "mode": "sidecar"
+      },
+      "reuse": {
+        "capability_missing": "No durable application storage owner exists.",
+        "candidates": [
+          {
+            "path": "experiments/spec-dependencies/native/src/main.rs",
+            "reason": "count/scalar and synthetic schema qualify Turso transactions only; pinned experiment cannot become task schema or receipt protocol."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          },
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T013",
+      "title": "Add retained backup candidates and crash-safe selected-file publication",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-004",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "NFR-DATA-002",
+        "NFR-PERF-004",
+        "NFR-PRIV-002",
+        "NFR-SEC-001"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T011"
+      ],
+      "writes": [
+        "modules/core/src/backup/mod.rs",
+        "modules/core/src/backup/format.rs",
+        "modules/core/src/backup/publication.rs",
+        "modules/core/src/backup/selection.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Implement generated BackupService: exact strict UTF8JSON version1 fields/order/timestamp grammar, streaming3GiB/document and10000count bounds, retained normalized candidate/raw digest, independent source bytes and Collection validation. Cancellation/release tokens are safe and idempotent.",
+        "Use only native selected-file dialogs and opaque one-use resource tokens, explicit overwrite, canonical parent/device/inode managed-path and hardlink/symlink exclusions, supported internal APFS only, qualified descriptor-relative no-clobber publication/journal/reconciliation and full old/new outcome. Never turn unreadability into rollback; resolve publication uncertainty before another export.",
+        "Bound blocking work and memory to retained candidate/export snapshot, private modes/journal and narrowly authorized sibling artifacts. No SQL or alternate validators. BACKUP/RECOVERY/security/privacy/P3 acceptance validates real adapters and independent bytes."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "modules/core/src/backup/mod.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No product backup schema/candidate/publication owner exists.",
+        "candidates": [
+          {
+            "path": "experiments/spec-filesystem/probe.rs",
+            "reason": "publish/observe_crash qualify native primitives using synthetic bytes; they do not implement full selected-resource policies, candidate retention or replay."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          },
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T014",
+      "title": "Add application admission, committed outcomes and owned asynchronous lifecycle",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-005",
+        "FR-006",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-015",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "NFR-DATA-001",
+        "NFR-DATA-002",
+        "NFR-PERF-005"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T012",
+        "T013"
+      ],
+      "writes": [
+        "modules/core/src/application/mod.rs",
+        "modules/core/src/application/admission.rs",
+        "modules/core/src/application/lifecycle.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Implement all ten generated ApplicationService operations using Collection/Storage/Backup, native IDs/clock and private session/admitted-ID/digest bookkeeping. One mutation/restore admission slot, separate export slot, immutable reads, expected generations, delete confirmation token and retained restore preview/count/confirmed_replace semantics are enforced.",
+        "Known rollback is rejected; unknown acknowledgment is uncertain with retained input/ID, reconciliation before retry and prior-session rejection. Same operation/input replays safely, different pending writes Busy, older IDs stale, deliberate identical creates remain distinct.",
+        "Track owned async/blocking jobs through UI cancellation and normal close; stop admission, visibly wait for mutation/export uncertainty, then join and close. StorageBlocked retry retains instance lease, releases failed handles, opens without altering existing bytes and restores default Ready view only on success; calendar refresh/timers meet frozen bounds."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "modules/core/src/application/mod.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No application coordinator or mutation admission owner exists.",
+        "candidates": [
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider has a synthetic Query only and out-of-scope methods; extending pinned qualification would create unreviewed product behavior in immutable evidence. ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T015",
+      "title": "Add bounded private diagnostic events without operation dependencies",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-001",
+        "FR-017",
+        "FR-019",
+        "FR-023",
+        "NFR-OBS-001",
+        "NFR-PRIV-001",
+        "NFR-PRIV-002"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T010"
+      ],
+      "writes": [
+        "apps/desktop/src/diagnostics.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Implement allowlisted timestamp/severity/app-version/category/correlation/safe-code events only; redact task/date/query/path/backup data from log/stdout/stderr/panic channels. Five files of at most2MiB retain at most10MiB with private modes and rotation/crash safety.",
+        "Diagnostic create/write/rotation failure is contained and cannot prevent or corrupt valid operations. Provide the narrow composition callback used by approved owners; no generic logging framework or network sink. C-DIAGNOSTICS/RECOVERY/C-PRIVACY verify positive events, seeded sentinels and failures."
+      ],
+      "scope": "small",
+      "anchor": {
+        "path": "apps/desktop/src/diagnostics.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No private bounded product event sink exists.",
+        "candidates": [
+          {
+            "path": "apps/README.md",
+            "reason": "Only navigation; harness controller evidence logs have different authority and privacy semantics and cannot serve product diagnostics."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          },
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T016",
+      "title": "Add account and data-directory lease with acknowledged window activation",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-001",
+        "FR-018",
+        "FR-024",
+        "NFR-ARCH-002",
+        "NFR-PRIV-001",
+        "NFR-PRIV-002"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T010"
+      ],
+      "writes": [
+        "apps/desktop/src/instance.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Implement frozen canonical data-directory0700/lease0600 arbitration and nonce-bound filesystem mailbox ACK after successful show/focus; hold lease before every DB open and through closing. Secondary never opens storage after timeout/lock/focus error.",
+        "Handle simultaneous eight-process launches, delayed primary, Closing, activation failures and owner SIGKILL without draft loss or network activation. Account/data-directory scope is exact; do not introduce the rejected global-socket single-instance plugin. LIFECYCLE and delivered C-PACKAGE/C-PRIVACY establish actual guarantees."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "apps/desktop/src/instance.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No product directory lease/activation integration exists.",
+        "candidates": [
+          {
+            "path": "experiments/spec-instance/probe.rs",
+            "reason": "child/run prove native contention/nonce protocol using synthetic events; real Tauri window activation, state and storage admission remain absent."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          },
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T017",
+      "title": "Add native command adapters and desktop composition with release restrictions",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-009",
+        "FR-015",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-020",
+        "FR-022",
+        "FR-024",
+        "FR-025",
+        "NFR-ARCH-001",
+        "NFR-ARCH-002",
+        "NFR-OFF-001",
+        "NFR-PLAT-001",
+        "NFR-PRIV-001",
+        "NFR-SEC-001",
+        "NFR-SEC-002",
+        "NFR-TECH-002"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T014",
+        "T015",
+        "T016"
+      ],
+      "writes": [
+        "apps/desktop/src/commands.rs",
+        "apps/desktop/src/runtime.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Provide exact ten-command decode/validate/delegate/encode registration to real ApplicationService and safe Failure conversions; restrict to bundled main/origin and actual custom-command ACL. Accept valid large normalized-title/canonical-query transport without64KiB raw cap; reject malformed wire/enums/oneofs before effects.",
+        "Composition creates private account paths/diagnostics, acquires instance lease before storage, installs only required native dialog provider, starts bounded async lifecycle on Tauri runtime and supplies real window/close/focus/calendar callbacks. Expose no raw paths/SQL, shell/generic fs, network server or release test commands.",
+        "Package resources/permissions/CSP are wired by T010; these adapters supply behavior and all current .app command/provider/consumer restrictions must pass full C-ARCH/C-SECURITY/C-PACKAGE/OFFLINE/PRIVACY at the phase join."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "apps/desktop/src/commands.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No Todo desktop operation adapter or composition root exists.",
+        "candidates": [
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "probe/finish_probe/forbidden_probe are qualification-specific commands and must never ship; they cannot be extended into the approved ten-command release inventory. ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T018",
+      "title": "Add typed Rust UI transport and draft query mutation state machines",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-006",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "FR-015",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "NFR-ARCH-002",
+        "NFR-PERF-005",
+        "NFR-SEC-001",
+        "NFR-TECH-001"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T014"
+      ],
+      "writes": [
+        "apps/ui/src/transport.rs",
+        "apps/ui/src/state.rs"
+      ],
+      "checks": [],
+      "acceptance": [
+        "One typed Rust/WASM consumer per generated ApplicationService method; encode/decode actual protobuf bytes and preserve u64/nanoseconds/presence. UI has no native core/Turso/SQL/fs/shell/network access; transport unknown preserves submitted operation uncertainty.",
+        "Owned typed state separates draft/input from submitted pending/uncertain/committed, blocks overlapping mutations, retains exact raw input on failure, guards every draft-discard action, tracks latest query sequence/generation, preserves controls on failure and resets only successful restore/launch default views.",
+        "Use common native authority through generated boundaries; UI validation feedback never replaces Collection rules, large valid raw input/query is retained and never silently truncated. Cancellation and dropped futures cannot infer rollback; reconnect/reconciliation uses same operation identity."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "apps/ui/src/transport.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No Rust UI typed transport or user-input state owner exists.",
+        "candidates": [
+          {
+            "path": "experiments/spec-dependencies/ui/src/lib.rs",
+            "reason": "start only invokes a synthetic qualification Query and renders probe feedback; no Todo editor/query/admission state exists and the pinned probe is read-only."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          },
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T019",
+      "title": "Add accessible offline Todo views editors dialogs and text resizing",
+      "phase": "P01",
+      "category": "addition",
+      "requirements": [
+        "FR-001",
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-006",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "FR-015",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "FR-025",
+        "NFR-A11Y-001",
+        "NFR-A11Y-002",
+        "NFR-A11Y-003",
+        "NFR-OFF-001",
+        "NFR-PERF-001",
+        "NFR-PERF-002",
+        "NFR-PERF-003",
+        "NFR-PERF-004",
+        "NFR-PERF-005"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T017",
+        "T018"
+      ],
+      "writes": [
+        "apps/ui/src/views.rs",
+        "apps/ui/src/editor.rs",
+        "apps/ui/src/dialogs.rs",
+        "apps/ui/src/styles.css"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Implement complete Leptos Rust journeys with Open/Completed/All/date/search/order controls, exact counts/distinct empty states, paged accessible task rows/notes editor, date/Overdue refresh, native delete/backup/restore interactions, unencrypted backup disclosure and help/version entry. No first-party JS event/state behavior.",
+        "Protect dirty input for all navigation/cancel/create/restore/close paths, retain invalid/rejected/uncertain input and communicate pending/close waiting without false success. Viewing remains usable while admitted work runs; all rows remain keyboard/VoiceOver reachable at capacity.",
+        "Named controls/field associations/status announcements, contained modal focus and meaningful return, visible unobscured focus, fixed shipped light-appearance contrast across all relevant states (including under OS dark appearance) and Rust View Text size100/150/200plus shortcuts reflow at1280x720. Actual human VoiceOver, keyboard and contrast/200percent evidence is mandatory; AX/DOM alone is not sufficient.",
+        "Consume bundled local help resource supplied by T020 at final compilation; source authoring does not require its prose. P1/P2/P3 timings are full delivered-package budgets, not optimistic first-frame or domain-only timings."
+      ],
+      "scope": "large",
+      "anchor": {
+        "path": "apps/ui/src/views.rs",
+        "mode": "inline"
+      },
+      "reuse": {
+        "capability_missing": "No task views, editor or accessible dialog implementation exists.",
+        "candidates": [
+          {
+            "path": "apps/README.md",
+            "reason": "Only navigation; empty roots are not pages/components and no existing UI owns this interaction."
+          },
+          {
+            "path": "gen/rust/src/generated/todo.v1.rs",
+            "reason": "Frozen messages and service signatures carry shape only; modifying generated code would duplicate invariant ownership and violate the freeze."
+          },
+          {
+            "path": "experiments/spec-dependencies/desktop/src/main.rs",
+            "reason": "ProbeProvider proves generated invoke/ACL feasibility with synthetic Turso data and out-of-scope stub methods; it is pinned qualification evidence, not reusable Todo production behavior."
+          }
+        ],
+        "why_not_extend": "No existing application owner implements this capability. Add files only inside the already approved logical owner; retain three application compilation units, reuse the generated traits and approved dependencies, and do not create a parallel service framework. The minimal T001 entry scaffold remains separately owned by T010.",
+        "duplication_check": "Searched apps/, modules/, tests/acceptance/, tests/integration/, benchmarks/ plus generated traits and qualification probe providers by operation, SQL, validation and lifecycle symbols. Only navigational README files exist under application/test roots. All invariant validation stays in Collection, SQL in Storage, file publication in Backup and admission in Application."
+      }
+    },
+    {
+      "id": "T020",
+      "title": "Write bundled offline help and user backup compatibility guide",
+      "phase": "P01",
+      "category": "documentation",
+      "requirements": [
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "FR-025",
+        "NFR-QUAL-002"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T019"
+      ],
+      "writes": [
+        "apps/ui/resources/help.md",
+        "docs/user-guide.md",
+        "docs/compatibility.md"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Document all FR025 topics, complete task/date/query/pending/retry behavior, actual per-account data location, unencrypted selected backups, replace-not-merge restore, permanent deletion/no undo and earlier backups retaining deleted tasks. Display actual Cargo-derived version at runtime; do not hardcode a fictional release identity.",
+        "Explain exact version1 backup/storage compatibility and future-format rejection; no previous-release migration is applicable. Verify help is bundled and available without network/development tooling through LIFECYCLE/C-PACKAGE/OFFLINE."
+      ],
+      "scope": "small",
+      "anchor": {
+        "path": "apps/ui/resources/help.md",
+        "mode": "inline"
+      },
+      "reuse": null
+    },
+    {
+      "id": "T021",
+      "title": "Document reproducible build verification dependencies and revision evidence handoff",
+      "phase": "P01",
+      "category": "documentation",
+      "requirements": [
+        "NFR-MAINT-001",
+        "NFR-PLAT-001",
+        "NFR-QUAL-001",
+        "NFR-QUAL-002",
+        "NFR-TECH-004"
+      ],
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/check-design.md",
+        "docs/specs/quality.md"
+      ],
+      "depends_on": [
+        "T020"
+      ],
+      "writes": [
+        "README.md",
+        "CONTRIBUTING.md",
+        "apps/README.md",
+        "modules/README.md",
+        "tests/acceptance/README.md",
+        "tests/integration/README.md",
+        "benchmarks/README.md",
+        "docs/developer-guide.md",
+        "docs/dependency-inventory.md",
+        "docs/release-handoff.md"
+      ],
+      "checks": [],
+      "acceptance": [
+        "Replace boilerplate navigation with actual target ownership and verified exact-version clean build/package/sign/install/verification commands, prerequisites, licenses/dependency purposes and release resource identity. Preserve harness workflow directions and immutable frozen documents.",
+        "Handoff links current controller check/raw evidence, actual delivered .app digest and clean-build observer transcript for all53Must IDs; distinguish instrumentation/delivered package and report reference-host limitations. Link the controller-generated final project validation only once it exists; do not fabricate it in a tracked document or create a circular requirement for that future artifact inside C-HANDOFF.",
+        "Complete all cumulative P01 checks, actual human/platform records, independent exact-source phase review and one ready verified PR before seal. Final gate project and checkpoint/export are controller lifecycle work; no merging/deployment is included.",
+        "Before phase gating, run/import all prerequisite checks at the final committed revision, then run C-HANDOFF and retain its validated pre-gate report. Phase/project gates may rerun it safely against the same source and existing upstream records; final validation is a distinct controller artifact after seal. Stable tracked links avoid report creation changing its own source digest.",
+        "Populate docs/dependency-inventory.md with the actual dependency inventory and required third-party notices/license attribution, and verify T010 bundles that exact resource in the delivered .app. Preserve required upstream notices rather than merely listing dependency names."
+      ],
+      "scope": "small",
+      "anchor": {
+        "path": "README.md",
+        "mode": "inline"
+      },
+      "reuse": null
+    }
+  ],
+  "verticals": [
+    {
+      "id": "V-LIFECYCLE",
+      "goal": "Durable task lifecycle from real boundary assertions through native storage and final handoff",
+      "tasks": [
+        "T001",
+        "T004",
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T017",
+        "T019",
+        "T020",
+        "T021"
+      ]
+    },
+    {
+      "id": "V-QUERY",
+      "goal": "Exact independent query oracle through invariant owner and Rust UI",
+      "tasks": [
+        "T001",
+        "T002",
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T018",
+        "T019",
+        "T020",
+        "T021"
+      ]
+    },
+    {
+      "id": "V-BACKUP",
+      "goal": "Selected-file backup validation/publication and atomic replacement",
+      "tasks": [
+        "T001",
+        "T003",
+        "T010",
+        "T011",
+        "T013",
+        "T014",
+        "T017",
+        "T019",
+        "T020",
+        "T021"
+      ]
+    },
+    {
+      "id": "V-INSTANCE",
+      "goal": "Account-scoped single owner with ready window and local help",
+      "tasks": [
+        "T001",
+        "T005",
+        "T010",
+        "T016",
+        "T017",
+        "T019",
+        "T020",
+        "T021"
+      ]
+    },
+    {
+      "id": "V-PRIVACY",
+      "goal": "Private failure-independent diagnostics in restricted desktop composition",
+      "tasks": [
+        "T001",
+        "T008",
+        "T010",
+        "T015",
+        "T017",
+        "T019",
+        "T020",
+        "T021"
+      ]
+    },
+    {
+      "id": "V-QUALITY",
+      "goal": "Capacity and external performance observer through accessible pending UI",
+      "tasks": [
+        "T001",
+        "T006",
+        "T007",
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T018",
+        "T019",
+        "T020",
+        "T021"
+      ]
+    },
+    {
+      "id": "V-SECURITY",
+      "goal": "Direct native input oracles through approved production command restriction",
+      "tasks": [
+        "T001",
+        "T009",
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T017",
+        "T019",
+        "T020",
+        "T021"
+      ]
+    }
+  ],
+  "target_paths": [
+    "CONTRIBUTING.md",
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "apps/README.md",
+    "apps/desktop/Cargo.toml",
+    "apps/desktop/build.rs",
+    "apps/desktop/capabilities/main.json",
+    "apps/desktop/icons/icon.png",
+    "apps/desktop/permissions/application.toml",
+    "apps/desktop/src/commands.rs",
+    "apps/desktop/src/diagnostics.rs",
+    "apps/desktop/src/instance.rs",
+    "apps/desktop/src/lib.rs",
+    "apps/desktop/src/main.rs",
+    "apps/desktop/src/runtime.rs",
+    "apps/desktop/tauri.conf.json",
+    "apps/ui/Cargo.toml",
+    "apps/ui/index.html",
+    "apps/ui/resources/help.md",
+    "apps/ui/src/dialogs.rs",
+    "apps/ui/src/editor.rs",
+    "apps/ui/src/lib.rs",
+    "apps/ui/src/state.rs",
+    "apps/ui/src/styles.css",
+    "apps/ui/src/transport.rs",
+    "apps/ui/src/views.rs",
+    "benchmarks/README.md",
+    "contracts/fixtures/D1-oracle.json",
+    "contracts/fixtures/D1.json",
+    "contracts/fixtures/D2-oracle.json",
+    "contracts/fixtures/D2.json",
+    "contracts/qualification-inputs.json",
+    "contracts/rdd/v1/harness.proto",
+    "contracts/todo/v1/application.proto",
+    "contracts/todo/v1/backup.proto",
+    "contracts/todo/v1/collection.proto",
+    "contracts/todo/v1/model.proto",
+    "contracts/todo/v1/storage.proto",
+    "docs/compatibility.md",
+    "docs/dependency-inventory.md",
+    "docs/developer-guide.md",
+    "docs/release-handoff.md",
+    "docs/user-guide.md",
+    "gen/rust/.rdd-generated.json",
+    "gen/rust/Cargo.lock",
+    "gen/rust/Cargo.toml",
+    "gen/rust/src/generated/rdd.v1.rs",
+    "gen/rust/src/generated/todo.v1.rs",
+    "gen/rust/src/lib.rs",
+    "modules/README.md",
+    "modules/core/Cargo.toml",
+    "modules/core/src/application/admission.rs",
+    "modules/core/src/application/lifecycle.rs",
+    "modules/core/src/application/mod.rs",
+    "modules/core/src/backup/format.rs",
+    "modules/core/src/backup/mod.rs",
+    "modules/core/src/backup/publication.rs",
+    "modules/core/src/backup/selection.rs",
+    "modules/core/src/collection/mod.rs",
+    "modules/core/src/collection/query.rs",
+    "modules/core/src/collection/types.rs",
+    "modules/core/src/lib.rs",
+    "modules/core/src/storage/mod.rs",
+    "modules/core/src/storage/preflight.rs",
+    "modules/core/src/storage/receipts.rs",
+    "modules/core/src/storage/schema.sql",
+    "rust-toolchain.toml",
+    "tests/acceptance/Cargo.lock",
+    "tests/acceptance/Cargo.toml",
+    "tests/acceptance/README.md",
+    "tests/acceptance/fixtures/instance-child/Cargo.lock",
+    "tests/acceptance/fixtures/instance-child/Cargo.toml",
+    "tests/acceptance/fixtures/instance-child/src/main.rs",
+    "tests/acceptance/fixtures/recovery-child/Cargo.lock",
+    "tests/acceptance/fixtures/recovery-child/Cargo.toml",
+    "tests/acceptance/fixtures/recovery-child/src/main.rs",
+    "tests/acceptance/src/backup_fixtures.rs",
+    "tests/acceptance/src/commit_gate.rs",
+    "tests/acceptance/src/fixtures.rs",
+    "tests/acceptance/src/ledger.rs",
+    "tests/acceptance/src/lib.rs",
+    "tests/acceptance/tests/backup.rs",
+    "tests/acceptance/tests/capacity.rs",
+    "tests/acceptance/tests/diagnostics.rs",
+    "tests/acceptance/tests/functional.rs",
+    "tests/acceptance/tests/lifecycle.rs",
+    "tests/acceptance/tests/pending.rs",
+    "tests/acceptance/tests/query.rs",
+    "tests/acceptance/tests/recovery.rs",
+    "tests/architecture/check.py",
+    "tests/desktop/accessibility.py",
+    "tests/desktop/benchmark.py",
+    "tests/desktop/evaluator.py",
+    "tests/desktop/manual-protocols.md",
+    "tests/desktop/observer/Cargo.lock",
+    "tests/desktop/observer/Cargo.toml",
+    "tests/desktop/observer/src/main.rs",
+    "tests/desktop/security.py",
+    "tests/desktop/test_evaluator.py",
+    "tests/integration/README.md",
+    "tests/release/build.py",
+    "tests/release/handoff.py"
+  ],
+  "shells": [
+    {
+      "path": "apps/desktop/build.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/desktop/src/commands.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/desktop/src/diagnostics.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/desktop/src/instance.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/desktop/src/lib.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/desktop/src/main.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/desktop/src/runtime.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/ui/index.html",
+      "content": "<!-- Approved preparation shell; no UI implemented. -->\n"
+    },
+    {
+      "path": "apps/ui/resources/help.md",
+      "content": "<!-- Approved preparation shell; content is owned by the frozen plan. -->\n"
+    },
+    {
+      "path": "apps/ui/src/dialogs.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/ui/src/editor.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/ui/src/lib.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/ui/src/state.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/ui/src/styles.css",
+      "content": "/* Approved preparation shell; no styles implemented. */\n"
+    },
+    {
+      "path": "apps/ui/src/transport.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "apps/ui/src/views.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "docs/compatibility.md",
+      "content": "<!-- Approved preparation shell; content is owned by the frozen plan. -->\n"
+    },
+    {
+      "path": "docs/dependency-inventory.md",
+      "content": "<!-- Approved preparation shell; content is owned by the frozen plan. -->\n"
+    },
+    {
+      "path": "docs/developer-guide.md",
+      "content": "<!-- Approved preparation shell; content is owned by the frozen plan. -->\n"
+    },
+    {
+      "path": "docs/release-handoff.md",
+      "content": "<!-- Approved preparation shell; content is owned by the frozen plan. -->\n"
+    },
+    {
+      "path": "docs/user-guide.md",
+      "content": "<!-- Approved preparation shell; content is owned by the frozen plan. -->\n"
+    },
+    {
+      "path": "modules/core/src/application/admission.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/application/lifecycle.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/application/mod.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/backup/format.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/backup/mod.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/backup/publication.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/backup/selection.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/collection/mod.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/collection/query.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/collection/types.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/lib.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/storage/mod.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/storage/preflight.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "modules/core/src/storage/receipts.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/fixtures/instance-child/src/main.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/fixtures/recovery-child/src/main.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/src/backup_fixtures.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/src/commit_gate.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/src/fixtures.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/src/ledger.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/src/lib.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/backup.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/capacity.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/diagnostics.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/functional.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/lifecycle.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/pending.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/query.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/acceptance/tests/recovery.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/architecture/check.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    },
+    {
+      "path": "tests/desktop/accessibility.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    },
+    {
+      "path": "tests/desktop/benchmark.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    },
+    {
+      "path": "tests/desktop/evaluator.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    },
+    {
+      "path": "tests/desktop/manual-protocols.md",
+      "content": "<!-- Approved preparation shell; content is owned by the frozen plan. -->\n"
+    },
+    {
+      "path": "tests/desktop/observer/src/main.rs",
+      "content": "// Approved preparation shell; implementation is owned by the frozen plan.\n"
+    },
+    {
+      "path": "tests/desktop/security.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    },
+    {
+      "path": "tests/desktop/test_evaluator.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    },
+    {
+      "path": "tests/release/build.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    },
+    {
+      "path": "tests/release/handoff.py",
+      "content": "# Approved preparation shell; no evaluator exists until its tests task.\n"
+    }
+  ]
+}

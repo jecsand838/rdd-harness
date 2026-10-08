@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "spec_digest": "271089c2a7960561069989afc826d3a9c50644c51a7a6815dc7e8af2d1935d55",
+  "spec_digest": "385fb3552e8f85ca1bdeea3cc1a67f3979431d1a498cc8c3488ce31d03f8f5a7",
   "status": "planned; no product evidence exists",
   "mapping_semantics": "Each row names a requirement/scenario obligation, direct source/test/handoff participants plus actual operation providers and separately recorded prerequisite closure. Verticals identify the behavior path; shared prerequisite participation is separate. Cross-cutting NFR rows cover the full operation inventory. This is planned coverage, never observed evidence.",
   "rows": [
@@ -9779,7 +9779,7 @@
       "platforms": [
         "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [],
       "metrics": [],
       "red_admissible": false,
@@ -9823,7 +9823,7 @@
       "platforms": [
         "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "Q-REPRODUCIBLE"
       ],
@@ -9850,9 +9850,9 @@
         "functional"
       ],
       "platforms": [
-        "any"
+        "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "FR001-FIRST-LAUNCH",
         "FR002-RESTART-FIELDS",
@@ -9903,9 +9903,9 @@
         "query"
       ],
       "platforms": [
-        "any"
+        "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "FR007-COMPLETE",
         "FR008-REOPEN",
@@ -9945,7 +9945,7 @@
       "platforms": [
         "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "FR004-VALID-LIMITS",
         "FR009-DELETE-CONFIRM",
@@ -9991,7 +9991,7 @@
       "platforms": [
         "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "FR002-RESTART-FIELDS",
         "FR005-EDIT-FIELDS",
@@ -10037,7 +10037,7 @@
       "platforms": [
         "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "FR001-FIRST-LAUNCH",
         "FR006-DRAFT-PROTECTION",
@@ -10074,9 +10074,9 @@
         "capacity"
       ],
       "platforms": [
-        "any"
+        "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "Q-CAPACITY-MAX",
         "QUERY-CANONICAL-EXPANSION"
@@ -10105,7 +10105,7 @@
       "platforms": [
         "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "Q-ATOMIC-FAILURES",
         "Q-DELAYED-PENDING"
@@ -10132,9 +10132,9 @@
         "diagnostics"
       ],
       "platforms": [
-        "any"
+        "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "Q-PRIVATE-DIAGNOSTICS"
       ],
@@ -10181,9 +10181,9 @@
         "tests/release/build.py"
       ],
       "platforms": [
-        "any"
+        "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "Q-REPRODUCIBLE",
         "Q-HANDOFF"
@@ -10207,7 +10207,7 @@
       "platforms": [
         "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "Q-CONTRACT-BOUNDARIES",
         "Q-ACCOUNT-SCOPE",
@@ -10233,9 +10233,9 @@
         "tests/release/handoff.py"
       ],
       "platforms": [
-        "any"
+        "macos"
       ],
-      "host_profile": null,
+      "host_profile": "REF-MAC-M3MAX",
       "scenarios": [
         "Q-EXACT-REVISION-EVIDENCE",
         "Q-HANDOFF"

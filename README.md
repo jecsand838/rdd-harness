@@ -233,3 +233,4 @@ For deeper work, use the existing guides:
 - [Historical validation record](docs/harness/validation.md): checks performed when the original boilerplate was assembled, not a claim that the Todo application is complete.
 
 Adjust protected harness policy, tools, models, or skills through deliberate review before specification freeze, and run `./rdd selftest` after harness changes. During implementation, those frozen rules remain part of the acceptance authority.
+<!-- RDD:P01:T021 [documentation] Document reproducible build verification dependencies and revision evidence handoff | requirements=NFR-MAINT-001,NFR-PLAT-001,NFR-QUAL-001,NFR-QUAL-002,NFR-TECH-004 -->
