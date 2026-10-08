@@ -1,11 +1,11 @@
 ---
 document_id: TODO-REQ
 title: Todo Application Requirements
-version: 0.1.0
+version: 0.2.0
 status: draft
-date: 2026-10-07
+date: 2026-10-08
 canonical_path: requirements/requirements.md
-requirement_revision: 1
+requirement_revision: 2
 requirement_priority: must
 ---
 
@@ -15,7 +15,7 @@ requirement_priority: must
 
 This document defines release one of a personal desktop Todo application built with Rust, Tauri 2, and an embedded Turso database. The application helps one person capture work, identify outstanding tasks, record completion, and retain control of their data while working offline.
 
-**Status:** Draft 0.1.0, proposed example baseline. Every identified requirement has revision 1 and priority Must. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
+**Status:** Draft 0.2.0, developer-amended example baseline. Every identified requirement has revision 2 and priority Must under the single-Mac scope in Section 6. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
 
 Rust, Tauri 2, and embedded Turso are the requested technology constraints. The desktop platform matrix, Rust UI scope, feature boundaries, field limits, and performance budgets are explicit choices for this example. They can be amended before the requirements baseline is accepted.
 
@@ -195,7 +195,7 @@ Acceptance: Repeated Save or completion activation during a delayed operation cr
 
 The application shall allow the user to export a versioned UTF-8 JSON backup of one consistent committed collection state, including every task's identity, title, notes, due date, status, created time, updated time, and completed time, to a user-selected file.
 
-Acceptance: Active filters do not limit the export. Unsubmitted drafts are excluded. The backup can be restored in a different supported-platform profile after the source application exits, preserving task identity and field meaning. Today and Overdue are recalculated rather than stored as authoritative backup fields. The export UI identifies the file as containing unencrypted task data. The file format is finalized in specification.
+Acceptance: Active filters do not limit the export. Unsubmitted drafts are excluded. The backup can be restored into a fresh application-data profile on the supported Mac after the source application exits, preserving task identity and field meaning independently of the source database. Today and Overdue are recalculated rather than stored as authoritative backup fields. The export UI identifies the file as containing unencrypted task data. The file format is finalized in specification.
 
 **FR-020 Protect backup destinations**
 
@@ -285,9 +285,9 @@ Acceptance: The architecture inventory and review find no unreferenced speculati
 
 **NFR-PLAT-001 Supported desktop packages**
 
-The application shall install and execute on every platform in Section 6 without a Rust compiler, development server, Turso CLI, or standalone database service on the user's machine.
+The application shall install and execute on the Mac configuration in Section 6 without requiring a Rust compiler, development server, Turso CLI, or standalone database service at runtime.
 
-Acceptance: A clean-machine installation and the packaged functional suite pass on each matrix entry. Normal application use requires no administrator privileges. Documented operating-system WebView prerequisites may be installed as part of setup.
+Acceptance: Installation into a clean local account or application-data profile and the packaged functional suite pass on the supported Mac with development tools unavailable to the application process. Normal application use requires no administrator privileges. Documented operating-system WebView prerequisites may be installed as part of setup.
 
 **NFR-OFF-001 Offline operation**
 
@@ -425,11 +425,9 @@ This section is normative through NFR-PLAT-001 and NFR-PERF-001 through NFR-PERF
 
 | Platform | Supported release and architecture | Reference hardware | Assistive technology |
 |---|---|---|---|
-| Windows | Windows 11 25H2, x86_64 | Intel Core i5-1135G7, 16 GiB RAM, local NVMe SSD | NVDA with the packaged application |
-| macOS | macOS 15, arm64 | Apple M1, 8 GiB unified memory, internal SSD | VoiceOver with the packaged application |
-| Linux | Ubuntu 24.04 LTS, x86_64, GNOME | Intel Core i5-1135G7, 16 GiB RAM, local NVMe SSD | Orca with the packaged application |
+| macOS | macOS 26.7 (build 25G229), arm64 | Developer's current Mac: Apple M3 Max, 128 GiB unified memory, local SSD | VoiceOver with the packaged application |
 
-Only these release and architecture combinations are in the first baseline. Installer format is selected in specification. Each benchmark uses the release package, an active 1280 by 720 logical-pixel window, AC power, normal performance mode, at least 20 GiB free local storage, and no concurrent build or benchmark workload. Application data and backup destinations are on the same local SSD. No network filesystem is supported for live database storage.
+Only this Mac configuration is required for release one. Windows, Linux (including Ubuntu), other macOS releases, and other Mac hardware are outside this baseline; their absence is not an application acceptance blocker. Native qualification, packaged functional tests, accessibility checks, and benchmarks are required on this Mac. Installer format is selected in specification. Each benchmark uses the release package, an active 1280 by 720 logical-pixel window, AC power, normal performance mode, at least 20 GiB free local storage, and no concurrent build or benchmark workload. Application data and backup destinations are on the same local SSD. No network filesystem is supported for live database storage.
 
 ### Representative dataset D1
 
@@ -455,10 +453,10 @@ The following verification families define minimum coverage to expand into detai
 |---|---|---|
 | V1 Task lifecycle | FR-001 through FR-009, FR-016 through FR-018 | Fresh profile, complete lifecycle, identical task content with distinct identities, exact limits, invalid data, discarded and retained drafts, repeated activation, confirmed and uncertain write outcomes. |
 | V2 Query and calendar | FR-010 through FR-015 | Exact identity sets and sort order, AND combinations, notes-only search, Unicode and punctuation, null due dates, timestamp ties, midnight, leap day, time-zone change, suspend and resume. |
-| V3 Backup and lifecycle | FR-019 through FR-025 | Export with active filters, cross-platform round trip, overwrite cancellation and failure, invalid and empty backup, confirmation, atomic replacement, double launch, and offline help. |
+| V3 Backup and lifecycle | FR-019 through FR-025 | Export with active filters, round trip into a fresh profile on the supported Mac, overwrite cancellation and failure, invalid and empty backup, confirmation, atomic replacement, double launch, and offline help. |
 | V4 Architecture and environment | NFR-TECH-001 through NFR-TECH-004, NFR-ARCH-001 through NFR-ARCH-002, NFR-MAINT-001, NFR-PLAT-001 | Source and dependency inspection, contract generation and boundary checks, clean builds, actual embedded database, justified module ownership, clean platform installation. |
 | V5 Data and privacy | NFR-OFF-001, NFR-PRIV-001 through NFR-PRIV-002, NFR-DATA-001 through NFR-DATA-004, NFR-SEC-001 through NFR-SEC-002, NFR-OBS-001 | Network isolation and observation, account isolation, command abuse, untrusted text, abrupt termination, storage failure, unsupported format, applicable migration, and diagnostic redaction. |
-| V6 Capacity and performance | NFR-PERF-001 through NFR-PERF-005 | Capacity and maximum-length correctness, P1 through P3 on all platforms, delayed-operation responsiveness, and full raw results. |
+| V6 Capacity and performance | NFR-PERF-001 through NFR-PERF-005 | Capacity and maximum-length correctness, P1 through P3 on the supported Mac, delayed-operation responsiveness, and full raw results. |
 | V7 Accessibility and handoff | NFR-A11Y-001 through NFR-A11Y-003, NFR-QUAL-001 through NFR-QUAL-002 | Keyboard journeys, screen-reader journeys, specified contrast and resizing checks, complete requirement mapping, reproducible commands, and artifact identity. |
 
 For NFR-DATA-001 and NFR-DATA-002, the required process-failure model is abrupt termination of the application while the operating system, local filesystem, and storage device remain functioning. The harness records an independent acknowledgment ledger and forces termination before commit, while commit is pending, and after acknowledgment. For each mutation class and whole-collection restore, exercise each cut point 20 times per supported platform; all reopened states must satisfy the stated atomicity and durability rules. Use controlled fault injection and deterministic checkpoints to make cut points meaningful.
@@ -487,8 +485,9 @@ These references explain the selected technology constraints and verification gu
 - **S6 Turso multiprocess access:** https://docs.turso.tech/sql-reference/multiprocess-access. The current local engine defaults to one database-owning process; experimental multiprocess behavior is unnecessary for this scope.
 - **S7 Turso Rust reference:** https://docs.turso.tech/sdk/rust/reference. Reference for local connections and transaction behavior to qualify during specification.
 
-## 10 Initial revision record
+## 10 Revision record
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1.0 | 2026-10-07 | First proposed requirements baseline for the local Rust and Tauri Todo application with embedded Turso. |
+| 0.2.0 | 2026-10-08 | Developer-authorized revision 2: restrict support and verification to the current macOS 26.7 / M3 Max / 128 GiB Mac; replace cross-platform backup verification with a fresh-profile round trip on that Mac. All 53 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this platform scope. |
