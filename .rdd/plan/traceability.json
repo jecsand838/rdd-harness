@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "spec_digest": "924507a8dc3876585af71d1065d94fa9131c56da15a6c6e8961d2a9dae47eaa7",
+  "spec_digest": "c9e824bb4ebc7f1e28c18cd0dd49786c2e50e2249d52109e86254ad4eda745eb",
   "status": "planned; no product evidence exists",
   "mapping_semantics": "Each row names a requirement/scenario obligation, direct source/test/handoff participants plus actual operation providers and separately recorded prerequisite closure. Verticals identify the behavior path; shared prerequisite participation is separate. Cross-cutting NFR rows cover the full operation inventory. This is planned coverage, never observed evidence.",
   "rows": [
@@ -10576,6 +10576,33 @@
       "red_admissible": false,
       "oracle": "docs/specs/check-design.md; docs/specs/quality.md; exact scenario descriptions/expected in .rdd/spec.json",
       "exit_semantics": "Executable checks must reach real nonzero assertions and exit0 only on all required assertions; manual checks use authentic external receipts. Wrong host/missing results/operation error/threshold failure is incomplete or failing; no skipped success."
+    },
+    {
+      "id": "C-POLICY-SIDECARS",
+      "phase": "P01",
+      "owners": [
+        "accepted specification baseline"
+      ],
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/harness",
+        "-p",
+        "test_artifacts.py"
+      ],
+      "platforms": [
+        "any"
+      ],
+      "host_profile": null,
+      "scenarios": [],
+      "metrics": [],
+      "red_admissible": false,
+      "oracle": "docs/specs/preparation-policy-amendment.md; actual absent-target/protected-write/inline-shell/marker regression assertions in tests/harness/test_artifacts.py",
+      "exit_semantics": "Nonzero executed controller regression tests; exit0 only when every assertion passes. This is harness-policy qualification and never product acceptance."
     }
   ]
 }

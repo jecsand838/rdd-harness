@@ -51,6 +51,8 @@
         "docs/specs/dependencies.md",
         "docs/specs/instance-qualification.md",
         "docs/specs/independent-review.md",
+        "docs/specs/preparation-policy-amendment.md",
+        "docs/specs/preparation-policy-review.md",
         "docs/decisions/ADR-001-boundaries-and-runtime.md",
         "docs/decisions/ADR-002-backups-and-distribution.md"
       ],
@@ -113,6 +115,17 @@
         "frozen host identity only; fresh conditions required for each run"
       ],
       "capability": "Named reference environment and protocol. Benchmark free-space precondition is currently unverified; no observation permission or app benchmark claimed."
+    },
+    "B-POLICY": {
+      "paths": [
+        "tools/rdd/artifacts.py",
+        "tests/harness/test_artifacts.py",
+        "docs/specs/preparation-policy-amendment.md"
+      ],
+      "evidence": [
+        "C-POLICY-SIDECARS"
+      ],
+      "capability": "Qualified safe task-sidecar representation for absent implementation paths; no product capability."
     }
   },
   "tasks": {
@@ -120,7 +133,8 @@
       "requires": [
         "B-CONTRACTS",
         "B-TOOLS",
-        "B-SOLUTION"
+        "B-SOLUTION",
+        "B-POLICY"
       ],
       "produces": [
         "TEST-ENTRY",
@@ -393,7 +407,8 @@
       "C-A11Y-VISUAL",
       "C-PERF-LAUNCH",
       "C-PERF-INTERACTIONS",
-      "C-PERF-BACKUP"
+      "C-PERF-BACKUP",
+      "C-POLICY-SIDECARS"
     ],
     "compilation_inputs": {
       "core": [

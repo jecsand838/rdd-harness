@@ -52,7 +52,7 @@ Within each phase, tasks follow this order:
 
 Tests must first reach an actual failing behavioral assertion (RED). Missing tools, compiler errors, and skipped tests are not RED. Test-only scaffolding may make the assertion executable, but cannot supply product behavior. Additions need a frozen reuse analysis explaining why existing code cannot reasonably provide the capability.
 
-Task markers such as `// RDD:P01:T001 [tests] ...` and sidecars for noncommentable files project the plan into source. The plan and transactional state remain authoritative. Use controller commands to complete tasks and reconcile markers; never edit SQLite state, locks, receipts, or unfinished markers to force progress. Review gates occur at phase completion, rather than after each task.
+Task markers such as `// RDD:<phase>:<task> [tests] ...` and sidecars for noncommentable files project the plan into source. The plan and transactional state remain authoritative. Use controller commands to complete tasks and reconcile markers; never edit SQLite state, locks, receipts, or unfinished markers to force progress. Review gates occur at phase completion, rather than after each task.
 
 ## Prerequisites
 
@@ -233,3 +233,4 @@ For deeper work, use the existing guides:
 - [Historical validation record](docs/harness/validation.md): checks performed when the original boilerplate was assembled, not a claim that the Todo application is complete.
 
 Adjust protected harness policy, tools, models, or skills through deliberate review before specification freeze, and run `./rdd selftest` after harness changes. During implementation, those frozen rules remain part of the acceptance authority.
+<!-- RDD:P01:T021 [documentation] Document reproducible build verification dependencies and revision evidence handoff | requirements=NFR-MAINT-001,NFR-PLAT-001,NFR-QUAL-001,NFR-QUAL-002,NFR-TECH-004 -->
