@@ -1,0 +1,56 @@
+syntax = "proto3";
+package todo.v1;
+
+import "todo/v1/model.proto";
+
+// UI/native boundary. Commands operate on opaque selection/confirmation tokens, never paths or SQL.
+service ApplicationService {
+  rpc Query(QueryRequest) returns (QueryResponse);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc Mutate(MutateRequest) returns (MutateResponse);
+  rpc Reconcile(ReconcileRequest) returns (ReconcileResponse);
+  rpc ConfirmDelete(ConfirmDeleteRequest) returns (ConfirmDeleteResponse);
+  rpc Export(ExportRequest) returns (ExportResponse);
+  rpc PrepareRestore(PrepareRestoreRequest) returns (PrepareRestoreResponse);
+  rpc Restore(RestoreRequest) returns (RestoreResponse);
+  rpc DiscardRestore(DiscardRestoreRequest) returns (DiscardRestoreResponse);
+  rpc Lifecycle(LifecycleRequest) returns (LifecycleResponse);
+}
+message QueryRequest { Query query = 1; uint32 offset = 2; uint32 limit = 3; optional uint64 expected_generation = 4; }
+message QueryResponse { oneof result { QueryResult value = 1; Failure failure = 2; } }
+message GetTaskRequest { string id = 1; }
+message GetTaskResponse { oneof result { Task value = 1; Failure failure = 2; } }
+message MutateRequest { Mutation mutation = 1; }
+message MutateResponse { Outcome outcome = 1; }
+message ReconcileRequest { string operation_id = 1; string session_id = 2; }
+message ReconcileResponse { Outcome outcome = 1; }
+// Native prompt identifies the task and issues a one-use token only on explicit confirmation.
+message ConfirmDeleteRequest { string id = 1; }
+message ConfirmDeleteResponse { oneof result { string confirmation_token = 1; Failure failure = 2; } }
+// Native save dialog and any overwrite prompt are part of this approved operation.
+message ExportRequest { string operation_id = 1; string session_id = 2; }
+message ExportResult { string display_location = 1; uint32 task_count = 2; }
+message ExportResponse { oneof result { ExportResult value = 1; Failure failure = 2; } }
+// Native file chooser returns a retained validated candidate, not unrestricted filesystem authority.
+message PrepareRestoreRequest {}
+message RestorePreview {
+  string candidate_token = 1;
+  string display_location = 2;
+  uint32 current_count = 3;
+  uint32 replacement_count = 4;
+  string candidate_sha256 = 5;
+  uint64 collection_generation = 6;
+}
+message PrepareRestoreResponse { oneof result { RestorePreview value = 1; Failure failure = 2; } }
+message RestoreRequest { string operation_id = 1; string candidate_token = 2; uint64 expected_generation = 3; bool confirmed_replace = 4; string session_id = 5; }
+message RestoreResponse { Outcome outcome = 1; }
+message DiscardRestoreRequest { string candidate_token = 1; }
+message DiscardRestoreResponse { Failure failure = 1; }
+enum LifecycleAction {
+  LIFECYCLE_ACTION_UNSPECIFIED = 0;
+  LIFECYCLE_ACTION_REFRESH_CALENDAR = 1;
+  LIFECYCLE_ACTION_REQUEST_CLOSE = 2;
+  LIFECYCLE_ACTION_RETRY_STORAGE = 3;
+}
+message LifecycleRequest { LifecycleAction action = 1; }
+message LifecycleResponse { bool may_close = 1; string today = 2; Outcome pending = 3; Failure failure = 4; }

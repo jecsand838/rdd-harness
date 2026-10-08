@@ -1,0 +1,28 @@
+syntax = "proto3";
+package todo.v1;
+
+import "google/protobuf/timestamp.proto";
+import "todo/v1/model.proto";
+
+// Pure collection invariants; supplied snapshot is a committed immutable value.
+service CollectionService {
+  rpc Evaluate(EvaluateRequest) returns (EvaluateResponse);
+  rpc ValidateSnapshot(ValidateSnapshotRequest) returns (ValidateSnapshotResponse);
+  rpc Select(SelectRequest) returns (SelectResponse);
+}
+message EvaluateRequest {
+  Snapshot current = 1;
+  Mutation mutation = 2;
+  google.protobuf.Timestamp now = 3;
+  string allocated_identity = 4;
+}
+message Change {
+  uint64 expected_generation = 1;
+  string operation_id = 2;
+  oneof action { Task upsert = 3; string delete_id = 4; bool unchanged = 5; }
+}
+message EvaluateResponse { oneof result { Change value = 1; Failure failure = 2; } }
+message ValidateSnapshotRequest { Snapshot snapshot = 1; }
+message ValidateSnapshotResponse { oneof result { Snapshot value = 1; Failure failure = 2; } }
+message SelectRequest { Snapshot snapshot = 1; Query query = 2; string today = 3; uint32 offset = 4; uint32 limit = 5; }
+message SelectResponse { oneof result { QueryResult value = 1; Failure failure = 2; } }

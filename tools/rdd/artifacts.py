@@ -217,7 +217,10 @@ def plan_validate(root: Path, plan: dict, spec: dict, lock: dict, config: dict) 
                 raise RddError(f"Task {t['id']} writes a frozen/policy path {rel}", "planning")
             if rel not in target:
                 raise RddError(f"Task {t['id']} writes a file absent from target inventory: {rel}")
-            if not (root / rel).is_file() and rel not in shells:
+            # A task sidecar reserves its exact write set without creating bogus
+            # manifests, lockfiles or binaries. Inline tasks still need safe shells.
+            if (not (root / rel).is_file() and rel not in shells
+                    and t["anchor"]["mode"] != "sidecar"):
                 raise RddError(f"Missing file {rel} needs an explicit preparation shell")
         if t["anchor"]["path"] not in t["writes"]:
             raise RddError(f"Task {t['id']} anchor must identify one of its declared write files")
