@@ -66,6 +66,76 @@ def _files(directory: Path) -> dict[str, str]:
     return result
 
 
+def _seal_contract_index(root: Path, candidate: Path) -> dict:
+    """Bind derived symbols to local bytes while retaining imported identities."""
+    index = read_json(candidate / ".rdd-generated.json")
+    source_hashes, dependencies = {}, []
+    for source in index["descriptor_sources"]:
+        local = _contained(root, root / "contracts" / source)
+        if local.is_file():
+            source_hashes[local.relative_to(root).as_posix()] = hashlib.sha256(local.read_bytes()).hexdigest()
+        else:
+            dependencies.append(source)
+    index["source_hashes"] = source_hashes
+    index["descriptor_dependencies"] = dependencies
+    for service in index["services"]:
+        local = "contracts/" + service["descriptor_source"]
+        service["source"] = local if local in source_hashes else None
+    index["binding_sources"] = {path: ["contracts/" + source if "contracts/" + source in source_hashes
+        else "descriptor:" + source for source in sources] for path, sources in index["binding_sources"].items()}
+    index["support_files"] = sorted(set(index["support_files"]) | {"gen/rust/Cargo.lock"})
+    return index
+
+
+def _boundary_proof(runtime: Path, candidate: Path, index: dict, *, defect: str | None = None,
+                    operation: str | None = None) -> tuple[Path, Path]:
+    """Disposable independent crates compile concrete providers and callers.
+
+    Every type/signature comes from the generated descriptor index. These
+    fixtures provide only Default responses and are never product artifacts.
+    """
+    provider, consumer = runtime / "provider", runtime / "consumer"
+    for directory in (provider, consumer):
+        (directory / "src").mkdir(parents=True)
+    dependency = json.dumps(str(candidate))
+    (provider / "Cargo.toml").write_bytes((
+        '[package]\nname = "rdd-proof-provider"\nversion = "0.0.0"\nedition = "2021"\n'
+        '[workspace]\n[dependencies]\nprost-types = "=0.14.4"\nrdd-contracts = { path = ' + dependency + ' }\n').encode("utf-8"))
+    (consumer / "Cargo.toml").write_bytes((
+        '[package]\nname = "rdd-proof-consumer"\nversion = "0.0.0"\nedition = "2021"\n'
+        '[workspace]\n[dependencies]\nprost-types = "=0.14.4"\nrdd-contracts = { path = ' + dependency + ' }\n'
+        'rdd-proof-provider = { path = ' + json.dumps(str(provider)) + ' }\n').encode("utf-8"))
+    providers, callers = [], []
+    caller_number = 0
+    for number, service in enumerate(index["services"]):
+        trait = service["rust_trait"]
+        providers += [f"pub struct Provider{number};", f"impl {trait} for Provider{number} {{"]
+        for method in service["operations"]:
+            faulty = method["symbol"] == operation
+            request, response = method["rust_input"], method["rust_output"]
+            wrong_request = "bool" if faulty and defect == "provider_request" else request
+            wrong_response = "()" if faulty and defect == "provider_response" else response
+            if faulty and defect == "associated_error":
+                providers.append("    type Error = (); ")
+                wrong_response = f"Result<{response}, Self::Error>"
+                expression = f"Err::<{response}, ()>(())"
+            else:
+                expression = f"<{wrong_response}>::default()"
+            providers.append(f"    fn {method['rust_method']}(&self, _request: {wrong_request}) "
+                f"-> impl core::future::Future<Output = {wrong_response}> + Send {{ async {{ {expression} }} }}")
+            call_request = "false" if faulty and defect == "consumer_request" else "request"
+            callers.append(f"pub fn call_{caller_number}(request: {request}) -> impl core::future::Future<Output = {response}> + Send {{ "
+                f"async move {{ let provider = rdd_proof_provider::Provider{number}; "
+                f"{trait}::{method['rust_method']}(&provider, {call_request}).await }} }}")
+            caller_number += 1
+        providers.append("}")
+    if defect == "dependency_direction":
+        providers.append("use rdd_proof_consumer::call_0;")
+    (provider / "src/lib.rs").write_bytes(("\n".join(providers) + "\n").encode("utf-8"))
+    (consumer / "src/lib.rs").write_bytes(("\n".join(callers) + "\n").encode("utf-8"))
+    return provider, consumer
+
+
 def _reject_source_symlinks(directory: Path) -> None:
     if directory.is_symlink():
         raise ContractCheckError(f"contract source directory is a symlink: {directory}")
@@ -166,10 +236,12 @@ def run_contracts(
     logs = runtime / "logs"
     logs.mkdir()
     steps: list[dict[str, Any]] = []
+    report_output_bytes = 0
     env = os.environ.copy()
     env["CARGO_TARGET_DIR"] = str(_contained(root, runtime_root / "cargo-target"))
 
     def execute(args: list[str], name: str, *, expected_failure: bool = False) -> CommandResult:
+        nonlocal report_output_bytes
         stem = f"{len(steps) + 1:02d}-{name}"
         stdout_log, stderr_log = logs / f"{stem}.stdout", logs / f"{stem}.stderr"
         try:
@@ -181,16 +253,23 @@ def run_contracts(
         except (OSError, RddAdapterError) as error:
             raise ContractCheckError(f"{name} could not execute: {error}", blocked=True) from error
         log = logs / f"{stem}.log"
-        log.write_text(json.dumps({
+        log.write_bytes((json.dumps({
+            "name": name, "command": args, "exit_code": completed.returncode,
+            "expected_failure": expected_failure,
             "stdout": completed.stdout, "stderr": completed.stderr,
             "timed_out": completed.timed_out, "output_truncated": completed.output_truncated,
-        }, indent=2) + "\n", encoding="utf-8")
+        }, indent=2) + "\n").encode("utf-8"))
+        log_digest = hashlib.sha256(log.read_bytes()).hexdigest()
+        report_output_bytes += len(json.dumps({"stdout":completed.stdout,"stderr":completed.stderr},ensure_ascii=False).encode("utf-8"))
         steps.append({
             "name": name, "command": args, "exit_code": completed.returncode,
             "expected_failure": expected_failure,
             "log": log.relative_to(root).as_posix(),
-            "sha256": hashlib.sha256(log.read_bytes()).hexdigest(),
+            "sha256": log_digest, "log_digest": log_digest,
+            "stdout": completed.stdout, "stderr": completed.stderr,
         })
+        if report_output_bytes > 2 * 1024 * 1024:
+            raise ContractCheckError("contract proof report exceeds the 2 MiB transferable diagnostic budget", blocked=True)
         if completed.timed_out or completed.output_truncated:
             raise ContractCheckError(f"{name} was timed out or exceeded its output budget; see {log.relative_to(root)}", blocked=True)
         if completed.returncode and not expected_failure:
@@ -256,13 +335,46 @@ def run_contracts(
                 "signature negative proof did not fail for the deliberately incorrect method parameter count"
             )
 
+        contract_index = _seal_contract_index(root, candidate)
+        proof_root = runtime / "boundary-proof"
+        provider, consumer = _boundary_proof(proof_root, candidate, contract_index)
+        for directory, label in ((provider, "provider"), (consumer, "consumer")):
+            shutil.copyfile(candidate / "Cargo.lock", directory / "Cargo.lock")
+            # The generated dependency lock pins all transitive external crates;
+            # only disposable workspace/path package entries are resolved here.
+            execute([str(cargo), "generate-lockfile", "--offline", "--manifest-path", str(directory / "Cargo.toml")], "proof-lock-" + label)
+            cargo_check(directory, "boundary-" + label)
+            for number, target in enumerate(dict.fromkeys(targets), start=1):
+                cargo_check(directory, f"boundary-{label}-target-{number}", target)
+        negative_proofs = []
+        for service in contract_index["services"]:
+            for method in service["operations"]:
+                for defect, code in (("provider_request", "E0053"), ("provider_response", "E0271"),
+                                     ("consumer_request", "E0308"), ("associated_error", "E0437")):
+                    target_root = runtime / f"negative-boundary-{len(negative_proofs)}"
+                    bad_provider, bad_consumer = _boundary_proof(target_root, candidate, contract_index,
+                        defect=defect, operation=method["symbol"])
+                    selected = bad_consumer if defect == "consumer_request" else bad_provider
+                    source_lock = consumer if defect == "consumer_request" else provider
+                    shutil.copyfile(source_lock / "Cargo.lock", selected / "Cargo.lock")
+                    rejected = cargo_check(selected, f"boundary-negative-{len(negative_proofs)}", expected_failure=True)
+                    if rejected.returncode == 0 or code not in rejected.stdout + rejected.stderr:
+                        raise ContractCheckError(f"{defect} did not reject {method['symbol']} with {code}")
+                    negative_proofs.append({"operation": method["symbol"], "defect": defect, "diagnostic": code})
+        bad_provider, _ = _boundary_proof(runtime / "negative-dependency", candidate, contract_index, defect="dependency_direction")
+        shutil.copyfile(provider / "Cargo.lock", bad_provider / "Cargo.lock")
+        rejected = cargo_check(bad_provider, "boundary-dependency-negative", expected_failure=True)
+        if rejected.returncode == 0 or "E0432" not in rejected.stdout + rejected.stderr:
+            raise ContractCheckError("reverse provider dependency was not rejected with E0432")
+
         metadata = {
             "generator": "rdd-proto-codegen/0.1.0", "prost_version": "0.14.4",
             "descriptor_sha256": hashlib.sha256(descriptor.read_bytes()).hexdigest(),
-            "files": _files(candidate),
+            "files": {p: h for p, h in _files(candidate).items() if p != ".rdd-generated.json"},
+            "contract_index": contract_index,
         }
-        (candidate / ".rdd-generated.json").write_text(
-            json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        (candidate / ".rdd-generated.json").write_bytes(
+            (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode("utf-8")
         )
         expected, actual = _files(candidate), _files(output)
         changed = sorted(name for name in expected.keys() | actual.keys() if expected.get(name) != actual.get(name))
@@ -271,7 +383,7 @@ def run_contracts(
         elif changed:
             raise ContractCheckError(
                 "generated Rust drift: " + ", ".join(changed[:12])
-                + "; regenerate only in the authorized specification/preparation operation"
+                + "; regenerate only in the authorized specification operation"
             )
         result = {
             "status": "passed", "scope": "schema_messages_and_local_unary_service_signatures",
@@ -279,6 +391,10 @@ def run_contracts(
             "generated_path": "gen/rust", "generated_files": expected,
             "targets": ["host", *dict.fromkeys(targets)],
             "signature_positive": "passed", "signature_negative": "expected_E0050",
+            "boundary_provider": "passed", "boundary_consumer": "passed",
+            "boundary_negative_proofs": negative_proofs, "dependency_direction_negative": "expected_E0432",
+            "qualified_services": [s["symbol"] for s in contract_index["services"]],
+            "qualified_operations": [m["symbol"] for s in contract_index["services"] for m in s["operations"]],
             "write": write, "changed_files": changed, "steps": steps,
             "limitations": [
                 "Does not prove that application implementations use the generated traits; project architecture and consumer/provider checks are still required.",
@@ -287,7 +403,7 @@ def run_contracts(
         }
         report = runtime / "result.json"
         result["report_path"] = report.relative_to(root).as_posix()
-        report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        report.write_bytes((json.dumps(result, indent=2) + "\n").encode("utf-8"))
         return result
     finally:
         lock_path.unlink(missing_ok=True)

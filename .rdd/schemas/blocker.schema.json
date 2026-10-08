@@ -36,6 +36,97 @@
     },
     "resolved": {
       "type": "boolean"
+    },
+    "escape": {
+      "type": "object",
+      "properties": {
+        "severity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detected_stage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origin_stage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_commit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_digest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spec_digest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plan_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "affected": {
+          "type": "object",
+          "properties": {
+            "requirements": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "elements": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "requirements",
+            "elements",
+            "tasks"
+          ],
+          "additionalProperties": false
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "diagnostic": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "severity",
+        "detected_stage",
+        "origin_stage",
+        "source_commit",
+        "source_digest",
+        "spec_digest",
+        "plan_digest",
+        "affected",
+        "evidence",
+        "diagnostic"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

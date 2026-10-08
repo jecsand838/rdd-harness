@@ -54,7 +54,7 @@ than bypassing them.
 
 ## Native Goal execution
 
-1. Complete `$specification-workflow` and `$preparation-workflow` in sequence.
+1. Complete `$specification-workflow` and `$preparation-workflow` in sequence, including both independent review perspectives and `gate preparation` for the exact committed handoff.
 2. Run `./rdd goal` to print `.rdd/goals/implementation.txt`.
 3. Open Codex in the repository, or use `./rdd workflow implementation`.
 4. Set the native Goal by entering `/goal ` followed by the printed objective.
@@ -238,30 +238,43 @@ protects the selected dependency revision; it does not replace repository
 branch protections or review of changes to the verifier and workflow itself.
 
 Application build prerequisites and platform-specific command inventory must be
-qualified and pinned during specification/preparation. Before those artifacts
-exist, CI validates the boilerplate/controller only. A prepared baseline checks
+qualified and pinned during specification, with task producers/timing resolved during preparation. Before those artifacts
+exist, CI validates the boilerplate/controller only. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
 its contracts and pending task projections without claiming implementation. Phase
 CI runs cumulative ordinary checks applicable to its platform. A complete source
 revision, including a release or post-merge `main`, also runs every project check
 applicable to that platform. A missing native dependency needed by those checks
 is an environment blocker.
 
-When the trusted baseline contains a frozen plan, the supplied workflow installs
-the exact version in its `rust-toolchain.toml`, including the listed components
-and targets. The initial pin is **Rust 1.99.0**, released on 2026-10-01 according
+When the trusted baseline contains a frozen plan, `ci_tools.py` reads its declared
+hosted tool resources, rejects conflicting pins and selects Python and Buf explicitly.
+It installs the exact `rust-toolchain.toml` version, components and targets, plus
+declared supported Cargo frontend tools (`cargo-tauri`, `trunk`, `wasm-bindgen`,
+`wasm-pack`). Other tools require a qualified installed executable;
+manifest text cannot supply arbitrary installer commands. Every installed version
+is measured before checks run. The initial Rust pin is **1.99.0**, released on 2026-10-01 according
 to the [official announcement](https://blog.rust-lang.org/2026/10/01/Rust-1.99.0/).
 `rustfmt`, `clippy`, and `wasm32-unknown-unknown` support native Rust and the Rust
 frontend requirement. A [Buf setup-only action](https://buf.build/docs/bsr/ci-cd/github-actions/#run-setup-only)
-installs **Buf 1.73.0**, whose [official release](https://github.com/bufbuild/buf/releases/tag/v1.73.0)
+defaults to **Buf 1.73.0** unless the specification selects another exact version; its [official release](https://github.com/bufbuild/buf/releases/tag/v1.73.0)
 is dated 2026-09-11. It publishes no schemas and writes no PR comments.
 
 Linux uses Ubuntu 24.04 and installs the
 [Tauri native build prerequisites](https://v2.tauri.app/start/prerequisites/#linux).
 macOS and Windows use hosted native development images. The workflow records
-the actual Rust, Cargo, Buf, Python, and operating-system versions in
-`.rdd/evidence/toolchain.json`; that receipt is included in the CI artifact.
-These setup steps are conditional, so the unopened boilerplate runs its Python
-selftests without downloading an application toolchain.
+actual installed versions and raw provisioning logs under
+`.rdd/evidence/provisioning/`, bound to candidate, policy and verifier commits
+and specification/plan file hashes. Failure preserves attempted command logs
+and cannot emit successful tool evidence. CLI and hosted execution use explicit
+UTF-8; persisted generated/evidence bytes use stable LF encoding.
+
+The separate preparation workflow operates while the run is `preparing` using
+the independently pinned `RDD_PREPARATION_HARNESS_SHA` verifier. It uploads
+`preparation-ci.json`, check receipts and raw provisioning logs for transfer into
+the run. Qualified native/manual observations remain separate from hosted results.
+The harness PR matrix also tests the candidate controller and actual native/WASM
+generator/compiler proofs on Linux, macOS and Windows; those results do not prove
+Todo acceptance or replace trusted-base application CI.
 
 The specification workflow must still qualify and record its selected frontend
 builder, Tauri packaging commands, additional test tools, dependency locks, and

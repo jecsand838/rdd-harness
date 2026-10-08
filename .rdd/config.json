@@ -55,6 +55,7 @@
     "rdd.cmd",
     "rdd.ps1",
     "buf.yaml",
+    "buf.lock",
     "buf.gen.yaml",
     "rust-toolchain.toml"
   ]

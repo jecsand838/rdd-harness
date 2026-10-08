@@ -12,13 +12,22 @@ session normally already performs this role; avoid nested coordinator trees.
 
 Delegate independent read/research tasks and disjoint implementation targets when
 they save time or improve quality. Use rdd_large for large targets, rdd_small for
-small unambiguous targets, and retain one rdd_reviewer during implementation for
-live feedback and final independent phase review. Keep ownership disjoint. The
+small unambiguous targets. Retain one read-only rdd_reviewer in all workflows:
+specification against requirements, preparation against frozen specs/contracts,
+implementation against frozen plans/contracts. Record live findings and verified
+corrections at node handoffs, generated changes, integrations and check results. Keep ownership disjoint. The
 default three child slots support two implementors and the reviewer. The reviewer
-provides course correction without task-level review gates.
+provides course correction without task-level review gates. Follow the fixed
+workflow nodes and bounded artifact claims; implementation nodes derive existing
+task/phase truth. Final specification/preparation acceptance needs two independent
+perspectives on the same candidate, with zero unresolved findings.
 
 Only specification may resolve requirements/architecture ambiguity or change
-module/API contracts. Preparation freezes a dependency-closed sequential plan.
+module/API contracts. Generate and qualify canonical Protobuf sources, response-only
+interfaces and derived symbol inventories during specification. Preparation fully
+grooms every task and operation ownership, freezes a dependency-closed plan, then
+materializes packets; preparation readiness/CI and final review must pass before
+P01. Downstream contracts are immutable, including compatible additions.
 Implementation follows phase category sweeps: tests, deletion, modification,
 addition, documentation. Never reopen or restack a sealed phase; record a blocker
 and start the appropriate specification amendment. Preserve provenance and verify

@@ -129,7 +129,7 @@ class RecoveryTests(unittest.TestCase):
         checkpoint["evidence"][".rdd/evidence/must-not-be-written.txt"] = "sentinel"
         write_json(path, checkpoint)
         self.empty_runtime_store()
-        with self.assertRaisesRegex(RddError, "digest mismatch"):
+        with self.assertRaisesRegex(RddError, "digest mismatch|hash mismatch"):
             self.f.c.resume(path)
         self.assert_no_import()
 
@@ -189,7 +189,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_new_run_preserves_prior_worktree_and_packet(self):
         self.f.opened()
-        first = self.f.c.task_claim("T001", "rdd_large")
+        first = self.f.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
         worker = self.root / first["lease"]["worktree"]
         draft = worker / "tests/behavior.py"
         content = "# Preserve this unfinished work\n" + draft.read_text()
@@ -197,7 +197,7 @@ class RecoveryTests(unittest.TestCase):
         packet = (self.root / first["packet"]).read_bytes()
         self.f.c.task_release("T001", "Preserve work before regeneration")
         self.regenerate_fixture()
-        second = self.f.c.task_claim("T001", "rdd_large")
+        second = self.f.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
         self.assertEqual(second["lease"]["attempts"], 1)
         self.assertNotEqual(first["lease"]["worktree"], second["lease"]["worktree"])
         self.assertNotEqual(first["packet"], second["packet"])
@@ -208,11 +208,11 @@ class RecoveryTests(unittest.TestCase):
 
     def test_new_run_preserves_packets_without_worktrees(self):
         self.f.opened()
-        first = self.f.c.task_claim("T001", "rdd_large", worktree=False)
+        first = self.f.c.task_claim("T001", "rdd_large", worktree=False, session_id="fixture-worker")
         packet = (self.root / first["packet"]).read_bytes()
         self.f.c.task_release("T001", "Preserve packet before regeneration")
         self.regenerate_fixture()
-        second = self.f.c.task_claim("T001", "rdd_large", worktree=False)
+        second = self.f.c.task_claim("T001", "rdd_large", worktree=False, session_id="fixture-worker")
         self.assertEqual(second["lease"]["attempts"], 1)
         self.assertIsNone(second["lease"]["worktree"])
         self.assertNotEqual(first["packet"], second["packet"])
@@ -220,7 +220,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_checkpoint_accepts_historical_worktree_path(self):
         self.f.opened()
-        claim = self.f.c.task_claim("T001", "rdd_large")
+        claim = self.f.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
         legacy = ".rdd/runtime/worktrees/T001-a1"
         if claim["lease"]["worktree"] != legacy:
             self.f.g("worktree", "move", claim["lease"]["worktree"], legacy)
@@ -290,12 +290,14 @@ class RecoveryTests(unittest.TestCase):
                     self.f.c.spec_freeze()
                 self.assertFalse((self.root / ".rdd/spec.lock.json").exists())
         write_json(self.root / ".rdd/spec.json", original)
+        self.f.stage_ready("specification")
         result = self.f.c.spec_freeze()
         self.assertEqual(result["status"], "specified")
         self.assertNotEqual(result["spec_digest"], parent)
 
     def test_amendment_plan_cannot_expand_outside_frozen_impact_paths(self):
         self.amend(paths=["modules/value.py"])
+        self.f.stage_ready("specification")
         frozen = self.f.c.spec_freeze()
         self.f.c.plan_init()
         plan = copy.deepcopy(self.f.plan)

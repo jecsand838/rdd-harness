@@ -4,15 +4,15 @@
 
 ## Identity
 
-Record active run, current branch/commit/source digest, worker role, task IDs, phase, category, and lease/worktree locator.
+Record active run, current branch/commit/source digest, worker role, task IDs, phase, category, sorted vertical membership, primary/secondary work-site IDs, and lease/worktree locator.
 
 ## Bounded context
 
-Link only relevant requirement, specification, operation/contract, scenario, and skill sections. Identify authoritative sources and exclude superseded discussion.
+Link only relevant requirement, specification, fully qualified operation/contract, scenario, and skill sections. Include frozen binding identities and provider/consumer/adapter obligations without copying schemas. Identify authoritative sources and exclude superseded discussion.
 
 ## Work and ownership
 
-State the exact objective, permitted write paths, prerequisites already satisfied, shared-file integration owner, and prohibited scope changes. Include the approved reuse rationale for additions.
+Use the frozen full primary packet. State the objective, bounded instructions, permitted write paths and every local work site, required inputs with their verified producers and use timing, outputs, shared-file integration owner, and acceptance. Include approved reuse rationale for additions. Do not delegate unresolved grooming or design questions.
 
 ## Evidence
 
@@ -20,4 +20,4 @@ Name required check IDs and TDD expectations. State how to report changed files,
 
 ## Stop conditions
 
-Stop for a requirement/spec/contract ambiguity, stale source digest, overlapping ownership, missing required capability, or sealed-phase invalidation. Preserve a checkpoint and exact evidence; do not edit the ledger or fabricate a passing result.
+Record a critical harness regression and stop for a frozen specification/planning defect. Preserve origin/detection stage, affected IDs, exact candidate and evidence. Also stop for stale source digest, overlapping ownership, missing required capability, or sealed-phase invalidation. Preserve a checkpoint and exact evidence; do not edit the ledger or fabricate a passing result.

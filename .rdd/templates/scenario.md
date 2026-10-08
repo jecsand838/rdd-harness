@@ -4,7 +4,7 @@
 
 ## Identity and scope
 
-State scenario ID, title, requirement IDs, operation/module IDs, scenario kind, and supported environments.
+State scenario ID, title, requirement IDs, solution-element/behavior and operation/module IDs, scenario kind, and supported environments.
 
 ## Initial state
 
@@ -20,7 +20,7 @@ Define exact expected state, result, error, timing, and forbidden side effects. 
 
 ## Evidence method
 
-State the test type, required hardware/platform/manual observations, check ID, command/evaluator, output artifact, and failure interpretation. Define how the test establishes that it ran the intended assertions.
+State the test type, required hardware/platform/manual observations, check ID, command/evaluator, output artifact, and failure interpretation. Define how the test reports the executed scenario ID, assertion outcome and evidence. Aggregate success cannot cover an omitted, filtered or skipped scenario.
 
 ## Boundaries and limitations
 

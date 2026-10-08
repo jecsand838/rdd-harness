@@ -12,6 +12,10 @@ import time
 import uuid
 
 from . import artifacts
+from .stages import StageWorkflow
+from .reviews import ReviewStream
+from .nodes import WorkflowNodes, NODES
+from .readiness import validate_resources, validate_producers, required_probe_ids
 from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
 from .checks import execute_check, platform_name, verify_receipt
 from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, Store, assert_inventory, atomic_write, clean, digest, event,
@@ -20,12 +24,16 @@ from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, Store, assert_
 
 POLICY_PREFIXES = (".agents/", ".codex/", ".github/", "tools/rdd/", "tools/proto-codegen/", "tests/harness/",
                    ".rdd/schemas/", ".rdd/templates/", ".rdd/goals/")
-POLICY_FILES = {".rdd/config.json", "AGENTS.md", "rdd", "rdd.cmd", "rdd.ps1", "buf.yaml",
+POLICY_FILES = {".rdd/config.json", "AGENTS.md", "rdd", "rdd.cmd", "rdd.ps1", "buf.yaml", "buf.lock",
                 "buf.gen.yaml", "rust-toolchain.toml", ".gitignore", ".gitattributes"}
 
 
 def policy_inventory(root: Path) -> dict:
-    return {p: h for p, h in inventory(root).items() if p.startswith(POLICY_PREFIXES) or p in POLICY_FILES}
+    selected = {p: h for p, h in inventory(root).items() if p.startswith(POLICY_PREFIXES) or p in POLICY_FILES}
+    # Optional generator/dependency inputs freeze their absence as well as
+    # their bytes, independently of candidate ignore rules.
+    selected.update(inventory(root, list(POLICY_FILES)))
+    return selected
 
 
 def lock_value(files: dict, **metadata) -> dict:
@@ -41,7 +49,7 @@ def verify_lock(root: Path, rel: str) -> dict:
     return lock
 
 
-class Controller:
+class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
     def __init__(self, root: Path):
         self.root = root.resolve()
         self.config = read_json(self.root / ".rdd/config.json")
@@ -57,6 +65,13 @@ class Controller:
         if self._store is not None:
             self._store.close()
 
+    def guard_v2(self) -> None:
+        locator = self.root / ".rdd/run.json"
+        if locator.is_file():
+            run_id = read_json(locator).get("run_id")
+            if run_id and Store.read(self.root, run_id).get("workflow_version") != 2:
+                raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated v2 baseline.", "environment")
+
     def guard_source_write(self, state: dict | None = None, *, baseline: bool = False) -> str:
         """Admit only the recorded authoring/implementation checkout before writes."""
         require_source_branch(self.root)
@@ -65,6 +80,8 @@ class Controller:
             if not locator.get("run_id"):
                 raise RddError("No active run. Start with ./rdd start --mode regenerate.")
             state = Store.read(self.root, locator["run_id"])
+        if state.get("workflow_version") != 2:
+            raise RddError("Legacy runs are read/export only. Preserve history and start a fresh v2 regenerate baseline.", "environment")
         base = state.get("base_branch")
         if not isinstance(base, str) or not base or base == "main":
             raise RddError("This run has no writable authoring baseline. Inspect/export it, then start a fresh amend/regenerate run on a dedicated baseline branch; its recorded baseline cannot be rewritten.", "environment")
@@ -92,12 +109,14 @@ class Controller:
         locator = read_json(self.root / ".rdd/run.json")
         if not locator.get("run_id"):
             raise RddError("No active run. Start with ./rdd start --mode regenerate.")
-        state = self.store.get(locator["run_id"])
+        state = Store.read(self.root, locator["run_id"])
         if not allow_blocked and any(not b["resolved"] for b in state["blockers"]):
             raise RddError("Run is blocked. Read ./rdd status; resolve environment/review issues with resume, or start a new specification run for authority/closure changes.", "environment")
         return state
 
     def save(self, state: dict) -> None:
+        if state.get("workflow_version") != 2:
+            raise RddError("Legacy state cannot be rewritten; export it and start a fresh v2 baseline", "environment")
         self.store.put(state)
         write_json(self.root / ".rdd/run.json", {"schema_version": 1, "run_id": state["id"],
                    "status": state["status"], "baseline": f".rdd/baselines/{state['id']}"})
@@ -135,6 +154,7 @@ class Controller:
         return spec_lock, plan_lock
 
     def init(self) -> dict:
+        self.guard_v2()
         if git(self.root, "rev-parse", "--show-toplevel", check=False) != str(self.root):
             git(self.root, "init", "-b", "main")
         for rel in (".rdd/runtime", ".rdd/evidence", ".rdd/plan/anchors", ".rdd/baselines"):
@@ -172,6 +192,7 @@ class Controller:
         return result
 
     def start(self, mode: str, run_id: str | None = None) -> dict:
+        self.guard_v2()
         baseline_branch = require_source_branch(self.root)
         if mode not in {"regenerate", "amend"}:
             raise RddError("Run mode must be regenerate or amend")
@@ -242,7 +263,7 @@ class Controller:
         if previous_plan.is_file():
             for task in read_json(previous_plan)["tasks"]:
                 artifacts.remove_anchor(self.root, task)
-        state = {"id": run_id, "mode": mode, "status": "specification", "created_at": now(),
+        state = {"workflow_version": 2, "workflow_graph_digest": digest(NODES), "workflow_nodes": {}, "id": run_id, "mode": mode, "status": "specification", "created_at": now(),
                  "base_commit": head(self.root), "base_branch": baseline_branch,
                  "parent_spec_digest": old_lock["digest"] if old_lock else None,
                  "requirements_digest": reqs["digest"], "changed_requirements": changed,
@@ -267,13 +288,13 @@ class Controller:
         path = self.root / ".rdd/spec.json"
         if path.exists():
             return {"path": ".rdd/spec.json", "status": "existing", "next": "Amend the existing manifest; initialization never overwrites it."}
-        spec = {"schema_version": 1, "id": state["id"], "requirements_digest": state["requirements_digest"],
+        spec = {"schema_version": 2, "author_sessions": [], "contract_index_path": "gen/rust/.rdd-generated.json", "shared_generated_files": [], "solution_elements": [], "target_tree": [], "resources": [], "environments": [], "id": state["id"], "requirements_digest": state["requirements_digest"],
                 "mode": state["mode"], "parent_spec_digest": state["parent_spec_digest"], "change_summary": "",
                 "documents": [], "decisions": [], "contract_files": [], "generated_files": [],
                 "contract_check_ids": ["C-CONTRACTS"], "project_check_ids": [], "modules": [], "scenarios": [],
                 "checks": [{"id": "C-CONTRACTS", "kind": "contract", "argv": ["{python}", "tools/rdd/proto_traits.py"],
                             "cwd": ".", "timeout_seconds": 1800, "platforms": ["any"], "red_pattern": None,
-                            "metrics": [], "host_profile": None}], "requirement_map": [],
+                            "metrics": [], "host_profile": None, "environments": [], "requires": [], "scenario_ids": [], "results_path": None}], "requirement_map": [],
                 "amendment": {"requirements": state["changed_requirements"] if state["mode"] == "amend" else [],
                               "paths": [], "rationale": ""}}
         write_json(path, spec)
@@ -288,6 +309,7 @@ class Controller:
         if reqs["digest"] != state["requirements_digest"]:
             raise RddError("Requirements changed after run start; start a new specification run", "specification")
         result = artifacts.spec_validate(self.root, spec, reqs, self.config)
+        validate_resources(self.root, spec)
         if state["mode"] == "amend":
             if not set(state["changed_requirements"]) <= set(spec["amendment"]["requirements"]):
                 raise RddError("Amendment impact omits changed requirements", "specification")
@@ -305,7 +327,10 @@ class Controller:
         result = self.spec_validate()
         spec = self.spec()
         lock = self.spec_candidate_lock()
+        self.require_workflow_node("S7")
+        acceptance = self.stage_acceptance("specification")
         proofs = self.ensure_checks(state, spec["contract_check_ids"], candidate_spec_digest=lock["digest"])
+        state["spec_acceptance"] = acceptance
         assert_inventory(self.root, lock["files"], "Specification freeze inputs")
         write_json(self.root / ".rdd/spec.lock.json", lock)
         state.update(status="specified", spec_digest=lock["digest"], policy_inventory=policy_inventory(self.root))
@@ -321,6 +346,10 @@ class Controller:
         paths = set(spec["documents"] + spec["decisions"] + spec["contract_files"] + spec["generated_files"])
         paths.update({self.config["requirements"], ".rdd/spec.json", ".rdd/requirements.index.json"})
         paths.update(p for p in inventory(self.root) if p.startswith(("contracts/", "gen/", ".rdd/sources/")))
+        qualification = set(spec["contract_check_ids"] + required_probe_ids(spec))
+        inputs = {rid for check in spec["checks"] if check["id"] in qualification for rid in check["requires"]}
+        paths.update(r["path"] for r in spec["resources"] if r["id"] in inputs and r["kind"] == "repository"
+                     and r["availability"] == "baseline")
         policy = policy_inventory(self.root)
         paths.update(policy)
         return lock_value(inventory(self.root, list(paths)), requirements_digest=state["requirements_digest"])
@@ -331,19 +360,24 @@ class Controller:
         path = self.root / ".rdd/plan/plan.json"
         if path.exists():
             return {"path": ".rdd/plan/plan.json", "status": "existing"}
-        write_json(path, {"schema_version": 1, "spec_digest": self.state()["spec_digest"], "phases": [],
+        write_json(path, {"schema_version": 2, "author_sessions": [], "boundary_proofs": [], "element_coverage": [], "resource_producers": [], "resource_uses": [], "spec_digest": self.state()["spec_digest"], "phases": [],
                           "tasks": [], "verticals": [], "target_paths": [], "shells": []})
         return {"path": ".rdd/plan/plan.json", "status": "authoring_template", "valid": False}
 
     def plan_validate(self) -> dict:
         lock, _ = self.frozen(planned=False)
         result = artifacts.plan_validate(self.root, self.plan(), self.spec(), lock, self.config)
+        validate_producers(self.root, self.spec(), self.plan())
         if self.state()["mode"] == "amend":
             impact = self.spec()["amendment"]["paths"]
             for task in self.plan()["tasks"]:
                 if any(not any(path == scope or (scope.endswith("/") and path.startswith(scope)) for scope in impact) for path in task["writes"]):
                     raise RddError(f"Amendment task {task['id']} writes outside frozen impact paths", "specification")
         return result
+
+    def plan_candidate_lock(self) -> dict:
+        paths = [".rdd/plan/plan.json"] + [p for p in inventory(self.root) if p.startswith(".rdd/plan/notes/")]
+        return lock_value(inventory(self.root, paths), spec_digest=self.state()["spec_digest"])
 
     def plan_freeze(self) -> dict:
         self.guard_source_write(baseline=True)
@@ -352,7 +386,10 @@ class Controller:
             raise RddError("Plan can be frozen only after specification and before preparation")
         result = self.plan_validate()
         plan = self.plan()
-        lock = lock_value(inventory(self.root, [".rdd/plan/plan.json"]), spec_digest=state["spec_digest"])
+        self.require_workflow_node("P5")
+        acceptance = self.stage_acceptance("plan")
+        lock = self.plan_candidate_lock()
+        state["plan_acceptance"] = acceptance
         write_json(self.root / ".rdd/plan/plan.lock.json", lock)
         state.update(status="planned", plan_digest=lock["digest"])
         state["tasks"] = {t["id"]: {"status": "todo", "attempts": 0, "worker": None, "session_id": None,
@@ -367,9 +404,9 @@ class Controller:
         self.guard_source_write(baseline=True)
         self.frozen()
         state = self.state()
-        if state["status"] == "prepared":
+        if state["status"] in {"preparing", "prepared"}:
             artifacts.anchors_verify(self.root, self.plan(), state)
-            return {"status": "prepared", "idempotent": True}
+            return {"status": state["status"], "idempotent": True}
         if state["status"] != "planned":
             raise RddError("Preparation requires a frozen plan and cannot rerun over implementation")
         spec, plan = self.spec(), self.plan()
@@ -396,12 +433,12 @@ class Controller:
                 "matrix_digest": file_hash(self.root / ".rdd/plan/implementation-matrix.md")}
         prepared = {**body, "digest": digest(body)}
         write_json(self.root / ".rdd/prepared.json", prepared)
-        state.update(status="prepared", prepared_digest=prepared["digest"])
+        state.update(status="preparing", prepared_digest=prepared["digest"])
         event(state, "prepared", created=created)
         self.save(state)
         artifacts.anchors_verify(self.root, plan, state)
-        return {"status": "prepared", "created_shells": created, "tasks": len(plan["tasks"]),
-                "next": "Commit every prepared artifact and shell on the baseline branch before phase begin."}
+        return {"status": "preparing", "created_shells": created, "tasks": len(plan["tasks"]),
+                "next": "Commit materialized artifacts; run preparation readiness, both reviews, then gate preparation."}
 
     def status(self) -> dict:
         locator = read_json(self.root / ".rdd/run.json")
@@ -414,6 +451,7 @@ class Controller:
                 "active_phase": state["active_phase"], "tasks": counts, "phases": state["phases"],
                 "blockers": [b for b in state["blockers"] if not b["resolved"]],
                 "spec_digest": state.get("spec_digest"), "plan_digest": state.get("plan_digest"),
+                "workflow_nodes": self.workflow_nodes(), "review_cursor": len(state.get("live_reviews", [])),
                 "last_events": state["events"][-8:]}
 
     def active(self, state: dict) -> str:
@@ -449,6 +487,11 @@ class Controller:
             if head(self.root) != base_sha or head_ref(self.root, base_branch) != base_sha:
                 raise RddError("Prior sealed phase moved; preserve its revision and start an amendment if repair is needed", "closure")
         else:
+            gate = state.get("preparation_gate")
+            if not gate or gate["candidate"]["source_commit"] != head(self.root) or gate["candidate"]["source_digest"] != source_digest(self.root):
+                raise RddError("First phase requires exact-source accepted preparation gate", "review")
+            if any(gate.get(k) != v for k, v in self.stage_acceptance("preparation").items()):
+                raise RddError("Preparation gate differs from current independently reviewed evidence", "review")
             base_branch, base_sha = state["base_branch"], head(self.root)
             if git(self.root, "branch", "--show-current") != base_branch:
                 raise RddError("First phase must branch from the recorded preparation baseline branch")
@@ -502,9 +545,15 @@ class Controller:
     def task_claim(self, tid: str, worker: str, worktree: bool = True, session_id: str | None = None) -> dict:
         self.guard_source_write()
         self.frozen()
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise RddError("Task claims require the actual implementor --session-id; lease labels are not session provenance")
+        self.live_review_guard(final=False, stage="implementation", task=tid,
+            task_repair=bool(self.state()["tasks"][tid].get("repair_findings")))
+        self.guard_author_identity(session_id)
         clean(self.root)
         task, state = self.task(tid), self.state()
         pid = self.active(state)
+        self.review_category_handoff(state, task)
         if worker not in {"rdd_large", "rdd_small"}:
             raise RddError("Implementation workers are rdd_large or rdd_small")
         if task["scope"] == "large" and worker != "rdd_large":
@@ -524,7 +573,7 @@ class Controller:
             branch = f"rdd/{state['id']}/{tid.lower()}-a{attempt}"
             path = f".rdd/runtime/worktrees/{state['id']}/{tid}-a{attempt}"
             record.update(status="claimed", attempts=attempt, worker=worker,
-                          session_id=session_id or f"lease-{uuid.uuid4().hex}",
+                          session_id=session_id,
                           lease_expires=time.time() + self.config["limits"]["lease_seconds"],
                           base_commit=head(self.root), branch=branch, worktree=path if worktree else None,
                           evidence=[], commit=None)
@@ -598,6 +647,9 @@ class Controller:
             clean(worker_root)
             if head(worker_root) != commit:
                 raise RddError("Worktree HEAD differs from submitted commit")
+            projection_state = copy.deepcopy(state)
+            projection_state["tasks"][tid]["status"] = "integrated"
+            artifacts.anchors_verify(worker_root, self.plan(), projection_state)
         record["integration"] = {"before": head(self.root), "submission": commit, "commits": commits, "status": "pending"}
         event(state, "integration_started", task=tid, submission=commit)
         self.save(state)  # Intent precedes the external side effect; resume reconciles interruptions.
@@ -619,6 +671,7 @@ class Controller:
                 "next": "Record behavioral RED for test tasks, then task complete. Completion has no review gate."}
 
     def check(self, cid: str, expectation: str = "pass", tid: str | None = None) -> dict:
+        self.guard_v2()
         clean(self.root)
         state, spec = self.state(), self.spec()
         checks = artifacts.unique(spec["checks"], "check")
@@ -626,9 +679,15 @@ class Controller:
             raise RddError("Unknown frozen check")
         if state["status"] == "specification":
             self.spec_validate()
-            if cid not in spec["contract_check_ids"] or expectation != "pass" or tid:
+            if cid not in self.stage_check_ids("specification") or expectation != "pass" or tid:
                 raise RddError("Before freeze, only declared contract/native qualification checks may run; no implementation task exists yet")
             pid, spec_id, plan_id = None, self.spec_candidate_lock()["digest"], None
+        elif state["status"] in {"specified", "planned", "preparing", "prepared"}:
+            stage = "plan" if state["status"] == "specified" else "preparation"
+            if cid not in self.stage_check_ids(stage) or expectation != "pass" or tid:
+                raise RddError("Before implementation only qualification/readiness evidence may run")
+            candidate = self.stage_candidate(stage)
+            pid, spec_id, plan_id = None, candidate["spec_digest"], candidate["plan_digest"]
         else:
             self.frozen()
             pid, spec_id, plan_id = self.active(state), state["spec_digest"], state["plan_digest"]
@@ -648,6 +707,7 @@ class Controller:
         return evidence
 
     def check_import(self, file: Path, local_host: bool = False) -> dict:
+        self.guard_v2()
         clean(self.root)
         state, evidence = self.state(), read_json(file)
         validate_artifact(self.root, "evidence", evidence)
@@ -658,9 +718,15 @@ class Controller:
             raise RddError("Imported receipt references unknown check")
         if state["status"] == "specification":
             self.spec_validate()
-            if evidence["check_id"] not in self.spec()["contract_check_ids"]:
+            if evidence["check_id"] not in self.stage_check_ids("specification"):
                 raise RddError("Before freeze, imported evidence must qualify a declared contract/native check")
             pid, spec_id, plan_id = None, self.spec_candidate_lock()["digest"], None
+        elif state["status"] in {"specified", "preparing", "prepared"}:
+            stage = "plan" if state["status"] == "specified" else "preparation"
+            if evidence["check_id"] not in self.stage_check_ids(stage):
+                raise RddError("Imported preimplementation evidence must qualify declared readiness")
+            candidate = self.stage_candidate(stage)
+            pid, spec_id, plan_id = None, candidate["spec_digest"], candidate["plan_digest"]
         else:
             self.frozen()
             pid, spec_id, plan_id = self.active(state), state["spec_digest"], state["plan_digest"]
@@ -670,6 +736,9 @@ class Controller:
             raise RddError("A receipt transferred from another local/native host requires --local-host and its actual raw log; otherwise execute the check here")
         verify_receipt(self.root, evidence, checks[evidence["check_id"]], commit=head(self.root),
                        sources=source_digest(self.root), spec_digest=spec_id, plan_digest=plan_id)
+        previous = state["checks"].get(evidence["id"])
+        if previous is not None and previous != evidence:
+            raise RddError("Evidence IDs are immutable; a changed receipt needs a new ID")
         state["checks"][evidence["id"]] = evidence
         write_json(self.root / f".rdd/evidence/checks/{evidence['id']}.json", evidence)
         event(state, "external_receipt_imported", evidence=evidence["id"], provenance=evidence["provenance"], local_host_transfer=local_host)
@@ -699,11 +768,12 @@ class Controller:
             if not valid:
                 raise RddError("Test task completion needs current behavioral RED evidence, not a compile failure or a green test")
             record["red_evidence"] = valid
+        artifacts.anchors_verify(self.root, self.plan(), state)
         record.update(status="done", completed_at=now())
         self.invalidate(state, pid)
         event(state, "task_completed", task=tid, submission=record.get("submission"))
         self.save(state)  # Anchor cleanup is a recoverable projection, never the authority.
-        artifacts.remove_anchor(self.root, task)
+        artifacts.remove_anchor(self.root, task, self.plan())
         return {"task": tid, "status": "done", "next": "Commit the controller's marker cleanup before claiming or integrating more work."}
 
     def task_release(self, tid: str, reason: str) -> dict:
@@ -721,6 +791,7 @@ class Controller:
     def task_reopen(self, tid: str, reason: str) -> dict:
         self.guard_source_write()
         self.frozen()
+        self.live_review_guard(final=False, stage="implementation", task=tid, task_repair=True)
         state, task = self.state(), self.task(tid)
         pid = self.active(state)
         if task["phase"] != pid or state["phases"][task["phase"]]["status"] == "sealed":
@@ -730,6 +801,8 @@ class Controller:
         if any(t["status"] in {"claimed", "integrated"} for t in state["tasks"].values()):
             raise RddError("Finish or release live work before starting a repair sweep")
         state["tasks"][tid].update(status="todo", evidence=[], lease_expires=None)
+        state["tasks"][tid]["repair_findings"] = [fid for fid, row in state.get("live_findings", {}).items()
+            if not row["resolution"] and tid in row["finding"]["tasks"]]
         self.invalidate(state, pid)
         event(state, "open_phase_repair", task=tid, reason=reason)
         self.save(state)
@@ -742,7 +815,7 @@ class Controller:
         state, plan = self.state(), self.plan()
         for task in plan["tasks"]:
             if state["tasks"][task["id"]]["status"] == "done":
-                artifacts.remove_anchor(self.root, task)
+                artifacts.remove_anchor(self.root, task, plan)
         artifacts.materialize(self.root, plan, state, create_shells=False)
         return artifacts.anchors_verify(self.root, plan, state)
 
@@ -758,19 +831,21 @@ class Controller:
                 return sorted(ids)
         raise RddError("Unknown phase")
 
-    def ensure_checks(self, state: dict, ids: list[str], *, candidate_spec_digest: str | None = None) -> list[dict]:
+    def ensure_checks(self, state: dict, ids: list[str], *, candidate_spec_digest: str | None = None, candidate_plan_digest: str | None = None) -> list[dict]:
         checks = artifacts.unique(self.spec()["checks"], "check")
         spec_id = candidate_spec_digest or state["spec_digest"]
-        plan_id = None if candidate_spec_digest else state["plan_digest"]
+        plan_id = candidate_plan_digest if candidate_spec_digest else state["plan_digest"]
         commit, sources = head(self.root), source_digest(self.root)
         local = platform_name()
         accepted, missing = [], []
         for cid in ids:
             check = checks[cid]
-            platforms = ["any"] if "any" in check["platforms"] else check["platforms"]
+            environments = {e["id"]: e for e in self.spec().get("environments", [])}
+            platforms = sorted({environments[e]["platform"] for e in check.get("environments", [])}) or (["any"] if "any" in check["platforms"] else check["platforms"])
             for platform in platforms:
                 receipt = None
-                for candidate in reversed(list(state["checks"].values())):
+                candidates = sorted(state["checks"].values(), key=lambda r: (r["origin"] == "ci", r["finished_at"], r["id"]), reverse=True)
+                for candidate in candidates:
                     if candidate["check_id"] != cid or (platform != "any" and candidate["platform"] != platform):
                         continue
                     try:
@@ -805,16 +880,22 @@ class Controller:
         return accepted
 
     def review_record(self, file: Path) -> dict:
+        if read_json(file).get("kind") == "live":
+            return self.review_live_record(file)
+        if "stage" in read_json(file):
+            return self.stage_review_record(file)
         self.frozen()
         clean(self.root)
         state, review = self.state(), read_json(file)
         validate_artifact(self.root, "review", review)
         pid = self.active(state)
+        self.live_review_guard(final=True, cursor=review["review_cursor"], stage="implementation")
         if review["phase"] != pid or review["source_commit"] != head(self.root) or review["source_digest"] != source_digest(self.root):
             raise RddError("Review does not cover the exact current phase/source revision")
         if review["reviewer"] != "rdd_reviewer" or review["model"] != self.config["models"]["reviewer"]["model"]:
             raise RddError("Final phase review must use the configured independent reviewer role/model")
         worker_sessions = {t["session_id"] for t in state["tasks"].values() if t["session_id"]}
+        worker_sessions.update(s for authors in state.get("authors", {}).values() for s in authors)
         if not review["session_id"] or review["session_id"] in worker_sessions:
             raise RddError("Reviewer session must be distinct from implementor sessions")
         if not set(self.cumulative_checks(pid)) <= set(review["checks_reviewed"]):
@@ -832,12 +913,17 @@ class Controller:
         write_json(self.root / path, review)
         event(state, "phase_review_recorded", phase=pid, decision=review["decision"], session=review["session_id"])
         self.save(state)
+        self.record_final_findings(review, "implementation", pid)
         return {"phase": pid, "decision": review["decision"], "review_path": path}
 
     def current_review(self, state: dict, phase: str, commit: str, sources: str) -> dict:
         review = state["reviews"].get(phase)
         if not review or review["source_commit"] != commit or review["source_digest"] != sources:
             raise RddError("An exact-current-source independent phase review is required", "review")
+        if state["phases"][phase]["status"] == "sealed":
+            self.validate_review_cursor(state, review["review_cursor"], "implementation", phase, commit, sources)
+        else:
+            self.live_review_guard(final=True, cursor=review["review_cursor"], stage="implementation")
         if review["decision"] != "pass" or any(f["severity"] in {"blocking", "high", "medium"} for f in review["findings"]):
             raise RddError("Independent review has unresolved blocking/high/medium findings", "review")
         return review
@@ -847,7 +933,7 @@ class Controller:
         row = next(p for p in plan["phases"] if p["id"] == phase)
         tasks = [self.task(tid) for tid in row["tasks"]]
         allowed = {p for t in tasks for p in t["writes"]}
-        allowed.update(artifacts.anchor_path(t) for t in tasks)
+        allowed.update(p for t in tasks for p in artifacts.anchor_paths(t))
         base = state["phases"][phase]["start_sha"]
         changed = {p for p in git(self.root, "diff", "--name-only", "--no-renames", "-z", base, "HEAD").split("\0") if p}
         if not changed <= allowed:
@@ -997,6 +1083,12 @@ class Controller:
                   "evidence": receipts, "reviews": state["reviews"], "created_at": now(),
                   "completion_policy": "All phase PRs open, non-draft, exact-head reviewed and required checks successful; merging is separate.",
                   "trust_boundary": "Local controller and imported observers are trusted; hashes bind identity, not truthfulness. See security-model.md."}
+        observed = {sid: receipt["id"] for receipt in receipts
+                    for sid in next(c for c in spec["checks"] if c["id"] == receipt["check_id"]).get("scenario_ids", [])}
+        golden = {s["id"] for s in spec["scenarios"] if s["kind"] == "golden"}
+        if not golden <= observed.keys():
+            raise RddError("Project lacks actual passing evidence for every golden scenario", "closure")
+        report["golden_results"] = {sid: observed[sid] for sid in sorted(golden)}
         write_json(self.root / ".rdd/evidence/project-validation.json", report)
         md = ["# Project validation", "", f"Run `{state['id']}` passed the frozen project obligations.", "",
               f"Accepted Git revision: `{report['source_commit']}`.", f"Source digest: `{report['source_digest']}`.", "",
@@ -1016,10 +1108,28 @@ class Controller:
                 "report": ".rdd/evidence/project-validation.json", "readable_report": ".rdd/evidence/project-validation.md",
                 "checkpoint": ".rdd/evidence/completed-run.json", "source_commit": report["source_commit"]}
 
-    def block(self, kind: str, reason: str) -> dict:
+    def block(self, kind: str, reason: str, *, affected: dict | None = None, evidence: list[str] | None = None) -> dict:
         state = self.state(allow_blocked=True)
         blocker = {"schema_version": 1, "run_id": state["id"], "kind": kind, "reason": reason,
                    "created_at": now(), "resolved": False}
+        status = state.get("resume_status") if state["status"] == "blocked" else state["status"]
+        detection = "implementation" if status in {"implementation", "complete"} else "preparation"
+        escaped = (kind in {"specification", "planning"} and detection == "implementation") or (
+            kind == "specification" and status in {"specified", "planned", "preparing", "prepared"})
+        if escaped:
+            blocker["escape"] = {"severity": "critical", "detected_stage": detection,
+                "origin_stage": "preparation" if kind == "planning" else kind, "source_commit": head(self.root), "source_digest": source_digest(self.root),
+                "spec_digest": state.get("spec_digest"), "plan_digest": state.get("plan_digest"),
+                "affected": affected or {"requirements": [], "elements": [], "tasks": []},
+                "evidence": evidence or [], "diagnostic": reason}
+            validate_artifact(self.root, "blocker", blocker)
+            known = {"requirements": {r["requirement"] for r in self.spec()["requirement_map"]},
+                     "elements": {e["id"] for e in self.spec()["solution_elements"]}, "tasks": set(state["tasks"])}
+            for field, ids in blocker["escape"]["affected"].items():
+                artifacts.subset(ids, known[field], f"escaped defect affected {field}")
+            path = f".rdd/evidence/escapes/{uuid.uuid4().hex}.json"
+            write_json(self.root / path, blocker["escape"])
+            blocker["escape"]["evidence"] = list(blocker["escape"]["evidence"]) + [path]
         validate_artifact(self.root, "blocker", blocker)
         if state["status"] != "blocked":
             state["resume_status"] = state["status"]
@@ -1029,7 +1139,8 @@ class Controller:
         write_json(self.root / ".rdd/evidence/blocker.json", blocker)
         self.save(state)
         return {"status": "blocked", "blocker": blocker,
-                "next": "Return to specification for specification/planning/closure issues; fix external environment then resume for environment/review issues."}
+                "next": ("Critical upstream harness regression: preserve this run, reproduce the escaped defect, repair its preventive control and start a fresh reviewed baseline."
+                         if escaped else "Return to specification for authority/closure issues; fix external environment then resume for environment/review issues.")}
 
     def guard_export(self, path: Path) -> None:
         """Source-visible export destinations need the same branch preflight."""
@@ -1049,7 +1160,9 @@ class Controller:
             if log.stat().st_size > 16 * 1024 * 1024:
                 raise RddError("One evidence log exceeds the 16 MiB export budget", "budget")
             evidence[receipt["log_path"]] = log.read_text(encoding="utf-8")
-        for rel in (".rdd/evidence/project-validation.json", ".rdd/evidence/project-validation.md"):
+        reports = [".rdd/evidence/project-validation.json", ".rdd/evidence/project-validation.md"]
+        reports.extend(row["path"] for row in state.get("preparation_gate", {}).get("ci_runs", {}).values())
+        for rel in reports:
             if (self.root / rel).is_file():
                 evidence[rel] = (self.root / rel).read_text(encoding="utf-8")
         checkpoint = {"schema_version": 1, "source_commit": head(self.root), "source_digest": source_digest(self.root),
@@ -1141,11 +1254,14 @@ class Controller:
                     "requirements_digest", "policy_inventory", "active_phase"}
         if not isinstance(state, dict) or not required <= state.keys():
             raise RddError("Checkpoint run record is incomplete")
+        self.validate_stage_checkpoint(state, checkpoint)
+        self.validate_review_stream(state)
+        self.validate_workflow_checkpoint(state)
         if not isinstance(state["id"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", state["id"]):
             raise RddError("Checkpoint run ID is invalid")
         if state["mode"] not in {"regenerate", "amend"}:
             raise RddError("Checkpoint mode is invalid")
-        if state["status"] not in {"specification", "specified", "planned", "prepared", "implementation", "blocked", "complete"}:
+        if state["status"] not in {"specification", "specified", "planned", "preparing", "prepared", "implementation", "blocked", "complete"}:
             raise RddError("Checkpoint run status is invalid")
         if state["requirements_digest"] != file_hash(self.root / self.config["requirements"]):
             raise RddError("Checkpoint requirements differ from repository")

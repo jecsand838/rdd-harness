@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:rdd:schema:plan:v1",
-  "title": "RDD plan v1",
+  "$id": "urn:rdd:schema:plan:v2",
+  "title": "RDD plan v2",
   "type": "object",
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "spec_digest": {
       "type": "string",
@@ -185,28 +185,6 @@
               "large"
             ]
           },
-          "anchor": {
-            "type": "object",
-            "properties": {
-              "path": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 512
-              },
-              "mode": {
-                "type": "string",
-                "enum": [
-                  "inline",
-                  "sidecar"
-                ]
-              }
-            },
-            "required": [
-              "path",
-              "mode"
-            ],
-            "additionalProperties": false
-          },
           "reuse": {
             "anyOf": [
               {
@@ -265,6 +243,127 @@
                 "additionalProperties": false
               }
             ]
+          },
+          "solution_elements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "produces": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "bootstrap_resources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "sites": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^A[0-9]{2,4}$"
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "inline",
+                    "sidecar"
+                  ]
+                },
+                "placement": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "append",
+                        "before",
+                        "after"
+                      ]
+                    },
+                    "context": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "context"
+                  ],
+                  "additionalProperties": false
+                },
+                "primary": {
+                  "type": "boolean"
+                },
+                "instructions": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "mode",
+                "placement",
+                "primary",
+                "instructions"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
           }
         },
         "required": [
@@ -279,8 +378,14 @@
           "checks",
           "acceptance",
           "scope",
-          "anchor",
-          "reuse"
+          "reuse",
+          "solution_elements",
+          "scenarios",
+          "requires",
+          "produces",
+          "bootstrap_resources",
+          "sites",
+          "objective"
         ],
         "additionalProperties": false
       },
@@ -294,8 +399,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "pattern": "^V[0-9]{2,4}$"
           },
           "goal": {
             "type": "string",
@@ -357,6 +461,220 @@
       },
       "minItems": 0,
       "uniqueItems": false
+    },
+    "author_sessions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "element_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "element": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "baseline_evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "element",
+          "tasks",
+          "checks",
+          "baseline_evidence"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "resource_producers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "baseline",
+              "task",
+              "external"
+            ]
+          },
+          "task": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "resource",
+          "kind",
+          "task",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "resource_uses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "consumer_kind": {
+            "type": "string",
+            "enum": [
+              "preparation",
+              "task_red",
+              "task_completion",
+              "phase",
+              "project"
+            ]
+          },
+          "consumer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "resource",
+          "consumer_kind",
+          "consumer"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "boundary_proofs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "minLength": 1
+          },
+          "first_phase": {
+            "type": "string",
+            "pattern": "^P[0-9]{2,3}$"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "provider_tasks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "consumer_tasks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "adapter_tasks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "verification_tasks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "operation": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "module",
+          "first_phase",
+          "checks",
+          "provider_tasks",
+          "consumer_tasks",
+          "adapter_tasks",
+          "verification_tasks",
+          "operation"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
     }
   },
   "required": [
@@ -366,7 +684,12 @@
     "tasks",
     "verticals",
     "target_paths",
-    "shells"
+    "shells",
+    "author_sessions",
+    "element_coverage",
+    "resource_producers",
+    "resource_uses",
+    "boundary_proofs"
   ],
   "additionalProperties": false
 }

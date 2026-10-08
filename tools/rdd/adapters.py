@@ -315,6 +315,87 @@ class GitHubAdapter:
         # --head is a search filter: compare the field too and reject ambiguous results.
         return [item for item in result if item.get("headRefName") == branch]
 
+    def preparation_status(self, run_url: str, candidate_sha: str, expected_harness_sha: str) -> dict[str, Any]:
+        """Observe preparation success on GitHub, including the independent policy pin.
+
+        Imported log provenance alone cannot establish that Actions ran. The
+        workflow bytes must also match the pinned harness, so a candidate cannot
+        replace verification with a successful no-op job.
+        """
+        _sha(candidate_sha)
+        _sha(expected_harness_sha)
+        if self.repository:
+            parts = self.repository.split("/")
+            host, owner, name = (["github.com", *parts] if len(parts) == 2 else parts)
+        else:
+            remote = _checked(self.git._git("remote", "get-url", "origin"), "Read preparation repository").stdout.strip()
+            match = re.fullmatch(r"(?:https://|ssh://git@|git@)([A-Za-z0-9.-]+)[:/]([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?", remote)
+            if not match:
+                raise RddAdapterError("invalid-repository", "Preparation requires an identified GitHub origin or configured repository.")
+            host, owner, name = match.groups()
+        prefix = f"https://{host}/{owner}/{name}/actions/runs/"
+        match = re.fullmatch(re.escape(prefix) + r"([1-9][0-9]*)", run_url, re.IGNORECASE)
+        if not match:
+            raise RddAdapterError("invalid-run-url", "Preparation evidence must name a canonical Actions run in this repository.")
+        run_id = int(match.group(1))
+
+        def api(path: str) -> dict:
+            # `gh api` has --hostname, not the --repo option of PR commands.
+            response = _json_output(self.runner(["gh", "api", "--hostname", host, f"repos/{owner}/{name}/{path}"],
+                                                cwd=self.repo, timeout=120), "Read preparation Actions evidence")
+            if not isinstance(response, dict):
+                raise RddAdapterError("invalid-actions-evidence", "GitHub returned malformed preparation evidence.")
+            return response
+
+        before = api(f"actions/runs/{run_id}")
+        attempt = before.get("run_attempt")
+        if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:
+            raise RddAdapterError("invalid-actions-evidence", "Preparation run has no valid attempt identity.")
+        jobs = api(f"actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100")
+        variable = api("actions/variables/RDD_PREPARATION_HARNESS_SHA")
+        workflow_path = ".github/workflows/preparation.yml"
+        candidate_workflow = api(f"contents/{workflow_path}?ref={candidate_sha}")
+        harness_workflow = api(f"contents/{workflow_path}?ref={expected_harness_sha}")
+        after = api(f"actions/runs/{run_id}")
+        blockers = []
+        for field in ("head_sha", "path", "run_attempt", "status", "conclusion"):
+            if before.get(field) != after.get(field):
+                blockers.append(f"Preparation {field} changed while evidence was collected")
+        repository = after.get("repository")
+        if (after.get("id") != run_id or str(after.get("html_url", "")).lower() != run_url.lower()
+                or not isinstance(repository, dict)
+                or str(repository.get("full_name", "")).lower() != f"{owner}/{name}".lower()):
+            blockers.append("Actions returned another repository or run identity")
+        if after.get("head_sha") != candidate_sha:
+            blockers.append("Preparation run does not target the exact materialized candidate")
+        if after.get("path") != workflow_path or after.get("event") not in {"push", "workflow_dispatch"}:
+            blockers.append("Preparation requires the registered workflow and event")
+        if after.get("status") != "completed" or after.get("conclusion") != "success":
+            blockers.append("Preparation Actions run has not completed successfully")
+        if variable.get("name") != "RDD_PREPARATION_HARNESS_SHA" or variable.get("value") != expected_harness_sha:
+            blockers.append("Preparation harness differs from the independently selected repository pin")
+        if (not re.fullmatch(r"[0-9a-f]{40}", str(harness_workflow.get("sha")))
+                or candidate_workflow.get("sha") != harness_workflow.get("sha")
+                or any(value.get("type") != "file" or value.get("path") != workflow_path
+                       for value in (candidate_workflow, harness_workflow))):
+            blockers.append("Candidate preparation workflow differs from the trusted harness")
+        observed = jobs.get("jobs")
+        if (not isinstance(observed, list) or not observed or type(jobs.get("total_count")) is not int
+                or jobs.get("total_count") != len(observed)
+                or any(not isinstance(job, dict) for job in observed)):
+            raise RddAdapterError("invalid-actions-evidence", "Preparation job inventory is missing, malformed or truncated.")
+        if any(job.get("status") != "completed" or job.get("conclusion") != "success" for job in observed):
+            blockers.append("Preparation contains a failed, pending or skipped job")
+        proofs = [job for job in observed if str(job.get("name", "")).startswith("preparation (")]
+        if not proofs or any(not isinstance(job.get("steps"), list) or not any(step.get("name") == "Verify committed preparation with trusted controller"
+                                     and step.get("status") == "completed" and step.get("conclusion") == "success"
+                                     for step in job.get("steps", []) if isinstance(step, dict)) for job in proofs):
+            blockers.append("No successful trusted preparation check step for every declared job")
+        return {"ready": not blockers, "url": run_url, "run_id": run_id, "attempt": attempt,
+                "head_sha": after.get("head_sha"), "harness_sha": expected_harness_sha,
+                "workflow_blob": candidate_workflow.get("sha"), "blockers": blockers,
+                "jobs": [{key: job.get(key) for key in ("id", "name", "status", "conclusion")} for job in observed]}
+
     def publish_phase_pr(self, run_id: str, phase: int, base: str,
                          body_file: str | Path, title: str | None = None,
                          remote: str = "origin", *, expected_base_sha: str | None = None) -> dict[str, Any]:

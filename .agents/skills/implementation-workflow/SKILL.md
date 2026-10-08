@@ -5,11 +5,13 @@ description: Execute a frozen RDD phased backlog using TDD, strict task-category
 
 # Implementation workflow
 
+Inspect I0–I5 through `workflow nodes`; their progress derives from the existing native goal, task leases, category barriers, phase gates, PRs and seals. Do not create a second task ledger or submit a caller-authored passed flag. The continuous reviewer compares each coherent integration snapshot and significant check result against the frozen plan and contracts, records live findings and verifies corrections; batch review cannot substitute for ongoing steering.
+
 Read `AGENTS.md`, `docs/harness/workflow-guide.md`, `docs/harness/artifact-guide.md`, and the configured goal prompt. The short goal is the orchestration objective; this skill is its procedure. Do not expand the objective by pasting all requirements or this skill into it. Use the repository's launcher and command reference for supported goal-mode invocation.
 
 ## Establish the active baseline
 
-Run `./rdd status` and `./rdd doctor`. Validate the frozen specification, canonical contracts, plan, task projections, and accepted predecessor evidence. Resume from durable controller state, not chat memory. Reconcile existing branches and PRs before creating them again.
+Run `./rdd status` and `./rdd doctor`. Validate the frozen specification, canonical contracts, fully hydrated plan, every primary/secondary task projection, accepted preparation gate, and accepted predecessor evidence. P01 must start from the exact gate-accepted preparation commit; later phases start from the preceding sealed head. Resume from durable controller state, not chat memory. Reconcile existing branches and PRs before creating them again.
 
 Requirements and frozen specifications are immutable in this workflow. The task/phase graph and acceptance criteria are frozen. The controller owns transitions and evidence. Never edit state JSON, generated markers, historical evidence, evaluator code, or frozen manifests to manufacture progress.
 
@@ -17,7 +19,7 @@ Requirements and frozen specifications are immutable in this workflow. The task/
 
 Use the configured orchestrator, large implementor, small implementor, and independent reviewer roles. The requested model allocation is an account-specific preference; test availability and supported effort levels using the installed Codex runtime. A model name in configuration does not establish access. If the configured runtime cannot provide a required role, report the missing capability; do not silently claim equivalent multi-agent review.
 
-Delegate a coherent large target to the large implementor. Use the smaller implementor for bounded edits with a clear oracle, such as a narrowly defined documentation or mapping change. Choose by dependency surface and ambiguity, not just line count. Each worker receives task IDs, allowed write paths, predecessor capabilities, relevant contract/spec slices, expected evidence, category, and stop conditions.
+Delegate a coherent large target to the large implementor. Use the smaller implementor for bounded edits with a clear oracle, such as a narrowly defined documentation or mapping change. Choose by dependency surface and ambiguity, not just line count. Each worker receives the already groomed full primary task packet, all local work sites, allowed write paths, predecessor capabilities, relevant contract/spec slices, expected evidence, category, phase and verticals. Do not ask an implementor to discover missing scope or refine an unfinished plan.
 
 Use isolated branches/worktrees or the runtime's equivalent. Never assign overlapping write paths concurrently. The orchestrator owns shared configuration, integration, task leasing, phase branches, and PR reconciliation. The independent live reviewer reads diffs and evidence during work, sends actionable findings to the orchestrator, and does not mutate implementor workspaces. Live feedback does not create task-level review gates.
 
@@ -36,14 +38,14 @@ Use isolated branches/worktrees or the runtime's equivalent. Never assign overla
 
 ## Blockers and stopping behavior
 
-- **Requirement/spec/contract conflict:** Use `./rdd block --kind specification --reason TEXT` to record IDs and evidence; return to specification. Do not edit contracts to fit convenient code.
+- **Frozen specification/planning defect:** Record a critical harness regression with origin/detection stage, affected IDs, exact candidate and evidence. Stop affected execution; repair the preventive control and add a reproducing regression before a fresh trial. Do not normalize repeated amendments or edit contracts to fit convenient code. Intentional user requirement changes retain the amendment workflow.
 - **Sealed-phase defect:** Use `./rdd block --kind closure --reason TEXT`. Preserve the stack and evidence. Start an amendment through specification; never conceal the fix in a later phase.
 - **Environment/credentials/required hardware unavailable:** Record a resumable environment blocker with the exact failing command and needed capability. Do not convert missing evidence to success.
 - **No progress, budget exhaustion, worker failure:** Save checkpoints, release or expire leases, preserve worktree/PR identities, and resume safely. Do not spin indefinitely or silently drop tasks.
 
 ## Final goal
 
-Run `./rdd gate project` to validate completion. There must be no remaining unresolved task markers or task states, no unresolved review findings, no failing or missing required tests or benchmarks, no unfulfilled operation or requirement coverage, no incomplete phase PR, and a project-level validation artifact bound to the final revision and all sealed phase evidence.
+Run `./rdd gate project` to validate completion. There must be no remaining primary/secondary task packets or unresolved task states, every golden scenario must have an explicit passing executed result, and there must be no unresolved review findings, no failing or missing required tests or benchmarks, no unfulfilled operation or requirement coverage, no incomplete phase PR, and a project-level validation artifact bound to the final revision and all sealed phase evidence.
 
 The default PR completion policy keeps all PRs open, validated, and ready for the user to merge. If a different policy was explicitly configured, honor it. Do not publish releases, merge, or deploy merely to make the word “complete” true.
 

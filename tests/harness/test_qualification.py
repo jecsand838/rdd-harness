@@ -21,6 +21,7 @@ class QualificationTests(unittest.TestCase):
         self.assertIsNone(receipt["phase"])
         self.assertIsNone(receipt["plan_digest"])
         self.assertFalse((self.root / ".rdd/spec.lock.json").exists())
+        self.fixture.stage_ready("specification")
         self.c.spec_freeze()
         self.assertEqual(self.c.state()["spec_digest"], receipt["spec_digest"])
         self.assertEqual(len(self.c.state()["checks"]), 1)
@@ -38,10 +39,14 @@ class QualificationTests(unittest.TestCase):
         other = "windows" if local != "windows" else "linux"
         spec = self.c.spec()
         spec["checks"][0]["platforms"] = [local, other]
+        spec["environments"].append(dict(id="other", platform=other, host_profile=None))
+        spec["checks"][0]["environments"].append("other")
+        spec["resources"][0]["environments"].append("other")
         write_json(self.root / ".rdd/spec.json", spec)
         self.fixture.commit("Require both actual native qualification hosts")
+        self.fixture.authoring_nodes("specification")
         with self.assertRaisesRegex(RddError, "Missing verification evidence"):
-            self.c.spec_freeze()
+            self.c.readiness("specification")
         self.assertEqual(self.c.state()["status"], "specification")
         self.assertFalse((self.root / ".rdd/spec.lock.json").exists())
         self.assertEqual({r["platform"] for r in self.c.state()["checks"].values()}, {local})

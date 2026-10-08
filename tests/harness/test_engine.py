@@ -15,6 +15,7 @@ from unittest.mock import patch
 from test_artifacts import Fixture, check, task
 from tools.rdd.common import RddError, head, read_json, source_digest, write_json
 from tools.rdd.engine import Controller
+from tools.rdd.checks import execute_check, platform_name
 
 
 BEHAVIOR_TEST = '''import importlib.util
@@ -31,6 +32,10 @@ assert value.value() == 42, "EXPECTED_ASSERTION: value is unavailable or incorre
 extension = load("fixture_extension", "modules/extension.py")
 assert extension.label() == "fixture", "EXPECTED_ASSERTION: extension label is incorrect"
 assert not Path("modules/obsolete.py").exists(), "EXPECTED_ASSERTION: obsolete fixture remains"
+import json
+results = Path(".rdd/evidence/results/behavior.json")
+results.parent.mkdir(parents=True, exist_ok=True)
+results.write_text(json.dumps({"scenarios": [{"id": "S1", "outcome": "pass"}]}), encoding="utf-8")
 print("Fixture behavioral assertions passed")
 '''
 
@@ -53,6 +58,12 @@ class FakeGitHub:
                     number=number, url=f"https://example.invalid/fixture/pull/{number}",
                     head_sha=sha, state="OPEN")
 
+    def preparation_status(self, run_url, candidate_sha, expected_harness_sha):
+        from tools.rdd.ci_tools import RUNNERS
+        return dict(ready=True, url=run_url, run_id=1, head_sha=candidate_sha, harness_sha=expected_harness_sha,
+                    attempt=1, workflow_blob="f" * 40, blockers=[],
+                    jobs=[dict(id=1, name=f"preparation ({RUNNERS[platform_name()]})", status="completed", conclusion="success")])
+
 
 class EngineTests(Fixture):
     def setUp(self):
@@ -65,7 +76,7 @@ class EngineTests(Fixture):
             "assert Path('contracts/fixture/v1/fixture.proto').is_file()\n"
             "assert Path('gen/fixture.rs').is_file()\n"
             "print('MOCK PROTO COMPILER: controller lifecycle fixture only')\n")
-        self.spec["modules"][0]["owns_paths"] = ["modules/value.py", "modules/extension.py"]
+        self.spec["modules"][0]["owns_paths"] = ["modules/value.py", "modules/extension.py", "modules/obsolete.py"]
         self.spec["checks"][0]["argv"] = ["{python}", "-B", "tools/fixture_proto_probe.py"]
         self.spec["checks"][1]["argv"] = ["{python}", "-B", "tests/behavior.py"]
         self.spec["checks"][1]["red_pattern"] = "AssertionError: EXPECTED_ASSERTION"
@@ -79,11 +90,47 @@ class EngineTests(Fixture):
         self.plan["phases"][0].update(tasks=[t["id"] for t in tasks], deliverables=["modules/value.py", "modules/extension.py", "docs/usage.md"])
         self.plan["verticals"][0]["tasks"] = [t["id"] for t in tasks]
         self.plan["target_paths"] = [t["writes"][0] for t in tasks]
-        self.plan["shells"] = [dict(path=p, content="") for p in ("tests/behavior.py", "modules/extension.py", "docs/usage.md")]
+        self.plan["shells"] = [dict(path=p, content="<!-- Fixture shell -->\n" if p.endswith(".md") else "# Fixture shell\n") for p in ("tests/behavior.py", "modules/extension.py", "docs/usage.md")]
+        self.spec["environments"][0]["platform"] = platform_name()
+        self.spec["target_tree"] = [dict(path=p, kind="file", owner="E-DOMAIN" if p.startswith("modules/") else "E-SUPPORT",
+            purpose="A fixture work site.", disposition="delete" if "obsolete" in p else "modify" if p == "modules/value.py" else "add")
+            for p in self.plan["target_paths"]]
+        self.spec["resources"] = [dict(id="probe", kind="repository", availability="baseline", required_at="specification",
+            path="tools/fixture_proto_probe.py", version=None, probe_check_ids=[], environments=["local"]),
+            dict(id="runner", kind="repository", availability="implementation", required_at="implementation",
+            path="tests/behavior.py", version=None, probe_check_ids=[], environments=["local"])]
+        self.spec["resources"] += [dict(id="fixture-" + role, kind="repository", availability="implementation",
+            required_at="implementation", path=path, version=None, probe_check_ids=[], environments=["local"])
+            for role, path in (("provider", "modules/value.py"), ("consumer", "modules/extension.py"))]
+        self.spec["checks"][2]["argv"] = ["{python}", "-B", "-c", "import runpy; assert runpy.run_path('modules/value.py')['value']() == 42; assert runpy.run_path('modules/extension.py')['label']() == 'fixture'"]
+        self.spec["checks"][0]["requires"] = ["probe"]
+        self.spec["checks"][1]["requires"] = ["runner"]
+        tasks[0]["produces"] = ["runner"]
+        tasks[0]["bootstrap_resources"] = ["runner"]
+        tasks[2]["produces"] = ["fixture-provider"]
+        tasks[3]["produces"] = ["fixture-consumer"]
+        self.plan["resource_producers"] = [dict(resource="probe", kind="baseline", task=None, checks=[]),
+            dict(resource="runner", kind="task", task="T001", checks=[]),
+            dict(resource="fixture-provider", kind="task", task="T003", checks=[]),
+            dict(resource="fixture-consumer", kind="task", task="T004", checks=[])]
+        self.plan["boundary_proofs"][0].update(provider_tasks=["T003"], consumer_tasks=["T004"],
+            adapter_tasks=["T003", "T004"], verification_tasks=["T001"], operation="fixture.v1.FixtureService.Preserve")
+        self.plan["resource_uses"] = [dict(resource="runner", consumer_kind="task_red" if t["category"] == "tests" else "task_completion", consumer=t["id"])
+            for t in tasks if t["checks"]]
+        self.plan["resource_uses"] += [dict(resource=r, consumer_kind=k, consumer="P01" if k == "phase" else None)
+            for r in ("runner", "probe", "fixture-provider", "fixture-consumer") for k in ("phase", "project")]
+        self.plan["element_coverage"] = [dict(element=e["id"], tasks=[t["id"] for t in tasks], checks=["behavior"], baseline_evidence=None)
+            for e in self.spec["solution_elements"]]
         self.hub = FakeGitHub()
         self.hub_patch = patch("tools.rdd.engine.GitHubAdapter", lambda root: self.hub)
         self.hub_patch.start()
         self.addCleanup(self.hub_patch.stop)
+        # Explicit external compiler boundary fake. The actual protected driver,
+        # descriptor proof parser and Rust compilation have their own real tests.
+        for symbol in ("canonical_contract_check", "verify_canonical_contract_receipts"):
+            compiler_patch = patch("tools.rdd.stages." + symbol)
+            compiler_patch.start()
+            self.addCleanup(compiler_patch.stop)
         self.c = Controller(self.root)
         self.addCleanup(self.c.close)
         self.c.init()
@@ -107,19 +154,103 @@ class EngineTests(Fixture):
         self.g("commit", "-q", "-m", message, root=root)
         return self.g("rev-parse", "HEAD", root=root)
 
+    def live_review(self, **changes):
+        state = self.c.state(allow_blocked=True)
+        stage = self.c.review_stage(state)
+        record = dict(schema_version=2, kind="live", stage=stage,
+            phase=state.get("active_phase") if stage == "implementation" else None,
+            source_commit=head(self.root), source_digest=source_digest(self.root),
+            requirements_digest=state["requirements_digest"], spec_digest=state.get("spec_digest"), plan_digest=state.get("plan_digest"),
+            model=self.config["models"]["reviewer"]["model"], reviewer="rdd_reviewer", session_id="fixture-live-reviewer",
+            summary="Independent controller fixture observation of current work and authority.", findings=[], resolutions=[])
+        record.update(changes)
+        path = self.root / ".rdd/runtime/live-review.json"
+        write_json(path, record)
+        return self.c.review_record(path)
+
+    def node_complete(self, node, evidence=()):
+        output = f".rdd/plan/notes/{node}.md" if node.startswith("P") else "docs/specs/fixture.md"
+        if node.startswith("P") and not (self.root / output).is_file():
+            self.fwrite_node(output, node)
+        claim = self.c.workflow_claim(node, "fixture-author", "rdd_coordinator", [output])["claim"]
+        record = dict(schema_version=2, node=node, attempt=claim["attempt"], session_id=claim["session_id"],
+            input_digest=claim["input_digest"], outputs=claim["writes"], evidence_ids=list(evidence))
+        path = self.root / ".rdd/runtime/node.json"
+        write_json(path, record)
+        self.c.workflow_record(path)
+        self.live_review()
+
+    def fwrite_node(self, output, node):
+        self.write(output, f"# {node} controller fixture evidence\n\nThe frozen fixture work sites, input producers, categories and phase dependency closure are represented in .rdd/plan/plan.json.\n")
+
+    def authoring_nodes(self, stage):
+        self.live_review()
+        wanted = [f"S{i}" for i in range(7)] if stage == "specification" else [f"P{i}" for i in range(6)] if stage == "plan" else []
+        for node in wanted:
+            if self.c._node_records(self.c.state())[node]["status"] != "complete":
+                self.node_complete(node)
+
+    def stage_ready(self, stage, *, ci=False):
+        if self.g("status", "--porcelain"):
+            self.commit("Commit exact " + stage + " candidate")
+        self.c.author_record(stage, "fixture-author")
+        self.authoring_nodes(stage)
+        if self.g("status", "--porcelain"):
+            self.commit("Commit authoring node evidence")
+        if ci:
+            candidate = self.c.stage_candidate(stage)
+            receipts = []
+            for cid in self.c.stage_check_ids(stage):
+                check_def = next(c for c in self.c.spec()["checks"] if c["id"] == cid)
+                receipt = execute_check(self.root, check_def, phase=None, task_id=None, expectation="pass",
+                    spec_digest=candidate["spec_digest"], plan_digest=candidate["plan_digest"], origin="ci",
+                    actor="explicit-fixture-ci-boundary", run_url="https://github.com/fixture/repo/actions/runs/1")
+                path = self.root / ".rdd/runtime/ci-receipt.json"
+                write_json(path, receipt)
+                self.c.check_import(path)
+                receipts.append(receipt)
+            write_json(self.root / f".rdd/evidence/preparation-ci/{platform_name()}.json", dict(
+                scope="preparation", status="passed", application_complete=False, source_commit=candidate["source_commit"],
+                source_digest=candidate["source_digest"], platform=platform_name(), harness_source=head(self.root),
+                run_url="https://github.com/fixture/repo/actions/runs/1", checks=receipts))
+        readiness = self.c.readiness(stage)
+        if stage == "specification" and self.c._node_records(self.c.state())["S7"]["status"] != "complete":
+            self.node_complete("S7", readiness["evidence"])
+        cursor = self.live_review()["review_cursor"]
+        for perspective in ("semantic", "execution"):
+            spec = self.c.spec()
+            record = dict(schema_version=2, kind="final", review_cursor=cursor, stage=stage, perspective=perspective,
+                candidate=self.c.stage_candidate(stage), reviewer="rdd_reviewer",
+                model=self.config["models"]["reviewer"]["model"], session_id="fixture-"+perspective,
+                decision="pass", summary="Explicit independent fixture review for controller transition testing.",
+                evidence_ids=readiness["evidence"], findings=[], coverage=dict(
+                    requirements=[r["requirement"] for r in spec["requirement_map"]],
+                    elements=[e["id"] for e in spec["solution_elements"]], scenarios=[s["id"] for s in spec["scenarios"]],
+                    checks=[c["id"] for c in spec["checks"]],
+                    tasks=[] if stage == "specification" else [t["id"] for t in self.c.plan()["tasks"]]))
+            path = self.root / ".rdd/runtime/stage-review.json"
+            write_json(path, record)
+            self.c.review_record(path)
+        return readiness
+
     def prepared(self):
+        self.stage_ready("specification")
         result = self.c.spec_freeze()
         self.plan["spec_digest"] = result["spec_digest"]
         self.commit("Freeze fixture specification")
         self.c.plan_init()
         write_json(self.root / ".rdd/plan/plan.json", self.plan)
+        self.stage_ready("plan")
         self.c.plan_freeze()
         self.c.prepare()
         self.commit("Commit fixture preparation")
+        self.stage_ready("preparation", ci=True)
+        self.c.gate_preparation()
 
     def opened(self):
         self.prepared()
         self.c.phase_begin("P01")
+        self.live_review()
 
     def submit(self, tid, changes):
         claim = self.c.task_claim(tid, "rdd_large", worktree=True, session_id=f"worker-{tid}")
@@ -142,6 +273,7 @@ class EngineTests(Fixture):
         if self.g("status", "--porcelain"):
             # An inline deletion already removed its marker in the submitted commit.
             self.commit(f"Record fixture marker cleanup {tid}")
+        self.live_review()
         return result
 
     def red_task(self, program=BEHAVIOR_TEST):
@@ -161,11 +293,12 @@ class EngineTests(Fixture):
             self.finish(tid)
 
     def review(self, **changes):
-        record = dict(schema_version=1, phase="P01", source_commit=head(self.root),
+        cursor = self.live_review()["review_cursor"]
+        record = dict(schema_version=1, kind="final", review_cursor=cursor, phase="P01", source_commit=head(self.root),
             source_digest=source_digest(self.root), model=self.config["models"]["reviewer"]["model"],
             reviewer="rdd_reviewer", session_id="independent-reviewer-fixture", decision="pass",
             summary="An independent fixture review covers the exact current phase behavior and evidence.",
-            checks_reviewed=["behavior", "contract"], findings=[])
+            checks_reviewed=["behavior", "contract", "boundary"], findings=[])
         record.update(changes)
         path = self.root / ".rdd/runtime/review.json"
         write_json(path, record)
@@ -197,6 +330,7 @@ class EngineTests(Fixture):
     def test_two_phases_are_sequential_and_second_pr_targets_first_branch(self):
         foundation = check("foundation", red="AssertionError: EXPECTED_ASSERTION")
         foundation["argv"] = ["{python}", "-B", "tests/foundation.py"]
+        foundation["requires"] = ["foundation-runner"]
         self.spec["checks"].append(foundation)
         write_json(self.root / ".rdd/spec.json", self.spec)
         tasks = [task("T001", "tests", "tests/foundation.py", []),
@@ -215,18 +349,37 @@ class EngineTests(Fixture):
                      requirements_closed=[], deliverables=["modules/value.py"],
                      goal="The core fixture value is available; extension remains unavailable.")
         second = copy.deepcopy(first)
-        second.update(id="P02", tasks=["T004", "T005", "T006"], checks=["behavior"],
+        second.update(id="P02", tasks=["T004", "T005", "T006"], checks=["behavior", "boundary"],
                       requirements_closed=["FR-001"], deliverables=["modules/extension.py", "docs/usage.md"],
                       goal="The fixture extension and complete observable behavior are available.")
         self.plan["phases"] = [first, second]
         self.plan["verticals"][0]["tasks"] = [t["id"] for t in tasks]
         self.plan["target_paths"] = [t["writes"][0] for t in tasks]
-        self.plan["shells"] = [dict(path=p, content="") for p in
+        self.plan["shells"] = [dict(path=p, content="<!-- Fixture shell -->\n" if p.endswith(".md") else "# Fixture shell\n") for p in
                                ("tests/foundation.py", "tests/behavior.py", "modules/extension.py", "docs/usage.md")]
+        self.spec["target_tree"].append(dict(path="tests/foundation.py", kind="file", owner="E-SUPPORT", purpose="Foundation assertion.", disposition="add"))
+        self.spec["resources"].append(dict(self.spec["resources"][1], id="foundation-runner", path="tests/foundation.py"))
+        tasks[0]["produces"] = tasks[0]["bootstrap_resources"] = ["foundation-runner"]
+        tasks[3]["produces"] = tasks[3]["bootstrap_resources"] = ["runner"]
+        tasks[2]["produces"] = ["fixture-provider"]
+        tasks[4]["produces"] = ["fixture-consumer"]
+        self.plan["resource_producers"][1]["task"] = "T004"
+        self.plan["resource_producers"][3]["task"] = "T005"
+        self.plan["boundary_proofs"][0].update(first_phase="P02", consumer_tasks=["T005"], adapter_tasks=["T003", "T005"], verification_tasks=["T004"])
+        self.plan["resource_producers"].append(dict(resource="foundation-runner", kind="task", task="T001", checks=[]))
+        for coverage in self.plan["element_coverage"]:
+            coverage["tasks"] = [t["id"] for t in tasks]
+        self.plan["resource_uses"] = [dict(resource="foundation-runner" if t in tasks[:3] else "runner", consumer_kind="task_red" if t["category"] == "tests" else "task_completion", consumer=t["id"])
+            for t in tasks if t["checks"]]
+        self.plan["resource_uses"] += [dict(resource=r, consumer_kind="phase", consumer=phase)
+            for phase, resources in (("P01", ["probe", "foundation-runner"]), ("P02", ["probe", "foundation-runner", "runner", "fixture-provider", "fixture-consumer"])) for r in resources]
+        self.plan["resource_uses"] += [dict(resource=r, consumer_kind="project", consumer=None) for r in ("probe", "foundation-runner", "runner", "fixture-provider", "fixture-consumer")]
+        write_json(self.root / ".rdd/spec.json", self.spec)
         self.prepared()
         with self.assertRaisesRegex(RddError, "sequentially"):
             self.c.phase_begin("P02")
         first_branch = self.c.phase_begin("P01")["branch"]
+        self.live_review()
         with self.assertRaisesRegex(RddError, "Seal the current phase"):
             self.c.phase_begin("P02")
         basic_program = BEHAVIOR_TEST.split('extension = load', 1)[0]
@@ -244,6 +397,7 @@ class EngineTests(Fixture):
         self.c.phase_seal("P01")
         first_sha = head(self.root)
         opened = self.c.phase_begin("P02")
+        self.live_review()
         self.assertEqual(opened["base_branch"], first_branch)
         self.assertEqual(opened["base_sha"], first_sha)
         # Fixture capability discovery has an explicit unavailable result so
@@ -261,7 +415,7 @@ class EngineTests(Fixture):
         self.finish("T005")
         self.submit("T006", {"docs/usage.md": "# Fixture usage\n\nBoth fixture capabilities are available.\n"})
         self.finish("T006")
-        self.review(phase="P02", checks_reviewed=["foundation", "behavior", "contract"])
+        self.review(phase="P02", checks_reviewed=["foundation", "behavior", "contract", "boundary"])
         self.c.gate_phase("P02")
         self.c.stack_publish("P02")
         self.assertEqual(self.hub.published[1]["base"], first_branch)
@@ -291,9 +445,19 @@ class EngineTests(Fixture):
         self.opened()
         self.assertEqual([t["id"] for t in self.c.next()["ready"]], ["T001"])
         with self.assertRaisesRegex(RddError, "not ready"):
-            self.c.task_claim("T003", "rdd_large", worktree=True)
+            self.c.task_claim("T003", "rdd_large", worktree=True, session_id="early-worker")
         with self.assertRaisesRegex(RddError, "integrated task"):
             self.c.task_complete("T001")
+
+    def test_category_handoff_requires_live_observation_without_task_approval(self):
+        self.opened()
+        red = self.red_task()
+        self.c.task_complete("T001", red["id"])
+        self.commit("Preserve accepted RED and controller cleanup")
+        with self.assertRaisesRegex(RddError, "observe completed tests integration"):
+            self.c.task_claim("T002", "rdd_large", session_id="deletion-worker")
+        self.live_review()  # An observation carries no approval/pass field.
+        self.assertEqual(self.c.task_claim("T002", "rdd_large", session_id="deletion-worker")["task"], "T002")
 
     def test_green_test_cannot_be_used_as_red_evidence(self):
         self.opened()

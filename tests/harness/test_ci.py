@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import os
+import json
+import copy
 from pathlib import Path
 import shutil
 import sys
@@ -12,6 +14,7 @@ from unittest.mock import patch
 
 from tools.rdd import artifacts, ci
 from tools.rdd.adapters import run_argv
+from tools.rdd.checks import platform_name
 from tools.rdd.common import RddError, digest, file_hash, head, read_json, write_json
 
 
@@ -174,6 +177,17 @@ class CiTests(unittest.TestCase):
         actions = patch.dict(os.environ, {"GITHUB_ACTIONS": "false"})
         actions.start()
         self.addCleanup(actions.stop)
+        # These controller fixtures execute arithmetic checks, with the external
+        # compiler boundary supplied explicitly. The disposable real generator
+        # suite exercises the canonical driver and receipt parser together.
+        canonical = patch("tools.rdd.readiness.canonical_contract_check",
+                          side_effect=lambda spec: next(check for check in spec["checks"]
+                                                        if check["id"] == "C-CONTRACT"))
+        receipts = patch("tools.rdd.readiness.verify_canonical_contract_receipts", return_value=None)
+        canonical.start()
+        receipts.start()
+        self.addCleanup(canonical.stop)
+        self.addCleanup(receipts.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.home = Path(self.temp.name)
@@ -228,49 +242,106 @@ class CiTests(unittest.TestCase):
         self.command(self.candidate, "config", "user.email", "rdd-test@example.invalid")
 
     def check(self, name, kind="test", platforms=None, host_profile=None):
-        return {"id": name, "kind": kind, "argv": ["{python}", "-c", "assert 2 + 2 == 4; print('checked')"],
+        scenario = {"C-FIRST": "S-FIRST", "C-SECOND": "S-SECOND"}.get(name)
+        return {"id": name, "kind": kind, "argv": ["{python}", "tools/ci_fixture_check.py", name],
                 "cwd": ".", "timeout_seconds": 20, "platforms": platforms or ["any"],
-                "red_pattern": "EXPECTED_BEHAVIORAL_FAILURE", "metrics": [], "host_profile": host_profile}
+                "red_pattern": "EXPECTED_BEHAVIORAL_FAILURE", "metrics": [], "host_profile": host_profile,
+                "environments": ["local"], "requires": ["fixture-runner"], "scenario_ids": [scenario] if scenario else [],
+                "results_path": f".rdd/evidence/results/{name}.json" if scenario else None}
 
-    def prepare(self, *, extras=None, project_checks=None, ordinary_platforms=None, sidecar=False, extra_first_phase_task=False):
+    def prepare(self, *, extras=None, project_checks=None, ordinary_platforms=None, sidecar=False, extra_first_phase_task=False,
+                readiness_probes=None):
         self.write(self.base, "requirements/requirements.md",
                    "# Requirements\n\n**FR-001 First behavior**\nThe app shall do the first thing.\nAcceptance: Verify first behavior.\n\n"
                    "**FR-002 Second behavior**\nThe app shall do the second thing.\nAcceptance: Verify second behavior.\n")
         self.write(self.base, "docs/specs/application.md", "# Application\n\nFirst and second observable behavior and their contracts.\n")
-        self.write(self.base, "contracts/example.proto", 'syntax = "proto3";\nmessage Example {}\n')
+        self.write(self.base, "contracts/example.proto", 'syntax = "proto3";\npackage example.v1;\nmessage Example {}\n'
+            'message Reply { oneof outcome { bool accepted = 1; string error = 2; } }\n'
+            'service ExampleService { rpc First(Example) returns (Reply); rpc Second(Example) returns (Reply); }\n')
         self.write(self.base, "gen/example.rs", "pub struct Example;\n")
+        self.write(self.base, "tools/ci_fixture_check.py", "import json,sys\nfrom pathlib import Path\n"
+                   "cid = sys.argv[1]\nassert 2 + 2 == 4, 'EXPECTED_BEHAVIORAL_FAILURE'\n"
+                   "if cid == 'C-FIRST':\n    assert 4 - 2 == 2, 'EXPECTED_BEHAVIORAL_FAILURE'\n    sid = 'S-FIRST'\n"
+                   "elif cid == 'C-SECOND':\n    assert 6 - 3 == 3, 'EXPECTED_BEHAVIORAL_FAILURE'\n    sid = 'S-SECOND'\n"
+                   "else:\n    sid = None\n"
+                   "if sid:\n    path = Path('.rdd/evidence/results') / (cid + '.json')\n"
+                   "    path.parent.mkdir(parents=True,exist_ok=True)\n"
+                   "    path.write_text(json.dumps({'scenarios':[{'id':sid,'outcome':'pass'}]}),encoding='utf-8')\n"
+                   "print('checked')\n")
         requirement_digest = file_hash(self.base / "requirements/requirements.md")
         checks = [self.check("C-CONTRACT", "contract", ordinary_platforms),
                   self.check("C-FIRST", platforms=ordinary_platforms),
                   self.check("C-SECOND", platforms=ordinary_platforms)]
         checks += extras or []
         checks += project_checks or []
+        checks += readiness_probes or []
         self.spec = {
-            "schema_version": 1, "id": "spec-fixture", "requirements_digest": requirement_digest,
+            "schema_version": 2, "author_sessions": ["ci-fixture-author"], "id": "spec-fixture", "requirements_digest": requirement_digest,
             "mode": "regenerate", "parent_spec_digest": None,
             "change_summary": "This is a deliberately minimal, executable controller test fixture.",
             "documents": ["docs/specs/application.md"], "decisions": [],
-            "contract_files": ["contracts/example.proto"], "generated_files": ["gen/example.rs"],
+            "contract_files": ["contracts/example.proto"], "generated_files": ["gen/example.rs", "gen/metadata.json"],
+            "contract_index_path": "gen/metadata.json", "shared_generated_files": [dict(path="gen/metadata.json",
+                purpose="Descriptor index support for the isolated CI verifier fixture.")],
             "contract_check_ids": ["C-CONTRACT"],
             "project_check_ids": ["C-FIRST", "C-SECOND"] + [item["id"] for item in project_checks or []],
             "modules": [{"id": "example", "requirements": ["FR-001", "FR-002"],
-                         "contract_paths": ["contracts/example.proto"], "owns_paths": ["modules/"], "depends_on": []}],
+                "contract_paths": ["contracts/example.proto"], "owns_paths": ["modules/"], "depends_on": [],
+                "provided_services": ["example.v1.ExampleService"], "consumed_operations": [],
+                "generated_paths": ["gen/example.rs"], "adapter_error_specs": ["docs/specs/application.md"],
+                "qualification_checks": {g:["C-CONTRACT"] for g in ("provider","consumer","negative_signature","dependency_direction","compatibility")},
+                "implementation_checks": {g:["C-FIRST","C-SECOND"] for g in ("provider","consumer","dependency_direction","compatibility","semantics")}}],
             "scenarios": [{"id": "S-FIRST", "requirements": ["FR-001"], "kind": "golden",
+                           "solution_elements": ["E-DOMAIN", "E-FIRST", "E-TEST"],
+                           "preconditions": "An isolated arithmetic fixture.", "fixture": "The value four.",
+                           "stimulus": "Subtract two from four.", "verification_method": "Compare to the independently expected value two.",
                            "description": "First behavior", "expected": "First expected output", "check_ids": ["C-FIRST"]},
                           {"id": "S-SECOND", "requirements": ["FR-002"], "kind": "golden",
+                           "solution_elements": ["E-DOMAIN", "E-SECOND", "E-TEST"],
+                           "preconditions": "An isolated arithmetic fixture.", "fixture": "The value six.",
+                           "stimulus": "Subtract three from six.", "verification_method": "Compare to the independently expected value three.",
                            "description": "Second behavior", "expected": "Second expected output", "check_ids": ["C-SECOND"]}],
             "checks": checks,
             "requirement_map": [{"requirement": "FR-001", "specifications": ["docs/specs/application.md"], "scenarios": ["S-FIRST"]},
                                 {"requirement": "FR-002", "specifications": ["docs/specs/application.md"], "scenarios": ["S-SECOND"]}],
             "amendment": {"requirements": [], "paths": [], "rationale": ""},
+            "solution_elements": [dict(id=eid,kind=kind,behavior="positive" if kind == "operation" else "support",
+                requirements=reqs,scenarios=scenarios,specifications=["docs/specs/application.md"],module=module)
+                for eid,kind,reqs,scenarios,module in (
+                    ("E-DOMAIN","subdomain",["FR-001","FR-002"],["S-FIRST","S-SECOND"],"example"),
+                    ("E-FIRST","operation",["FR-001"],["S-FIRST"],"example"),
+                    ("E-SECOND","operation",["FR-002"],["S-SECOND"],"example"),
+                    ("E-TEST","enabling",["FR-001","FR-002"],["S-FIRST","S-SECOND"],None))],
+            "target_tree": [], "resources": [], "environments": [],
         }
-        write_json(self.base / ".rdd/spec.json", self.spec)
-        spec_files = {path: file_hash(self.base / path) for path in (
-            ".rdd/spec.json", "requirements/requirements.md", "docs/specs/application.md", "contracts/example.proto", "gen/example.rs")}
-        self.spec_lock = {"schema_version": 1, "files": spec_files,
-                          "requirements_digest": requirement_digest}
-        self.spec_lock["digest"] = digest(self.spec_lock)
-        write_json(self.base / ".rdd/spec.lock.json", self.spec_lock)
+        for element, method in ((self.spec["solution_elements"][1], "First"), (self.spec["solution_elements"][2], "Second")):
+            element["contract_operations"] = ["example.v1.ExampleService." + method]
+        self.write(self.base,"gen/metadata.json", json.dumps(dict(contract_index=dict(schema_version=1,
+            source_hashes={"contracts/example.proto":file_hash(self.base / "contracts/example.proto")},
+            binding_files=["gen/example.rs"],support_files=["gen/metadata.json"],
+            binding_sources={"gen/example.rs":["contracts/example.proto"]},
+            services=[dict(symbol="example.v1.ExampleService",source="contracts/example.proto",generated_path="gen/example.rs",
+                operations=[dict(symbol="example.v1.ExampleService."+name,response_oneofs=[dict(name="outcome",fields=["accepted","error"])])
+                            for name in ("First","Second")])]))))
+        environments = {}
+        for check in checks:
+            check["environments"] = []
+            for platform in ([platform_name()] if "any" in check["platforms"] else check["platforms"]):
+                eid = f"env-{platform}-{check['host_profile'] or 'ordinary'}"
+                environments[eid] = dict(id=eid,platform=platform,host_profile=check["host_profile"])
+                check["environments"].append(eid)
+        self.spec["environments"] = list(environments.values())
+        self.spec["resources"] = [dict(id="fixture-runner",kind="repository",path="tools/ci_fixture_check.py",
+            version=None,availability="baseline",required_at="specification",
+            probe_check_ids=[check["id"] for check in readiness_probes or []],environments=list(environments))]
+        for number,cid in ((1,"C-FIRST"),(2,"C-SECOND")):
+            for role in ("provider","consumer"):
+                path = f"modules/{role}{number}.py"
+                self.write(self.base,path,f"# Explicit controller fixture {role} stub; no Todo behavior.\ndef boundary(value):\n    return None\n")
+                rid = f"fixture-{role}{number}"
+                self.spec["resources"].append(dict(id=rid,kind="repository",path=path,version=None,
+                    availability="baseline",required_at="specification",probe_check_ids=[],environments=list(environments)))
+                next(c for c in checks if c["id"] == cid)["requires"].append(rid)
         tasks = []
         for number in (1, 2):
             tasks.append({"id": f"T{number:03d}", "title": f"Implement behavior {number}", "phase": f"P{number:02d}",
@@ -280,28 +351,75 @@ class CiTests(unittest.TestCase):
                           "writes": [f"tests/acceptance/behavior{number}.py"],
                           "checks": ["C-FIRST" if number == 1 else "C-SECOND"],
                           "acceptance": ["Expected behavior is verified"], "scope": "small",
-                          "anchor": {"path": f"tests/acceptance/behavior{number}.py", "mode": "inline"}, "reuse": None})
+                          "objective": f"Assert independently specified fixture behavior {number}.",
+                          "solution_elements": ["E-DOMAIN", "E-FIRST" if number == 1 else "E-SECOND", "E-TEST"],
+                          "scenarios": ["S-FIRST" if number == 1 else "S-SECOND"],
+                          "requires": ["fixture-runner"], "produces": [], "bootstrap_resources": [],
+                          "sites": [dict(id="A01",path=f"tests/acceptance/behavior{number}.py",mode="inline",primary=True,
+                              placement=dict(kind="append",context=None),instructions=f"Assert fixture behavior {number} here.")], "reuse": None})
         if sidecar:
-            tasks[0]["anchor"]["mode"] = "sidecar"
+            tasks[0]["sites"][0]["mode"] = "sidecar"
         if extra_first_phase_task:
             path = "tests/acceptance/behavior1_extra.py"
             tasks.append({**tasks[0], "id": "T003", "title": "Additional first behavior assertion",
                           "depends_on": ["T001"], "writes": [path],
-                          "anchor": {"path": path, "mode": "inline"}})
+                          "sites": [dict(id="A01",path=path,mode="inline",primary=True,
+                              placement=dict(kind="append",context=None),instructions="Add the independently expected first behavior assertion.")]})
             tasks[1]["depends_on"] = ["T003"]
+        for number in (1,2):
+            verification = tasks[number-1]
+            previous = "T003" if number == 1 and extra_first_phase_task else verification["id"]
+            for index,role in enumerate(("provider","consumer")):
+                path,tid = f"modules/{role}{number}.py", f"T{number*10+index:03d}"
+                production = copy.deepcopy(verification)
+                production.update(id=tid,title=f"Implement fixture {role} for operation {number}",
+                    objective=f"Replace the explicit controller fixture {role} stub with its scoped adapter behavior.",
+                    category="modification",depends_on=[previous],writes=[path])
+                production["sites"][0].update(path=path,mode="inline",instructions=f"Implement the operation {number} {role} adapter here.")
+                tasks.append(production)
+                previous = tid
+            if number == 1:
+                tasks[1]["depends_on"] = [previous]
         first_phase_tasks = [task for task in tasks if task["phase"] == "P01"]
+        second_phase_tasks = [task for task in tasks if task["phase"] == "P02"]
+        self.spec["target_tree"] = [dict(path=task["writes"][0],kind="file",owner="E-DOMAIN" if task["category"] == "modification" else "E-TEST",
+            purpose="An isolated executable fixture work site.",disposition="modify" if task["category"] == "modification" else "add") for task in tasks]
+        self.spec["target_tree"] += [dict(path="modules/",kind="directory",owner="E-DOMAIN",
+            purpose="The explicit fixture domain ownership boundary.",disposition="retain"),
+            dict(path="tools/ci_fixture_check.py",kind="file",owner="E-TEST",
+            purpose="The baseline assertion runner.",disposition="retain")]
+        write_json(self.base / ".rdd/spec.json", self.spec)
+        spec_files = {path: file_hash(self.base / path) for path in (
+            ".rdd/spec.json", "requirements/requirements.md", "docs/specs/application.md", "contracts/example.proto", "gen/example.rs", "gen/metadata.json")}
+        self.spec_lock = {"schema_version": 1, "files": spec_files,
+                          "requirements_digest": requirement_digest}
+        self.spec_lock["digest"] = digest(self.spec_lock)
+        write_json(self.base / ".rdd/spec.lock.json", self.spec_lock)
         self.plan = {
-            "schema_version": 1, "spec_digest": self.spec_lock["digest"],
+            "schema_version": 2, "author_sessions": ["ci-fixture-author"], "spec_digest": self.spec_lock["digest"],
             "phases": [{"id": "P01", "goal": "First behavior", "tasks": [task["id"] for task in first_phase_tasks],
                         "checks": ["C-FIRST"] + [item["id"] for item in extras or []],
                         "requirements_closed": ["FR-001"], "deliverables": [task["writes"][0] for task in first_phase_tasks], "independent_evidence": ["First review"]},
-                       {"id": "P02", "goal": "Second behavior", "tasks": ["T002"],
+                       {"id": "P02", "goal": "Second behavior", "tasks": [task["id"] for task in second_phase_tasks],
                         "checks": ["C-SECOND"] + [item["id"] for item in project_checks or []],
-                        "requirements_closed": ["FR-002"], "deliverables": ["tests/acceptance/behavior2.py"], "independent_evidence": ["Second review"]}],
-            "tasks": tasks, "verticals": [{"id": "V-FIRST-SECOND", "goal": "Both behaviors",
-                                          "tasks": [task["id"] for task in first_phase_tasks] + ["T002"]}],
+                        "requirements_closed": ["FR-002"], "deliverables": [task["writes"][0] for task in second_phase_tasks], "independent_evidence": ["Second review"]}],
+            "tasks": tasks, "verticals": [{"id": "V01", "goal": "Both behaviors",
+                                          "tasks": [task["id"] for task in first_phase_tasks + second_phase_tasks]}],
             "target_paths": [task["writes"][0] for task in tasks],
-            "shells": [{"path": task["writes"][0], "content": "# Implementation shell\n"} for task in tasks],
+            "shells": [{"path": task["writes"][0], "content": "# Implementation shell\n"} for task in tasks if task["category"] == "tests"],
+            "element_coverage": [dict(element=e["id"],tasks=[task["id"] for task in tasks if e["id"] in task["solution_elements"]],
+                checks=sorted({cid for scenario in self.spec["scenarios"] if e["id"] in scenario["solution_elements"] for cid in scenario["check_ids"]}),
+                baseline_evidence=None) for e in self.spec["solution_elements"]],
+            "resource_producers": [dict(resource=r["id"],kind="baseline",task=None,checks=[]) for r in self.spec["resources"]],
+            "resource_uses": [dict(resource=rid,consumer_kind="task_red" if task["category"] == "tests" else "task_completion",consumer=task["id"])
+                for task in tasks for rid in next(c for c in checks if c["id"] == task["checks"][0])["requires"]]
+                + [dict(resource=rid,consumer_kind="phase",consumer=f"P{number:02d}") for number in (1,2)
+                   for rid in sorted({r for c in checks if c["id"] in {"C-CONTRACT","C-FIRST"} | ({"C-SECOND"} if number == 2 else set()) for r in c["requires"]})]
+                + [dict(resource=r["id"],consumer_kind="project",consumer=None) for r in self.spec["resources"]],
+            "boundary_proofs": [dict(module="example",operation="example.v1.ExampleService." + operation,first_phase=f"P{number:02d}",
+                checks=[cid],provider_tasks=[f"T{number*10:03d}"],consumer_tasks=[f"T{number*10+1:03d}"],
+                adapter_tasks=[f"T{number*10+1:03d}"],verification_tasks=[f"T{number:03d}"])
+                for number,cid,operation in ((1,"C-FIRST","First"),(2,"C-SECOND","Second"))],
         }
         write_json(self.base / ".rdd/plan/plan.json", self.plan)
         matrix = self.write(self.base, ".rdd/plan/implementation-matrix.md", artifacts.implementation_matrix(self.plan))
@@ -326,7 +444,7 @@ class CiTests(unittest.TestCase):
     def complete_phase(self, number):
         for task in self.plan["tasks"]:
             if int(task["phase"][1:]) <= number:
-                artifacts.remove_anchor(self.candidate, task)
+                artifacts.remove_anchor(self.candidate, task, self.plan)
         self.commit(self.candidate, f"complete phase {number}")
 
     def execute(self, root, check, **kwargs):
@@ -345,6 +463,94 @@ class CiTests(unittest.TestCase):
         values.update(kwargs)
         with patch("tools.rdd.ci._execute", side_effect=self.execute):
             return ci.verify(self.candidate, **values)
+
+    def prepare_ci_candidate(self, **kwargs):
+        """Pin a separate harness checkout before product fixture materialization."""
+        self.harness_source = head(self.base)
+        self.harness = self.home / "harness"
+        result = run_argv(["git", "clone", "-c", "core.autocrlf=false", "--no-hardlinks",
+                           str(self.base), str(self.harness)], self.home)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.command(self.harness, "checkout", "--detach", self.harness_source)
+        self.prepare(**kwargs)
+        self.clone()
+        self.assertEqual(self.command(self.candidate, "merge-base", self.harness_source, "HEAD"), self.harness_source)
+
+    def verify_preparation(self, **kwargs):
+        values = {"policy_root": self.harness, "harness_source": self.harness_source}
+        values.update(kwargs)
+        with patch("tools.rdd.ci._execute", side_effect=self.execute):
+            return ci.verify_preparation(self.candidate, **values)
+
+    def test_preparation_ci_runs_exact_declared_probes_and_persists_each_platform_report(self):
+        platforms = ["linux", "macos", "windows"]
+        probes = [self.check("C-READY-ALL", "readiness", platforms)]
+        probes += [self.check("C-READY-" + platform.upper(), "readiness", [platform]) for platform in platforms]
+        self.prepare_ci_candidate(ordinary_platforms=platforms, readiness_probes=probes)
+        # Simulate selection/provenance only; the fixture commands really run on
+        # this host. Hosted qualification supplies actual platform observations.
+        for platform in platforms:
+            with self.subTest(platform=platform), patch("tools.rdd.ci._host_platform", return_value=platform), \
+                    patch("tools.rdd.checks.platform_name", return_value=platform):
+                self.commands.clear()
+                report = self.verify_preparation()
+                expected = ["C-CONTRACT", "C-READY-ALL", "C-READY-" + platform.upper()]
+                self.assertEqual(self.commands, expected)
+                self.assertEqual([row["check_id"] for row in report["checks"]], expected)
+                self.assertEqual({row["platform"] for row in report["checks"]}, {platform})
+                self.assertEqual(report["status"], "passed")
+                self.assertEqual(report["scope"], "preparation")
+                self.assertEqual(report["source_commit"], head(self.candidate))
+                self.assertEqual(report["harness_source"], self.harness_source)
+                self.assertFalse(report["application_complete"])
+                self.assertEqual(report["anchors"]["remaining"], len(self.plan["tasks"]))
+                self.assertEqual(read_json(self.candidate / f".rdd/evidence/preparation-ci/{platform}.json"), report)
+                self.assertEqual(read_json(self.candidate / ".rdd/evidence/preparation-ci.json"), report)
+
+    def test_preparation_ci_rejects_pinned_harness_policy_mutation_before_checks(self):
+        self.prepare_ci_candidate()
+        self.write(self.candidate, "tools/rdd/policy.py", "# Mutated trusted harness policy\n")
+        self.commit(self.candidate, "mutate preparation policy")
+        with self.assertRaisesRegex(RddError, "independently pinned harness"):
+            self.verify_preparation()
+        self.assertEqual(self.commands, [])
+
+    def test_preparation_ci_rejects_ignored_policy_addition_before_checks(self):
+        self.write(self.base, ".gitignore", (self.base / ".gitignore").read_text(encoding="utf-8") + ".codex/injected.toml\n")
+        self.commit(self.base, "ignore fixture injection path before pin")
+        self.prepare_ci_candidate()
+        self.write(self.candidate, ".codex/injected.toml", 'model="unexpected"\n')
+        self.assertEqual(self.command(self.candidate, "status", "--porcelain"), "")
+        with self.assertRaisesRegex(RddError, "independently pinned harness"):
+            self.verify_preparation()
+        self.assertEqual(self.commands, [])
+
+    def test_preparation_ci_rejects_pin_checkout_and_candidate_ancestry_mismatches(self):
+        self.prepare_ci_candidate()
+        for override in ({"harness_source": head(self.candidate)}, {"policy_root": self.candidate}):
+            with self.subTest(override=override), self.assertRaisesRegex(RddError, "separate checkout.*exact trusted harness pin"):
+                self.verify_preparation(**override)
+        # Create a clean, valid repository with different ancestry and retain the
+        # trusted pin's object so merge-base executes without a missing-object error.
+        self.command(self.candidate, "checkout", "--orphan", "unrelated-baseline")
+        self.commit(self.candidate, "independent root candidate")
+        with self.assertRaisesRegex(RddError, "descend from the trusted harness pin"):
+            self.verify_preparation()
+        self.assertEqual(self.commands, [])
+
+    def test_preparation_ci_persists_failed_readiness_proof_for_its_platform(self):
+        probe = self.check("C-READY-FAIL", "readiness")
+        probe["argv"] = ["{python}", "-c", "raise SystemExit('PREPARATION_READINESS_FAILURE')"]
+        self.prepare_ci_candidate(readiness_probes=[probe])
+        with self.assertRaisesRegex(RddError, "Preparation qualification failed: C-READY-FAIL"):
+            self.verify_preparation()
+        report = read_json(self.candidate / f".rdd/evidence/preparation-ci/{platform_name()}.json")
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(self.commands, ["C-CONTRACT", "C-READY-FAIL"])
+        self.assertEqual(report["checks"][-1]["outcome"], "fail")
+        raw = read_json(self.candidate / report["checks"][-1]["log_path"])
+        self.assertIn("PREPARATION_READINESS_FAILURE", raw["stderr"])
+        self.assertEqual(read_json(self.candidate / ".rdd/evidence/preparation-ci.json"), report)
 
     def test_bootstrap_is_explicitly_harness_only(self):
         self.clone()
@@ -426,7 +632,7 @@ class CiTests(unittest.TestCase):
         self.assertEqual(report["scope"], "prepared_baseline")
         self.assertEqual(report["status"], "harness_only")
         self.assertEqual(self.commands, ["C-CONTRACT"])
-        self.assertEqual(report["anchors"]["remaining"], 2)
+        self.assertEqual(report["anchors"]["remaining"], len(self.plan["tasks"]))
         self.assertIsNone(report["observed_through_phase"])
         self.assertFalse(report["application_complete"])
         self.assertFalse(report["task_history_verified"])
@@ -452,7 +658,7 @@ class CiTests(unittest.TestCase):
                     self.assertEqual(report["scheduled_check_ids"], expected_checks)
                     self.assertEqual(self.commands, expected_checks)
                     self.assertEqual(report["source_commit"], head(self.candidate))
-                    self.assertEqual(report["anchors"]["remaining"], 2 - number)
+                    self.assertEqual(report["anchors"]["remaining"], sum(t["phase"] > f"P{number:02d}" for t in self.plan["tasks"]))
                     self.assertTrue(all(receipt["phase"] is None for receipt in report["checks"]))
                     self.assertFalse(report["application_complete"])
                     self.assertFalse(report["task_history_verified"])
@@ -460,7 +666,7 @@ class CiTests(unittest.TestCase):
     def test_nonphase_partial_phase_is_rejected_before_checks(self):
         self.prepare(extra_first_phase_task=True)
         self.clone()
-        artifacts.remove_anchor(self.candidate, self.plan["tasks"][0])
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][0], self.plan)
         self.commit(self.candidate, "remove only one of two first-phase markers")
         with self.assertRaisesRegex(RddError, "whole-phase prefix"):
             self.verify("main")
@@ -470,7 +676,7 @@ class CiTests(unittest.TestCase):
     def test_nonphase_gap_is_rejected_before_checks(self):
         self.prepare()
         self.clone()
-        artifacts.remove_anchor(self.candidate, self.plan["tasks"][1])
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][1], self.plan)
         self.commit(self.candidate, "remove later-phase marker while first remains")
         with self.assertRaisesRegex(RddError, "whole-phase prefix"):
             self.verify("main")
@@ -479,13 +685,13 @@ class CiTests(unittest.TestCase):
     def test_nonphase_malformed_projections_are_rejected_before_checks(self):
         self.prepare()
         self.clone()
-        first, second = self.plan["tasks"]
+        first, second = self.plan["tasks"][:2]
         path = artifacts.anchor_path(first)
         original = (self.candidate / path).read_text(encoding="utf-8")
         variants = {
-            "duplicate": artifacts.marker_line(first),
-            "orphaned": "# RDD:P01:T999 [tests] Unknown task",
-            "misplaced": artifacts.marker_line(second),
+            "duplicate": artifacts.marker_line(first, plan=self.plan),
+            "orphaned": '# RDD:P01:tests:V01:T999:A01 | {}',
+            "misplaced": artifacts.marker_line(second, plan=self.plan),
         }
         for kind, marker in variants.items():
             with self.subTest(kind=kind):
@@ -497,13 +703,15 @@ class CiTests(unittest.TestCase):
 
     def test_nonphase_candidate_cannot_reduce_coverage_below_integrated_base(self):
         self.prepare()
-        first = self.plan["tasks"][0]
-        artifacts.remove_anchor(self.base, first)
+        first_phase = [t for t in self.plan["tasks"] if t["phase"] == "P01"]
+        for task in first_phase:
+            artifacts.remove_anchor(self.base, task, self.plan)
         self.commit(self.base, "integrate first-phase projection")
         self.clone()
-        path = artifacts.anchor_path(first)
-        text = (self.candidate / path).read_text(encoding="utf-8")
-        self.write(self.candidate, path, text + artifacts.marker_line(first) + "\n")
+        for task in first_phase:
+            path = artifacts.anchor_path(task)
+            text = (self.candidate / path).read_text(encoding="utf-8")
+            self.write(self.candidate, path, text + artifacts.marker_line(task, plan=self.plan) + "\n")
         self.commit(self.candidate, "restore first-phase marker")
         with self.assertRaisesRegex(RddError, "reduces CI coverage below the trusted base"):
             self.verify("feature/rollback")
@@ -512,7 +720,9 @@ class CiTests(unittest.TestCase):
 
     def test_nonphase_candidate_can_preserve_or_advance_integrated_base_coverage(self):
         self.prepare()
-        artifacts.remove_anchor(self.base, self.plan["tasks"][0])
+        for task in self.plan["tasks"]:
+            if task["phase"] == "P01":
+                artifacts.remove_anchor(self.base, task, self.plan)
         self.commit(self.base, "integrate first-phase projection")
         self.clone()
         path = self.plan["tasks"][0]["writes"][0]
@@ -532,7 +742,7 @@ class CiTests(unittest.TestCase):
     def test_nonphase_same_sha_push_runs_all_cumulative_checks(self):
         self.prepare()
         for task in self.plan["tasks"]:
-            artifacts.remove_anchor(self.base, task)
+            artifacts.remove_anchor(self.base, task, self.plan)
         self.commit(self.base, "integrate all phase projections")
         self.clone()
         self.assertEqual(head(self.candidate), head(self.base))
@@ -554,7 +764,7 @@ class CiTests(unittest.TestCase):
                 self.commands.clear()
                 report = self.verify(branch)
                 self.assertEqual(report["status"], "passed")
-                self.assertEqual(report["anchors"]["remaining"], 1)
+                self.assertEqual(report["anchors"]["remaining"], sum(t["phase"] == "P02" for t in self.plan["tasks"]))
                 self.assertEqual(report["observed_through_phase"], "P01")
                 self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST"])
 
@@ -679,7 +889,7 @@ class CiTests(unittest.TestCase):
     def test_release_partial_phase_cannot_run_checks(self):
         self.prepare(extra_first_phase_task=True)
         self.clone()
-        artifacts.remove_anchor(self.candidate, self.plan["tasks"][0])
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][0], self.plan)
         self.commit(self.candidate, "partial first release phase")
         with self.assertRaisesRegex(RddError, "whole-phase prefix"):
             self.verify_release()
@@ -756,7 +966,7 @@ class CiTests(unittest.TestCase):
                 with self.assertRaisesRegex(RddError, "completed full phase prefix"):
                     self.verify_release()
                 self.assertEqual(self.commands, [])
-        artifacts.remove_anchor(self.candidate, self.plan["tasks"][1])
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][1], self.plan)
         path = self.plan["tasks"][1]["writes"][0]
         self.write(self.candidate, path, "# RDD:P02:T999 [tests] Unknown task\n")
         self.commit(self.candidate, "orphaned release marker")

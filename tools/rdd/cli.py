@@ -34,6 +34,12 @@ def parser() -> argparse.ArgumentParser:
         sub = commands.add_parser(name)
         sub.add_argument("action", choices=("init", "validate", "freeze"))
     commands.add_parser("prepare", help="Materialize only frozen shells, anchors and implementation matrix")
+    readiness = commands.add_parser("readiness", help="Execute exact-candidate preimplementation qualification")
+    readiness.add_argument("stage", choices=("specification", "plan", "preparation"))
+    author = commands.add_parser("author")
+    author.add_argument("action", choices=("record",))
+    author.add_argument("--stage", required=True, choices=("specification", "plan", "preparation"))
+    author.add_argument("--session-id", required=True)
     commands.add_parser("next", help="List tasks eligible in the current phase and category")
     ph = commands.add_parser("phase")
     ph.add_argument("action", choices=("begin", "seal"))
@@ -68,7 +74,7 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("action", choices=("record",))
     r.add_argument("file", type=Path)
     g = commands.add_parser("gate")
-    g.add_argument("level", choices=("phase", "project"))
+    g.add_argument("level", choices=("preparation", "phase", "project"))
     g.add_argument("phase", nargs="?")
     stack = commands.add_parser("stack")
     stack.add_argument("action", choices=("publish", "verify"))
@@ -80,9 +86,17 @@ def parser() -> argparse.ArgumentParser:
     block = commands.add_parser("block")
     block.add_argument("--kind", choices=("specification", "planning", "closure", "environment", "authorization", "budget", "review"), required=True)
     block.add_argument("--reason", required=True)
+    for field in ("requirement", "element", "task", "evidence"):
+        block.add_argument("--" + field, action="append", default=[])
     commands.add_parser("goal", help="Print only the native /goal objective, guaranteed below 4,000 characters")
     wf = commands.add_parser("workflow", help="Open an interactive Codex workflow, or print its launch packet")
-    wf.add_argument("stage", choices=("specification", "preparation", "implementation"))
+    wf.add_argument("stage", choices=("specification", "preparation", "implementation", "nodes", "next", "claim", "record", "release"))
+    wf.add_argument("target", nargs="?")
+    wf.add_argument("--session-id")
+    wf.add_argument("--role", choices=("rdd_coordinator", "rdd_researcher", "rdd_large", "rdd_small"))
+    wf.add_argument("--write", action="append", default=[])
+    wf.add_argument("--reason")
+    wf.add_argument("--finding", help="Unresolved live finding authorizing a scoped corrective retry")
     wf.add_argument("--mode", choices=("amend", "regenerate"))
     wf.add_argument("--print", action="store_true", dest="print_only", help="Show the launch packet; does not start Codex (an explicit --mode starts the requested run)")
     contract = commands.add_parser("contracts")
@@ -94,6 +108,8 @@ def parser() -> argparse.ArgumentParser:
     ci = commands.add_parser("ci", help="Stateless trusted-baseline verification of a candidate checkout")
     ci.add_argument("--policy-root", type=Path)
     ci.add_argument("--branch")
+    ci.add_argument("--preparation", action="store_true", help="Qualify a materialized v2 baseline against a separately pinned harness")
+    ci.add_argument("--harness-source", help="Exact operator-selected trusted harness commit; required with --preparation")
     ci.add_argument("--release-policy", help="Exact operator-approved prepared policy commit (requires --release-source)")
     ci.add_argument("--release-source", help="Exact project-accepted release commit (requires --release-policy)")
     return p
@@ -113,6 +129,10 @@ def dispatch(c: Controller, a: argparse.Namespace):
         return c.requirements_index()
     if cmd in {"spec", "plan"}:
         return getattr(c, f"{cmd}_{a.action}")()
+    if cmd == "readiness":
+        return c.readiness(a.stage)
+    if cmd == "author":
+        return c.author_record(a.stage, a.session_id)
     if cmd == "prepare":
         return c.prepare()
     if cmd == "next":
@@ -142,6 +162,10 @@ def dispatch(c: Controller, a: argparse.Namespace):
     if cmd == "review":
         return c.review_record(a.file)
     if cmd == "gate":
+        if a.level == "preparation":
+            if a.phase:
+                raise RddError("gate preparation takes no phase ID")
+            return c.gate_preparation()
         if a.level == "phase":
             if not a.phase:
                 raise RddError("gate phase requires a phase ID")
@@ -162,10 +186,26 @@ def dispatch(c: Controller, a: argparse.Namespace):
     if cmd == "export-run":
         return c.export_run(a.file)
     if cmd == "block":
-        return c.block(a.kind, a.reason)
+        return c.block(a.kind, a.reason, affected={"requirements": a.requirement, "elements": a.element, "tasks": a.task}, evidence=a.evidence)
     if cmd == "goal":
         return c.goal()
     if cmd == "workflow":
+        if a.stage == "nodes":
+            return c.workflow_nodes()
+        if a.stage == "next":
+            return c.workflow_next()
+        if a.stage == "claim":
+            if not a.target or not a.session_id or not a.role:
+                raise RddError("workflow claim needs NODE, --session-id, --role and exact --write paths")
+            return c.workflow_claim(a.target, a.session_id, a.role, a.write, a.finding)
+        if a.stage == "record":
+            if not a.target:
+                raise RddError("workflow record needs an output record JSON file")
+            return c.workflow_record(Path(a.target))
+        if a.stage == "release":
+            if not a.target or not a.reason:
+                raise RddError("workflow release needs NODE and --reason")
+            return c.workflow_release(a.target, a.reason)
         return c.workflow(a.stage, a.mode, print_only=a.print_only)
     if cmd == "contracts":
         from rdd.proto_traits import run_contracts, ContractCheckError
@@ -187,13 +227,22 @@ def dispatch(c: Controller, a: argparse.Namespace):
         return {"status": "passed" if result.returncode == 0 else "failed", "scope": "harness_regression",
                 "application_complete": False, "returncode": result.returncode}
     if cmd == "ci":
-        from rdd.ci import verify
+        from rdd.ci import verify, verify_preparation
+        if a.preparation:
+            if a.release_policy or a.release_source or not a.policy_root or not a.harness_source:
+                raise RddError("Preparation CI requires separate --policy-root and --harness-source, without release flags")
+            return verify_preparation(c.root, a.policy_root, a.harness_source)
+        if a.harness_source:
+            raise RddError("--harness-source requires --preparation")
         return verify(c.root, a.policy_root, a.branch,
                       release_policy=a.release_policy, release_source=a.release_source)
     raise RddError("Unhandled command")
 
 
 def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     args = parser().parse_args(argv)
     if sys.version_info < (3, 11):
         print(json.dumps({"status": "blocked", "kind": "environment", "error": "Python 3.11+ is required"}))
@@ -205,12 +254,16 @@ def main(argv: list[str] | None = None) -> int:
             args.command == "contracts" and args.action == "generate") or (
             args.command == "anchors" and args.action == "reconcile") or (
             args.command == "task" and args.action in {"claim", "integrate", "complete", "reopen"}) or (
-            args.command == "workflow" and (not args.print_only or args.mode is not None))
+            args.command == "workflow" and args.stage not in {"nodes", "next"} and (not args.print_only or args.mode is not None))
         if source_write:
             # Refuse before constructing runtime state or acquiring a write lock.
             require_source_branch(args.root)
         controller = Controller(args.root)
-        if args.command == "workflow":
+        legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run", "selftest"} or (
+            args.command == "workflow" and args.print_only and args.mode is None)
+        if not legacy_readonly:
+            controller.guard_v2()
+        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"}:
             controller.guard_workflow(args.stage, args.mode, print_only=args.print_only)
         elif args.command == "resume":
             controller.guard_resume(args.file)
@@ -220,13 +273,13 @@ def main(argv: list[str] | None = None) -> int:
             controller.guard_source_write(baseline=args.command in {"spec", "plan", "prepare", "contracts"})
         readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "selftest", "ci"} or (
             args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
-            args.command == "workflow" and args.print_only and args.mode is None)
+            args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage in {"nodes", "next"}))
         with contextlib.nullcontext() if readonly else operation_lock(controller.root):
             result = dispatch(controller, args)
         if args.command == "goal":
             print(result)
             return 0
-        if args.command == "workflow" and not args.print_only:
+        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"} and not args.print_only:
             if not shutil.which("codex"):
                 raise RddError("codex is not on PATH. Install/authenticate the Codex CLI; use workflow --print to inspect the launch packet.", "environment")
             if not sys.stdin.isatty():
@@ -247,7 +300,7 @@ def main(argv: list[str] | None = None) -> int:
         if controller and kind in {"specification", "planning", "closure"}:
             try:
                 state = controller.state(allow_blocked=True)
-                if state["status"] in {"prepared", "implementation", "complete"}:
+                if state["status"] in {"specified", "planned", "preparing", "prepared", "implementation", "complete"}:
                     controller.block(kind, str(exc))
             except (RddError, OSError):
                 pass

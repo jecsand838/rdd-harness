@@ -60,7 +60,7 @@ class BranchGuardTests(unittest.TestCase):
             "plan freeze": self.c.plan_freeze,
             "prepare": self.c.prepare,
             "phase begin": lambda: self.c.phase_begin("P01"),
-            "task claim": lambda: self.c.task_claim("T001", "rdd_large"),
+            "task claim": lambda: self.c.task_claim("T001", "rdd_large", session_id="fixture-worker"),
             "task integrate": lambda: self.c.task_integrate("T001", "0" * 40),
             "task complete": lambda: self.c.task_complete("T001"),
             "task reopen": lambda: self.c.task_reopen("T001", "Repair within the frozen scope"),
@@ -121,7 +121,7 @@ class BranchGuardTests(unittest.TestCase):
 
     def test_integration_requires_the_recorded_worker_branch_before_intent(self):
         self.f.opened()
-        claim = self.c.task_claim("T001", "rdd_large")
+        claim = self.c.task_claim("T001", "rdd_large", session_id="fixture-worker")
         worker = self.root / claim["lease"]["worktree"]
         self.f.g("switch", "-c", "codex/worker-lookalike", root=worker)
         path = worker / "tests/behavior.py"
@@ -337,6 +337,7 @@ class BranchGuardTests(unittest.TestCase):
         for frozen in (False, True):
             if frozen:
                 self.f.g("switch", "codex/test-baseline")
+                self.f.stage_ready("specification")
                 self.c.spec_freeze()
             before = self.snapshot()
             with patch("tools.rdd.proto_traits.shutil.which") as tool_lookup:

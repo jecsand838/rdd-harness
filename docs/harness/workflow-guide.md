@@ -12,22 +12,46 @@ Use controller commands for transitions. Do not edit run state, SQLite rows, loc
 
 ```mermaid
 flowchart TD
-  R[Requirements] --> S[Specification]
-  S --> F[Frozen solution and contracts]
-  F --> P[Preparation]
-  P --> B[Frozen plan and prepared baseline]
-  B --> I[Implementation phase]
-  I --> G[Phase review and checks]
-  G -->|Repair while open| I
-  G -->|Current evidence accepted| C[Seal phase and PR]
-  C -->|Next phase| I
-  C -->|All phases| V[Project validation]
-  P -->|Design ambiguity| S
-  I -->|Design or closure failure| A[New specification run]
-  A --> S
+  subgraph Specification
+    S0[S0 Baseline intake] --> S1[S1 Domain modeling]
+    S0 --> S2[S2 Goal modeling]
+    S1 --> S3[S3 Golden scenarios and oracles]
+    S2 --> S4[S4 Benchmarks and constraints]
+    S1 & S2 --> S5[S5 Dependency and environment qualification]
+    S3 & S4 & S5 --> S6[S6 Specification and contract generation]
+    S6 --> S7[S7 Candidate qualification]
+    S7 --> S8[S8 Independent review and freeze]
+  end
+  subgraph Preparation
+    S8 --> P0[P0 Verify frozen inputs]
+    P0 --> P1[P1 High-level planning and reuse]
+    P1 --> P2[P2 Task research]
+    P2 --> P3[P3 Verticals and dependency DAG]
+    P3 --> P4[P4 Dependency-closed phases]
+    P4 --> P5[P5 Backlog and matrix]
+    P5 --> P6[P6 Plan qualification and freeze]
+    P6 --> P7[P7 Materialize and commit]
+    P7 --> P8[P8 Preparation acceptance]
+  end
+  subgraph Implementation
+    P8 --> I0[I0 Goal and phase entry]
+    I0 --> I1[I1 Executable phase tests and RED]
+    I1 --> I2[I2 Ordered phase tasks]
+    I2 --> I3[I3 Phase acceptance]
+    I3 -->|Open-phase repair| I1
+    I3 --> I4[I4 PR verification and seal]
+    I4 -->|Next phase| I0
+    I4 -->|All phases sealed| I5[I5 Goal acceptance]
+  end
 ```
 
-Only specification resolves requirement and architectural ambiguity. Preparation can correct its own draft task graph before freezing. Implementation can repair work within the open phase's accepted scope. A changed contract, acceptance meaning, or previously sealed guarantee requires a new specification run.
+The fixed node registry implements the supplied RDD diagram without adding a second workflow engine. Its functional and nonfunctional branches exchange findings before S6 reconciles architecture. Specification designs golden scenarios and benchmark protocols; I1 creates their executable implementations in the relevant phase's tests category. The implementation matrix and phased backlog are preparation outputs consumed by implementation.
+
+Inspect `./rdd workflow nodes` and `./rdd workflow next`. Claim eligible authoring nodes with `workflow claim` and submit artifact handoffs with `workflow record FILE`; use `--help` and the active schema for their exact fields. The controller records attempts, session/role, bounded writes, input identities, actual output hashes and correction history. Changed inputs invalidate dependent results. Acceptance nodes and I0–I5 derive their state from existing freezes, leases, category barriers, gates, PRs and seals, never a second task ledger. `status`, `export-run` and `resume` include node progress.
+
+Keep one read-only reviewer active throughout each workflow alongside the coordinator and at most two authors. In specification it compares evolving design and contracts with requirements; in preparation it compares the backlog and projections with frozen specifications/contracts; in implementation it compares code and evidence with the frozen plan/contracts. Send coherent snapshots at node handoffs, contract regeneration, task integrations and significant check results. Record live findings with affected obligations, exact revision and evidence; authors correct them and the reviewer verifies closure. Live records may examine incomplete drafts and are distinct from final approvals. Blocking findings stop affected work; final acceptance requires review of the current candidate. The live reviewer may provide the semantic approval if it authored no candidate artifacts; a distinct execution reviewer uses a released author slot.
+
+Specification resolves requirement and architectural ambiguity and owns the target folder design. Preparation fully grooms its entire backlog before handoff. Implementation repairs implementation defects within the open phase’s frozen scope. A specification defect discovered during preparation, or a specification/planning defect discovered during implementation, is a critical harness regression: record it, stop the affected workflow, repair the missing preventive control and add a reproducing regression. Intentional requirement changes still use the amendment workflow; never rewrite accepted history.
 
 ## Stage one: specification
 
@@ -51,16 +75,27 @@ Ask Codex:
 
 `./rdd workflow specification` provides the repository's stage prompt/instructions. Follow `codex-runtime.md` for invocation in the installed client. The interactive coordinator can use the configured researcher and reviewer roles for independent work. The skill describes the expected output; the controller validates machine structure and invariants.
 
-The agent creates solution documents and decisions, a complete requirement map, scenario definitions and test oracles, benchmark protocols, module boundaries, dependency/version decisions, and the exact contract/generation set. It authors the machine manifest from the schema. Human-readable templates are in `.rdd/templates/`; they are not completed solution artifacts.
+The agent creates solution documents and decisions, a complete requirement/behavior map, functional subdomains, the complete target folder system, structured scenarios and test oracles, benchmark protocols, module boundaries, dependency/version decisions, check execution prerequisites, and the exact contract/generation set. Every functional requirement and positive behavior has golden scenarios, and every golden scenario links back to a functional requirement. Reciprocal links must agree. It authors the machine manifest from the schema. Human-readable templates are in `.rdd/templates/`; they are not completed solution artifacts.
 
-Compile the proposed canonical contracts and a generated-interface consumer before freezing. The manifest's `contract_check_ids` names the checks; `spec freeze` runs them and records the exact files. This contract experiment produces shape/configuration artifacts, not application behavior. Preparation later reproduces and verifies that same set.
+Generate and commit the complete canonical Protobuf bundle during specification. Each architectural module has a functional subdomain covering all of its allocated FRs, owned paths, allowed dependencies, provided services and consumed operations. Map solution operations to fully qualified Protobuf methods. The generator derives a symbol index from the descriptor and Prost's resolved Rust names in its existing metadata; keep field definitions in Protobuf and detailed semantics in linked specifications. Private Rust helper modules do not need artificial independent contracts.
+
+Generated local methods return a future of the schema-owned response; success and declared failures are response variants. Freeze entry-adapter decode, size-limit, cancellation and lifecycle errors separately. Private domain types enforce invariants generated value types cannot guarantee. Qualify each module with disposable providers/consumers, positive compilation and deliberate wrong request, response, signature and error-boundary proofs on required targets. `contract_check_ids` and module qualification groups name these checks. Real application provider/consumer, visibility, dependency and bypass proofs have separate implementation check references and planned first-due phases; they are not a prefreeze product prerequisite.
+
+The frozen inventory includes Protobuf import closure, generated messages and traits, descriptor-derived symbols, generator/configuration inputs, locks, toolchains and semantic documents. Downstream commands may reproduce to disposable output and compare exact bytes and inventories, never publish changed contracts. Even compatible additions violate the freeze. Buf breaking checks compare authorized amendments with an accepted baseline; they cannot prove exact immutability.
 
 Set up required protected policy/tooling assets at this stage: exact generator/toolchain configuration, the trusted check definitions, and necessary CI configuration. The implementation workflow cannot modify protected harness policy paths merely to make a check pass. Application test source and evaluators can be planned under their designated unprotected project test/tool paths, but their required meaning is frozen in scenario and check definitions.
 
+Commit the candidate before qualification and review. Two distinct reviewers, independent of its authors, inspect semantic coverage and execution readiness. Record their actual sessions and evidence using the schema. Fix every finding, rerun affected proofs and repeat review until both approve the same exact candidate with zero unresolved findings.
+
 ```bash
 ./rdd spec validate
+./rdd readiness specification
+./rdd review record .rdd/runtime/spec-semantic-review.json
+./rdd review record .rdd/runtime/spec-execution-review.json
 ./rdd spec freeze
 ```
+
+The review filenames above are local report destinations, not supplied approvals. `spec freeze` consumes actual current reviews and readiness evidence. Qualification must prove complete tool/host/input assumptions, including clean provisioning and evidence transport; a success on a developer’s cached environment cannot establish hosted readiness.
 
 Commit the frozen specification baseline before moving to preparation. The controller's generated receipts identify the exact bytes; a normal Git commit preserves the source baseline for the next workflow.
 
@@ -74,26 +109,48 @@ Do not proceed if requirements are ambiguous, a required platform is unsupported
 
 Ask Codex:
 
-> Use $preparation-workflow for the frozen solution. Inspect existing code for reuse, derive the target tree, complete task DAG and ordered verticals, and dependency-closed phases. Preserve tests, deletion, modification, addition, documentation order. Review the phase boundaries independently, freeze the plan, then prepare exact contracts, shells, task projections, and the implementation matrix.
+> Use $preparation-workflow for the frozen solution. Resolve work sites within its target tree, inspect reuse, and complete the task DAG, ordered verticals and dependency-closed phases. Preserve tests, deletion, modification, addition, documentation order. Keep a live reviewer comparing progress with the specification and contracts. Qualify and independently review the full plan, freeze it, materialize task packets, and obtain preparation acceptance.
 
-The preparation agent identifies actual target files rather than assuming the boilerplate's directory names define the application architecture. Every task has a category, requirements, spec links, prerequisites, exact writes, checks, acceptance, scope, anchor, and reuse rationale when adding code. Each task belongs to a phase and at least one ordered vertical.
+The preparation agent resolves exact target files inside the frozen folder/ownership design. Every task is fully hydrated with objective, instructions, solution/scenario links, input producers and timing, outputs, dependencies, exact writes and work sites, checks, acceptance, category, scope and reuse rationale when adding code. Each task belongs to one phase and at least one ordered vertical. Every solution element has implementation and verification ownership, or actual baseline evidence. Implementation must not discover missing task scope or groom a partial backlog.
+
+Assign provider, consumer, adapter and verification work for every frozen operation. Plan boundary proofs at the first phase that supplies the real boundary and retain them cumulatively thereafter. Packet references carry the relevant frozen contract identities and obligations. Qualifying a future evidence-transfer mechanism requires a real transport exercise now, not product evidence that can only exist after implementation; evidence required at the current stage must actually exist.
 
 A phase is independent when its claims depend only on the baseline, earlier accepted phases, and its own work. It can depend on previous stacked PRs. For every prerequisite `u -> v`, require `phase(u) <= phase(v)`. In a same-phase edge, category rank must not decrease. A replacement adapter addition needed before a caller modification therefore cannot be scheduled after that modification in the same phase.
 
-Resolve graph, coverage, ownership, category, shell, and phase-closure findings before freezing. If the plan exposes missing design semantics, stop and return to specification; do not encode the question as a task.
+Resolve graph, coverage, ownership, category, work-site and phase-closure findings before freezing. Trace each check’s complete prerequisites to a verified baseline resource, a correctly ordered task, or an external producer with a tested transfer route. Distinguish what must exist at preparation from what a future test task may author before its RED run. Use disposable qualification fixtures without implementing product behavior. A frozen design defect is a critical escape; do not encode the question as a task.
+
+Commit the hydrated plan and obtain semantic and execution reviews of the same candidate, independently of the authors. These review/fix iterations are part of preparation, not implementation gates on individual tasks.
 
 ```bash
 ./rdd plan validate
+./rdd readiness plan
+./rdd review record .rdd/runtime/plan-semantic-review.json
+./rdd review record .rdd/runtime/plan-execution-review.json
 ./rdd plan freeze
 ./rdd prepare
 ./rdd anchors verify
 ```
 
-`prepare` runs after plan freeze. It verifies the specification and compiled contracts, creates only approved shells, projects phase-prefixed markers, and writes the implementation matrix and preparation receipt. It does not implement application behavior. Commit and push the resulting prepared baseline on its dedicated branch before beginning implementation, and verify its exact push in CI. No phase should inherit uncommitted preparation work. The first phase PR targets this baseline; do not merge preparation into `main`.
+`prepare` enters `preparing`. Inspect and commit the actual projections and matrix, push that exact baseline, and obtain the required preparation CI and native prerequisite evidence. The same two perspectives now review the materialized handoff and those receipts:
+
+```bash
+./rdd readiness preparation
+./rdd review record .rdd/runtime/preparation-semantic-review.json
+./rdd review record .rdd/runtime/preparation-execution-review.json
+./rdd gate preparation
+```
+
+Only this gate grants `prepared` status. It binds the exact committed baseline; changes require refreshed evidence. Stage review/gate receipts live under ignored runtime/evidence locations so recording them does not invalidate the source they certify.
+
+Preparation CI uses `.github/workflows/preparation.yml` and the operator-controlled `RDD_PREPARATION_HARNESS_SHA` repository variable: a full immutable harness commit, independently selected from the candidate. Push the committed `codex/*-baseline` candidate, or dispatch with its exact SHA and matching branch ref when the workflow is available on the default branch. The trusted verifier checks that the candidate retains its protected policy and selects hosted runners from its declared unprofiled environments. It explicitly provisions declared Python, Rust, Buf and supported frontend tools and uploads raw receipts/logs for import. The gate independently observes the exact GitHub run, attempt, successful verification jobs, policy pin and matching workflow bytes. Native/manual or qualified-host obligations remain separate. A failed or skipped hosted run is not preparation acceptance. Phase CI continues using its trusted accepted base.
+
+Register a mandatory specification `contract_check_ids` entry with kind `contract`, working directory `.`, and argv `["{python}", "tools/rdd/proto_traits.py"]`, optionally followed by paired `--target`, target arguments. Readiness verifies its actual generated inventory and per-operation positive/negative compiler evidence; other module and semantic checks supplement it. A standalone `contracts check` is useful diagnostics but does not replace the candidate-bound readiness receipt.
+
+`prepare` runs after plan freeze. It verifies the specification and compiled contracts, creates only approved shells, projects every primary/secondary task packet, and writes the implementation matrix and materialization receipt. It does not implement application behavior or establish final handoff acceptance. No phase may inherit uncommitted preparation work. The first phase PR targets the gate-accepted baseline; do not merge preparation into `main`.
 
 The GitHub adapter requires readable required-check results. Configure `verify` on the prepared baseline, and on each exact predecessor branch after it is sealed. Avoid wildcard status rules on active phase branches, which need to publish and repair commits before their PR checks can run. The [manual demo](blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) supplies the setup sequence.
 
-Use sidecars for editable noncommentable files and deletion targets. Frozen contracts and generated interfaces are read/check inputs; a sidecar cannot make a protected path writable. Comment-only Rust shells may exist without being imported into a build graph. Do not create bogus JSON or manifests merely to reserve paths.
+Use adjacent sidecars for editable noncommentable files and deletion targets. Each task has one full primary packet and a local instruction/reference at every other write site. Markers encode phase, category, sorted verticals, task and site; for example `RDD:P01:tests:V01+V03:T001:A01`. Existing-code selectors must locate the intended edit unambiguously. Frozen contracts and generated interfaces remain read/check inputs. Comment-only Rust shells may exist without being imported into a build graph. Do not create bogus JSON or manifests merely to reserve paths.
 
 ## Stage three: implementation
 
@@ -174,7 +231,7 @@ For a worker failure, preserve its worktree and use the supported release/resume
 
 Run recovery from the recorded baseline or phase branch. If a mistaken checkout left you on `main` or another branch, inspect and preserve dirty work before returning; do not force-switch or reset. Older runs recorded on `main` can be inspected and exported, but source authoring requires a fresh run on a dedicated baseline. Never rewrite the recorded branch or frozen identities to relocate a run.
 
-Use `./rdd block --kind KIND --reason TEXT` for specification, planning, environment, authorization, budget, review, or closure blockers. A missing required platform is incomplete evidence, not an automatic skip. A sealed-phase defect uses `closure` and requires an amendment. Do not silently repair it in a later phase.
+Use `./rdd block --kind KIND --reason TEXT` and the current blocker schema. Critical specification/planning escapes need origin/detection stage, affected IDs, candidate identities, evidence and the missing preventive check. Record immediately; a reproduction is required to accept the harness repair, not to record the failure. Keep environment, authorization and budget failures distinct. A missing platform is incomplete evidence, not an automatic skip. A sealed-phase defect preserves closure history; do not silently repair it in a later phase.
 
 After all phases:
 
@@ -182,7 +239,7 @@ After all phases:
 ./rdd gate project
 ```
 
-Success requires complete task state and marker reconciliation, current required tests/benchmarks/platform evidence, preserved contracts/spec/plan, completed phase PR policy, accepted independent reviews, and the generated project validation artifact. The evidence directory is ignored by Git to avoid a report changing the revision it claims to test; export or archive the resulting evidence according to the README after completion.
+Success requires complete task state and removal of every primary/secondary packet, explicit passing results for every required golden scenario, current required tests/benchmarks/platform evidence, preserved contracts/spec/plan, completed phase PR policy, accepted independent reviews, and the generated project validation artifact. An aggregate passing command cannot cover omitted, filtered or skipped golden scenarios. The evidence directory is ignored by Git to avoid a report changing the revision it claims to test; export or archive the resulting evidence according to the README after completion.
 
 ## Release after project acceptance
 
@@ -197,3 +254,15 @@ Use `./rdd start --mode amend` after requirements change or an accepted design/i
 Use `regenerate` for a fresh full solution. The controller archives superseded active artifacts; application replacement is still explicit planned work. Neither mode authorizes deleting user data, rewriting sealed evidence, or bypassing tests.
 
 The supplied requirements remain the example product source. The three workflows choose and develop its solution. Harness self-tests demonstrate controller behavior and do not constitute acceptance of the future Todo application.
+
+## Workflow quality and research basis
+
+New authoring uses version 2 artifacts. Version 1 runs remain historical inspect/export inputs; they cannot acquire version 2 acceptance without a fresh baseline. Preserve their original source and evidence. Do not silently rewrite old approvals or mark historical failures passed.
+
+The workflow uses [NASA bidirectional traceability guidance](https://swehb.nasa.gov/spaces/SWEHBVD/pages/102695427/SWE-052%2B-%2BBidirectional%2BTraceability) to link requirements, solution elements, implementation and verification in both directions. [NASA review guidance](https://swehb.nasa.gov/spaces/SWEHBVD/pages/102695473/SWE-088%2B-%2BSoftware%2BPeer%2BReviews%2Band%2BInspections%2B-%2BChecklist%2BCriteria%2Band%2BTracking) supports explicit readiness/completion criteria and verified finding closure. These are design sources, not a claim of NASA certification.
+
+The execution-readiness review also follows GitHub’s documented [explicit Python provisioning](https://docs.github.com/en/actions/tutorials/build-and-test-code/python) and [artifact producer/consumer dependencies](https://docs.github.com/en/actions/tutorials/store-and-share-data). Readiness uses measured versions and real transfer exercises; source references alone are not evidence of successful execution. Sources inspected 2026-10-08.
+
+The bounded graph, artifact handoffs and review/correction loops follow OpenAI's [gated workflow example](https://developers.openai.com/cookbook/examples/codex/codex_mcp_agents_sdk/building_consistent_workflows_codex_cli_agents_sdk) and [iterative repair guidance](https://developers.openai.com/cookbook/examples/codex/build_iterative_repair_loops_with_codex); this harness uses its existing controller and native agents, without another SDK. [Domain analysis guidance](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis) informs requirements-derived local boundaries, not a microservice deployment assumption.
+
+Contract design follows [Protobuf presence guidance](https://protobuf.dev/programming-guides/field_presence/) and [schema best practices](https://protobuf.dev/best-practices/dos-donts/). Tests must reject absent response outcomes, unknown enums, invalid defaults and invalid normalized values. [Buf compatibility](https://buf.build/docs/breaking/) is intentionally weaker than the exact freeze. [Rust visibility](https://doc.rust-lang.org/reference/visibility-and-privacy.html) informs actual isolation: `pub(crate)` alone does not isolate sibling domains. Shape, real boundary adoption, behavioral semantics and operational evidence are separate enforcement layers, preserving the original blueprint's distinction.

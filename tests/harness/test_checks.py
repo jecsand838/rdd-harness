@@ -47,6 +47,35 @@ def payload(**changes):
 
 @unittest.skipUnless(shutil.which("git"), "Git is required for source/evidence identity tests")
 class CheckEvidenceTests(unittest.TestCase):
+    def test_golden_results_require_every_scenario_once_with_pass(self):
+        result_path = ".rdd/evidence/results/golden.json"
+        valid = '{"scenarios":[{"id":"G1","outcome":"pass"},{"id":"G2","outcome":"pass"}]}'
+        candidates = [valid, '{"scenarios":[{"id":"G1","outcome":"pass"}]}',
+            valid.replace('"G2"', '"G1"'), valid.replace('"pass"', '"skip"', 1),
+            valid.replace('"G2"', '"UNKNOWN"'), '{"scenarios":[],"scenarios":[]}',
+            '{"scenarios":NaN}', ' ' * (4 * 1024 * 1024 + 1)]
+        for index, value in enumerate(candidates):
+            with self.subTest(index=index):
+                # Keep the process argv bounded even for the oversized-output regression.
+                expression = "' ' * (4 * 1024 * 1024 + 1)" if index == len(candidates) - 1 else repr(value)
+                code = "from pathlib import Path; p=Path(" + repr(result_path) + "); p.parent.mkdir(parents=True,exist_ok=True); p.write_text(" + expression + ",encoding='utf-8')"
+                check = self.check(code, scenario_ids=["G1", "G2"], results_path=result_path)
+                evidence = self.execute(check)
+                self.assertEqual(evidence["outcome"], "pass" if index == 0 else "fail")
+                if index == 0:
+                    self.verify(evidence, check)
+                else:
+                    with self.assertRaises(RddError):
+                        self.verify(evidence, check)
+
+    def test_golden_result_file_is_removed_before_each_actual_execution(self):
+        path = self.root / ".rdd/evidence/results/golden.json"
+        write_json(path, {"scenarios": [{"id": "G1", "outcome": "pass"}]})
+        check = self.check("print('No scenario executed')", scenario_ids=["G1"], results_path=path.relative_to(self.root).as_posix())
+        evidence = self.execute(check)
+        self.assertEqual(evidence["outcome"], "fail")
+        self.assertFalse(path.exists())
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)

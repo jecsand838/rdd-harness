@@ -10,7 +10,7 @@ Read the authoritative operation inventory, contracts, scenario oracle, and erro
 ## Procedure
 
 1. Map each operation to its requirement IDs, caller, owning module, request, response, errors, side effects, and admission/commit semantics. Implement only approved operations.
-2. Bind the generated service interface to a concrete application service. Keep transport conversion thin. Reject invalid values natively even when the Rust UI validates them for feedback.
+2. Bind the generated service interface to the actual provider and its real consumers. Return the frozen schema-owned response outcomes without a provider-defined boundary error type; apply separate frozen entry-adapter decoding, size, cancellation and lifecycle mappings. Keep transport conversion thin. Reject invalid values natively even when the Rust UI validates them for feedback.
 3. Define behavior for missing identities, repeated operations, no-op changes, invalid enum/presence combinations, oversized requests, and stale results using the frozen specification. An operation missing these semantics cannot be improvised in implementation.
 4. For mutations, enforce one pending operation for the collection, preserve drafts, and acknowledge only commit. For queries, preserve required AND filtering, exact identity sets, ordering, and non-mutating behavior.
 5. Scope access to required capabilities and selected files. Do not expose raw SQL, arbitrary filesystem paths, script evaluation, or generic reflection-based dispatch.

@@ -18,7 +18,7 @@ List tasks under tests, deletion, modification, addition, documentation. Retain 
 
 ## Target paths and ownership
 
-List existing/added/deleted/generated paths, exact task write ownership, shell/sidecar strategy, and shared-file integration owner. Record reuse rationale for every addition.
+List existing/added/deleted/generated paths, exact task write ownership, primary/secondary work sites, exact context selectors, adjacent-sidecar strategy, and shared-file integration owner. Record reuse rationale for every addition.
 
 ## Verticals
 
@@ -38,4 +38,4 @@ State branch identity, base phase/branch, configured PR completion policy, exact
 
 ## Independent plan review
 
-Record ordering/closure/coverage/bloat findings and their resolution before plan freeze.
+Record semantic and execution-readiness findings, actual independent reviewer sessions, and verified resolutions for the same candidate before plan freeze. After materialization, commit the projected packets/matrix and repeat both perspectives against the actual readiness/CI evidence before gate preparation.

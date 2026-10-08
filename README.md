@@ -12,7 +12,7 @@ RDD keeps product obligations connected to design decisions, implementation work
 
 The traceability chain is:
 
-**Requirement → scenario/check → scoped task → phase review and PR → project validation**
+**Requirement ↔ subdomain/behavior ↔ scenario/check ↔ groomed task/work sites ↔ phase evidence and PR ↔ project validation**
 
 A scenario describes the behavior or constraint to prove; a check supplies its executable test or evidence protocol. Tasks identify the exact work and allowed files. Phase review establishes whether that work satisfies the obligations being accepted. Final project validation combines the results across the whole application. A completed checklist or a model's success message cannot replace this evidence.
 
@@ -24,14 +24,14 @@ A scenario describes the behavior or constraint to prove; a check supplies its e
 
 The diagram is conceptual; the controller and frozen artifacts define the operational rules. Its labels are outlined graphics, so the walkthrough below also describes the flow in text.
 
-1. **Specification** derives domain boundaries from functional requirements and measurable acceptance criteria from quality constraints. Research and real contract, native runtime, database, and UI qualification checks establish a viable solution before it is frozen. This stage defines scenarios and check protocols without implementing application behavior.
-2. **Preparation** turns that solution into concrete target paths, scoped tasks, dependencies, verticals, and phases. It creates approved empty or comment-only shells, task markers, and an implementation matrix. It verifies the frozen contracts; it does not implement the product.
+1. **Specification** derives every functional subdomain and behavior, the complete target folder system, contracts, golden scenarios and quality protocols. Research and real qualification establish execution feasibility. Two independent perspectives—semantic coverage and execution readiness—must approve the same candidate with zero unresolved findings before freeze.
+2. **Preparation** fully grooms every task, producer/input dependency, phase, category, vertical and work site within the frozen solution. It creates safe comment-only shells, full primary task packets, linked local packets and the matrix. Materialization enters `preparing`; actual readiness/CI evidence and final two-perspective review must pass `gate preparation` before implementation.
 3. **Implementation** works through the phased backlog. Tests and benchmarks are implemented according to the scoped phase tasks, followed by production changes, independent review, and acceptance checks. Each accepted phase gets a PR and seal; the project gate evaluates the final result.
 
 | Stage | Input | Accepted output |
 | --- | --- | --- |
-| Specification | Canonical requirements and relevant existing code | Frozen solution documents, decisions, requirement coverage, scenarios/check definitions, qualified Protobuf contracts and generated interfaces |
-| Preparation | Frozen solution and contracts | Frozen task dependency graph, verticals, dependency-closed phases, exact write scopes, prepared shells/markers, and implementation matrix |
+| Specification | Canonical requirements and relevant existing code | Frozen solution and target-folder design, complete behavior/golden coverage, qualified contracts, execution prerequisites and two independent reviews |
+| Preparation | Frozen solution and contracts | Fully hydrated backlog, producer closure, exact co-located work sites, phase/category/vertical projections, matrix and exact-source preparation gate |
 | Implementation | Committed and pushed prepared baseline | Tested application changes, revision-bound evidence and independent reviews, one verified PR per phase, phase seals, and project validation |
 
 **Frozen artifacts** are approved files whose exact identities are recorded by the controller. Downstream work must preserve that authority; changing a contract or acceptance meaning requires a new specification run. Generated Rust messages and local unary service traits enforce interface shapes, while application checks must also prove that real providers and consumers use those boundaries. The seed contract in this boilerplate qualifies the generator; it is not the Todo domain model or a requirement to add a network server.
@@ -52,7 +52,7 @@ Within each phase, tasks follow this order:
 
 Tests must first reach an actual failing behavioral assertion (RED). Missing tools, compiler errors, and skipped tests are not RED. Test-only scaffolding may make the assertion executable, but cannot supply product behavior. Additions need a frozen reuse analysis explaining why existing code cannot reasonably provide the capability.
 
-Task markers such as `// RDD:P01:T001 [tests] ...` and sidecars for noncommentable files project the plan into source. The plan and transactional state remain authoritative. Use controller commands to complete tasks and reconcile markers; never edit SQLite state, locks, receipts, or unfinished markers to force progress. Review gates occur at phase completion, rather than after each task.
+Task markers such as `RDD:P01:tests:V01+V03:T001:A01` encode phase, classification, sorted verticals, task and work site. A full packet is co-located at the primary work site; secondary sites have local instructions and a primary reference. Noncommentable and deletion targets use adjacent sidecars. The plan and transactional state remain authoritative. Use controller commands to complete tasks and reconcile markers; never edit SQLite state, locks, receipts, or unfinished markers to force progress. Implementation review gates occur at phase completion, rather than after each task. Specification and preparation have their own two-perspective exit reviews. Frozen specification/planning defects discovered downstream are critical harness regressions: preserve evidence, repair the missing prevention and add a regression before a fresh trial.
 
 ## Prerequisites
 
@@ -199,6 +199,8 @@ After project acceptance, archive the reports/checkpoint and keep the phase stac
 ### What CI proves
 
 CI runs on Linux, macOS, and Windows, with the aggregate check named **`verify`**. A phase PR uses the trusted base controller and policy to validate the candidate. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy to grant itself permission. The explicit release route uses operator-pinned policy while retaining the controller from the PR's `main` base.
+
+Preparation has its own CI route while the run is `preparing`: pin the trusted harness commit in the repository variable `RDD_PREPARATION_HARNESS_SHA`, then push the exact materialized `codex/*-baseline` commit. Import its raw evidence before `gate preparation`; hosted success cannot replace qualified-host/manual proof. See the [workflow guide](docs/harness/workflow-guide.md#stage-two-preparation). Harness maintenance PRs also run the candidate selftests and actual native/WASM contract compiler proofs on the supported OS matrix.
 
 Before a frozen application plan exists, CI reports `harness_only` with `application_complete=false`. An intact prepared baseline verifies contracts and pending markers. A phase PR runs cumulative ordinary checks for the applicable native platform. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
 

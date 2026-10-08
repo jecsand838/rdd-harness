@@ -27,9 +27,18 @@ message RenameItemRequest {
   string item_id = 1;
   string title = 2;
 }
-message RenameItemResponse {
+message RenameItemSuccess {
   string item_id = 1;
   bool changed = 2;
+}
+message RenameItemFailure {
+  string reason = 1; // Replace with the qualified schema-owned error taxonomy.
+}
+message RenameItemResponse {
+  oneof outcome {
+    RenameItemSuccess success = 1;
+    RenameItemFailure failure = 2;
+  }
 }
 service ItemService {
   rpc RenameItem(RenameItemRequest) returns (RenameItemResponse);
