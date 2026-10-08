@@ -1,8 +1,10 @@
 """Fixed workflow graph. Implementation nodes project existing phase/task truth."""
 from pathlib import Path
 import copy
+import hashlib
 import math
 import re
+import subprocess
 import time
 
 from .common import RddError, digest, event, file_hash, git, head, inventory, read_json, safe_path, source_digest, validate_artifact
@@ -27,6 +29,27 @@ NODES = {node: {"id": node, "title": title, "depends_on": deps, "stage": stage}
          for stage, rows in (("specification", _SPEC), ("preparation", _PREP), ("implementation", _IMPL))
          for node, title, deps in rows}
 DERIVED = {"S8", "P6", "P7", "P8", *(node for node, _, _ in _IMPL)}
+
+
+def _prior_artifact(root: Path, claim: dict, path: str) -> bool:
+    value = claim["sources"].get(path)
+    if not re.fullmatch(r"[0-9a-f]{64}", str(value)):
+        return False
+    tree = git(root, "ls-tree", "-z", claim["source_commit"], "--", path, check=False)
+    if not tree or tree.count("\0") != 1:
+        return False
+    metadata, name = tree[:-1].split("\t", 1)
+    mode, kind, oid = metadata.split()
+    if name != path or mode not in {"100644", "100755"} or kind != "blob":
+        return False
+    # Worktree/state hashes alone can be rewritten together. Corroborate the
+    # prior artifact against its real committed bytes, without text decoding.
+    try:
+        blob = subprocess.run(["git", "-C", str(root), "cat-file", "blob", oid],
+                              capture_output=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RddError(f"Cannot verify retired artifact: {exc}", "environment") from exc
+    return bool(blob.returncode == 0 and blob.stdout and hashlib.sha256(blob.stdout).hexdigest() == value)
 
 # Fixed contracts for the three graphs, not an extensible workflow language.
 _AUTHOR_ROLES = ["rdd_coordinator", "rdd_large", "rdd_small"]
@@ -246,9 +269,20 @@ class WorkflowNodes:
         outside = changed - set(claim["writes"]) - concurrent - set(claim["concurrent_writes"])
         if outside:
             raise RddError("Node execution changed files outside its bounded claim: " + ", ".join(sorted(outside)))
+        present_outputs = 0
         for path in record["outputs"]:
-            if not safe_path(self.root, path, allow_missing=False).stat().st_size:
+            output = safe_path(self.root, path)
+            if not output.exists():
+                if not _prior_artifact(self.root, claim, path):
+                    raise RddError("Node missing output was not a previously present claimed artifact: " + path)
+                # Canonical generation can retire the harness seed or obsolete
+                # bindings. Preserve its absence in the same hashed inventory.
+                continue
+            if not output.is_file() or not output.stat().st_size:
                 raise RddError("Node outputs must contain actual artifacts")
+            present_outputs += 1
+        if not present_outputs:
+            raise RddError("Node completion requires at least one nonempty artifact, not only deletions")
         if node == "S0":
             index = read_json(self.root / ".rdd/requirements.index.json")
             if index["digest"] != state["requirements_digest"]:
@@ -346,7 +380,10 @@ class WorkflowNodes:
                 if attempt["status"] == "complete":
                     outputs = attempt.get("outputs", {})
                     if (not isinstance(outputs, dict) or set(outputs) != set(claim["writes"])
-                            or any(not re.fullmatch(r"[0-9a-f]{64}", str(h)) for h in outputs.values())
+                            or not any(re.fullmatch(r"[0-9a-f]{64}", str(h)) for h in outputs.values())
+                            or any(not re.fullmatch(r"[0-9a-f]{64}", str(h))
+                                   and not (h == "MISSING" and _prior_artifact(self.root, claim, path))
+                                   for path, h in outputs.items())
                             or not isinstance(attempt.get("evidence_ids"), list)
                             or any(eid not in state.get("checks", {}) for eid in attempt["evidence_ids"])):
                         raise RddError("Checkpoint node output proof is invalid")
