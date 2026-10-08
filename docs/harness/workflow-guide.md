@@ -171,10 +171,10 @@ The coordinator uses the ready queue and controller state:
 ```bash
 ./rdd phase begin P01
 ./rdd next
-./rdd task claim T001 --worker rdd_large --worktree
+./rdd task claim T001 --worker rdd_large --session-id SESSION_ID --worktree
 ```
 
-Task IDs here illustrate syntax; use the IDs in the generated plan. Give workers bounded packets and disjoint write ownership. The independent reviewer observes diffs and evidence while work proceeds and sends course corrections to the coordinator. Its final acceptance review occurs at phase completion, not after every task.
+Task IDs here illustrate syntax; use the IDs in the generated plan and the actual worker runtime session for `SESSION_ID`. Give workers bounded packets and disjoint write ownership. The independent reviewer observes diffs and evidence while work proceeds and sends course corrections to the coordinator. Its final acceptance review occurs at phase completion, not after every task.
 
 For a test task, author and commit the planned assertions in the assigned worktree. Integrate that commit on the phase branch, then retain the expected failing result against the integrated candidate:
 

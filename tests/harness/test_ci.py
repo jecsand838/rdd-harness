@@ -937,7 +937,7 @@ class CiTests(unittest.TestCase):
                 path.unlink()
                 self.assertEqual(self.commands, [])
         unrelated = self.home / "unrelated"
-        self.command(self.home, "clone", "--no-hardlinks", str(self.base), str(unrelated))
+        self.command(self.home, "clone", "-c", "core.autocrlf=false", "--no-hardlinks", str(self.base), str(unrelated))
         self.command(unrelated, "config", "user.name", "RDD Test")
         self.command(unrelated, "config", "user.email", "rdd-test@example.invalid")
         self.command(unrelated, "checkout", "--orphan", "other-history")
@@ -979,7 +979,11 @@ class CiTests(unittest.TestCase):
         self.clone()
         self.complete_phase(2)
         completed_policy = self.home / "completed-policy"
-        self.command(self.home, "clone", "--no-hardlinks", str(self.candidate), str(completed_policy))
+        # Exercise the Windows checkout default without changing global user settings.
+        checkout_config = self.write(self.home, "checkout.gitconfig", "[core]\n\tautocrlf = true\n")
+        with patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": str(checkout_config)}):
+            self.command(self.home, "clone", "-c", "core.autocrlf=false", "--no-hardlinks",
+                         str(self.candidate), str(completed_policy))
         with self.assertRaisesRegex(RddError, "requires exactly one anchor"):
             self.verify_release(policy_root=completed_policy, release_policy=head(completed_policy))
         self.assertEqual(self.commands, [])

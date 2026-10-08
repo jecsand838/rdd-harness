@@ -48,7 +48,7 @@ def parser() -> argparse.ArgumentParser:
     claim = tasks.add_parser("claim")
     claim.add_argument("task")
     claim.add_argument("--worker", choices=("rdd_large", "rdd_small"), required=True)
-    claim.add_argument("--session-id", help="Actual native agent/session ID when known; never reuse the reviewer ID")
+    claim.add_argument("--session-id", help="Required actual implementor session ID; never reuse the reviewer ID")
     worktree = claim.add_mutually_exclusive_group()
     worktree.add_argument("--worktree", action="store_true", default=True, help="Create an isolated worktree (default)")
     worktree.add_argument("--no-worktree", action="store_false", dest="worktree", help="Advanced: caller supplies a separate branch/worktree; shared phase edits are rejected")
