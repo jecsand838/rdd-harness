@@ -26,6 +26,8 @@ Only specification may change requirements-derived contracts or regenerate their
 
 Every architectural module has a functional subdomain covering all allocated FRs and exact provided/consumed Protobuf operation mappings. Freeze generated response-only interfaces, descriptor-derived symbols and semantic adapter mappings. Qualify disposable providers/consumers during specification; plan real boundary adoption and bypass proofs separately. Downstream generation is disposable comparison only, including rejection of compatible additions. Private helper modules need no artificial contracts or extra serialization.
 
+Native delegation uses the exact registered `agent_type`, `fork_turns="none"`, and a bounded source-linked packet. Let the profile supply model and effort without overrides. Start a fresh Codex session after changing profiles so native discovery reloads them.
+
 ## Implementation roles and ordering
 
 Use the canonical named profiles; their TOMLs define model, effort and permissions, checked by `doctor`. Coordinator and contract architect use Astra/ultra; domain analyst, verification designer, qualification engineer, task planner, complex implementor, researcher and reviewer use Sol 6.1/xhigh; light implementor uses Luna/xhigh. Route S1 to `rdd_domain_analyst`, S2–S4 to `rdd_verification_designer`, S5 to `rdd_qualification_engineer`, S6 to `rdd_contract_architect`, and P1–P5 to `rdd_task_planner`. No coordinator substitution. Keep vertical/phase design with the planner; return upstream corrections to their original owner. Researchers and reviewers are read-only.

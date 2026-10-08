@@ -13,7 +13,7 @@ state, task ownership, evidence, and PR lifecycle operations. Model reasoning is
 responsible for producing and reviewing artifacts; the controller decides whether
 the evidence permits a transition.
 
-The primary thread normally coordinates directly; `rdd_coordinator` is also an explicit role. The canonical roster is:
+The primary thread normally coordinates directly; `rdd_coordinator` is also an explicit role. Native delegation selects the exact `agent_type` with `fork_turns="none"` and a bounded packet, keeping child context limited to its assignment. Let the registered profile supply model and effort without overrides. Reload changed profiles in a fresh Codex session. The canonical roster is:
 
 | Profile | Model / effort | Responsibility |
 |---|---|---|

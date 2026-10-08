@@ -16,6 +16,9 @@ rdd_contract_architect for S6 and rdd_task_planner for P1-P5. Use rdd_researcher
 for bounded read-only evidence gathering, rdd_complex_implementor for complex or
 large leased tasks and rdd_light_implementor for small unambiguous leased tasks.
 These profiles own their node claims; do not substitute a generic author.
+Launch native children with fork_turns="none" and a bounded handoff packet.
+Select the exact agent_type and let its registered profile supply model and
+effort, without overrides.
 Retain one read-only rdd_reviewer in all workflows:
 specification against requirements, preparation against frozen specs/contracts,
 implementation against frozen plans/contracts. Record live findings and verified
