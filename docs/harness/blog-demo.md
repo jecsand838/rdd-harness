@@ -16,23 +16,19 @@ actual use: Astra/ultra for coordination, Sol/xhigh for large work and independe
 review, Luna/xhigh for small work. No Turso cloud account or database server is
 needed. GitHub Actions is enabled; the current user has repository admin access.
 
-Arrange the unchanged requirements' actual verification environments before
-starting. These may be needed during specification qualification, not just at
-the final gate:
+Requirements revision 0.2.0 targets only this Mac. Use it for specification
+qualification and final application verification:
 
 | Environment | Hardware | Human accessibility verification |
 | --- | --- | --- |
-| macOS 15, arm64 | M1, 8 GiB, internal SSD | VoiceOver |
-| Windows 11 25H2, x86_64 | i5-1135G7, 16 GiB, local NVMe SSD | NVDA |
-| Ubuntu 24.04, x86_64, GNOME | i5-1135G7, 16 GiB, local NVMe SSD | Orca |
+| macOS 26.7 (25G229), arm64 | M3 Max, 128 GiB, local SSD | VoiceOver |
 
-The inspected development Mac is macOS 26.7 / M3 Max / 128 GB. Use it to build
-and demonstrate the app, but do not report its measurements as the required M1
-results. A Mac-only run cannot satisfy the current full requirements. If the
-reference environments are unavailable, arrange them or explicitly amend the
-requirements before specification; a local demonstration is not full acceptance.
+Windows, Ubuntu, and a separate M1 Mac are not required. Full acceptance still
+requires the actual packaged, benchmark, privacy, and accessibility evidence on
+this Mac; demonstrating a few features alone is not full acceptance.
 
-Provide clean installation profiles without development tools, a second
+Provide clean installation profiles with development tools unavailable to the
+application process, a second
 unprivileged account for access tests, and an evaluator for keyboard,
 screen-reader, contrast, and resizing checks. Benchmark hosts need AC power,
 normal performance mode, at least 20 GiB free local storage, an active 1280×720
@@ -42,9 +38,8 @@ requirements; install/qualify those selected dependencies before freezing. Do no
 preselect an unrelated frontend or install an arbitrary latest Tauri CLI.
 
 Native prerequisites: [Tauri installation guide](https://v2.tauri.app/start/prerequisites/).
-Desktop macOS can use Command Line Tools; Windows development needs C++ Build
-Tools and WebView2; Linux needs the documented native libraries. These development
-machines do not replace clean packaged-application installation tests.
+Desktop macOS can use Command Line Tools for development. Installed development
+tools do not replace clean packaged-application installation tests.
 
 Use a repository revision containing the reviewed release-branch support before
 starting this demo. `main` is a merge-only release branch: all specification and
@@ -125,9 +120,9 @@ Reuse existing tooling where possible; avoid a second task framework.
 Create immediately usable qualification and evidence-transfer instructions in
 docs/specs/native-verification.md during this stage, before any qualification
 that needs them. The later user handoff must not be an early gate dependency.
-Include a supplemental packaged smoke check of setup/build/run on this actual
-macOS 26.7 / M3 Max development machine. Record its package digest separately
-from the required macOS 15 / M1 qualification and benchmark evidence.
+Include a packaged smoke check of setup/build/run on this required macOS 26.7
+(25G229) / M3 Max / 128 GiB Mac. Record the tested package digest alongside its
+native qualification and benchmark evidence.
 
 Select and qualify all additional tools now, including their trusted CI setup.
 Freeze the specification only after real contract compilation and independent
@@ -142,8 +137,8 @@ release handoff; it does not supply application code or alter product behavior.
 The shorter standard entry point is `./rdd workflow specification --mode regenerate`,
 but do not run both launch sequences for the same stage.
 
-Answer material specification questions and perform requested native observations.
-Missing reference access can block here. Return to the terminal after freeze:
+Answer material specification questions and perform requested native observations
+on this Mac. Return to the terminal after freeze:
 
 ```sh
 ./rdd spec validate
@@ -343,11 +338,11 @@ reference-host imports have different provenance; preserve it.
 
 The complete acceptance workload includes real Turso and packaged native
 journeys, privacy/account isolation, failure recovery, capacity limits,
-cross-platform backup round trips, keyboard/screen readers, and P1–P3 benchmarks
-on every reference platform. P1 requires 5 warm-ups + 30 launches; P2 requires
+backup round trips into a fresh profile on this Mac, keyboard/VoiceOver, and
+P1–P3 benchmarks on this Mac. P1 requires 5 warm-ups + 30 launches; P2 requires
 10 warm-ups + 100 samples per operation class; P3 requires 3 warm-ups + 30 exports
 and 30 restores. Process-failure cases require 20 repetitions per operation/cut
-point/platform. Keep raw samples, including slow samples. Follow the full
+point on this Mac. Keep raw samples, including slow samples. Follow the full
 requirements and frozen protocols for the remaining details.
 
 ## 7. Verify completion and archive the evidence
