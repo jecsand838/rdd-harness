@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "requirements": "requirements/requirements.md",
+  "limits": {
+    "max_tasks": 500,
+    "max_phases": 40,
+    "max_attempts": 3,
+    "lease_seconds": 3600,
+    "max_spec_words": 20000,
+    "max_packet_characters": 32000
+  },
+  "models": {
+    "coordinator": {
+      "model": "gpt-6-astra",
+      "effort": "ultra"
+    },
+    "large": {
+      "model": "gpt-6.1-sol",
+      "effort": "xhigh"
+    },
+    "small": {
+      "model": "gpt-6-luna",
+      "effort": "xhigh"
+    },
+    "reviewer": {
+      "model": "gpt-6.1-sol",
+      "effort": "xhigh"
+    }
+  },
+  "github": {
+    "remote": "origin",
+    "required_checks": [
+      "verify"
+    ],
+    "require_approval": false,
+    "completion": "ready"
+  },
+  "protected_prefixes": [
+    "requirements/",
+    "docs/specs/",
+    "docs/decisions/",
+    "contracts/",
+    "gen/",
+    ".agents/",
+    ".codex/",
+    ".github/",
+    "tools/rdd/",
+    "tools/proto-codegen/",
+    ".rdd/",
+    "tests/harness/"
+  ],
+  "protected_files": [
+    "AGENTS.md",
+    "rdd",
+    "rdd.cmd",
+    "rdd.ps1",
+    "buf.yaml",
+    "buf.gen.yaml",
+    "rust-toolchain.toml"
+  ]
+}

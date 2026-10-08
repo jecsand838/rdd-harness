@@ -1,0 +1,12 @@
+# Project defaults. Your installed Codex and signed-in account must support them.
+# No automatic model downgrade is permitted; see docs/harness/codex-runtime.md.
+model = "gpt-6-astra"
+model_reasoning_effort = "ultra"
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+default_subagent_model = "gpt-6.1-sol"
+default_subagent_reasoning_effort = "xhigh"

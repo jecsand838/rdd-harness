@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Test Suite"
+  short_description: "Apply create test suite practices for RDD"
+  default_prompt: "Use $create-test-suite for the current approved RDD task."

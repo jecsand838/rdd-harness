@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Async Tokio"
+  short_description: "Apply rust async tokio practices for RDD"
+  default_prompt: "Use $rust-async-tokio for the current approved RDD task."

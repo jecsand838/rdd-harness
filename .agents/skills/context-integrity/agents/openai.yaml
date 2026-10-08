@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Integrity"
+  short_description: "Keep agent context grounded and trustworthy"
+  default_prompt: "Use $context-integrity for the active RDD run."

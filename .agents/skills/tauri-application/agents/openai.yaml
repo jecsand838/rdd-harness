@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tauri Application"
+  short_description: "Apply tauri application practices for RDD"
+  default_prompt: "Use $tauri-application for the current approved RDD task."

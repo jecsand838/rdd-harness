@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:rdd:schema:review:v1",
+  "title": "RDD review v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "source_commit": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 64
+    },
+    "source_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "reviewer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "changes_requested"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 8000
+    },
+    "checks_reviewed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blocking",
+              "high",
+              "medium",
+              "low",
+              "note"
+            ]
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "path": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 512
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "requirements",
+          "tasks",
+          "path",
+          "message",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "uniqueItems": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "phase",
+    "source_commit",
+    "source_digest",
+    "model",
+    "reviewer",
+    "session_id",
+    "decision",
+    "summary",
+    "checks_reviewed",
+    "findings"
+  ],
+  "additionalProperties": false
+}

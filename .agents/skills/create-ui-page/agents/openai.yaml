@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Ui Page"
+  short_description: "Apply create ui page practices for RDD"
+  default_prompt: "Use $create-ui-page for the current approved RDD task."

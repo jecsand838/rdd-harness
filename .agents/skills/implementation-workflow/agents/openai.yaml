@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation Workflow"
+  short_description: "Execute TDD phases and validate stacked PRs"
+  default_prompt: "Use $implementation-workflow for the active RDD run."

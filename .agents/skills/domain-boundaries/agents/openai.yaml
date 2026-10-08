@@ -1,0 +1,4 @@
+interface:
+  display_name: "Domain Boundaries"
+  short_description: "Define cohesive domains and enforce interfaces"
+  default_prompt: "Use $domain-boundaries for the active RDD run."

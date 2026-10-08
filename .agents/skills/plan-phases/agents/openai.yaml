@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Phases"
+  short_description: "Build sequential phases with complete evidence"
+  default_prompt: "Use $plan-phases for the active RDD run."

@@ -1,0 +1,43 @@
+{
+  "format_version": 1,
+  "scope": "Codex runtime, GitHub adapters, and CI toolchain",
+  "checked_date": "2026-10-07",
+  "observed_codex_cli": "0.159.2",
+  "model_catalog": {
+    "coordinator": "gpt-6-astra/ultra",
+    "large_and_reviewer": "gpt-6.1-sol/xhigh",
+    "small": "gpt-6-luna/xhigh",
+    "account_access_verified": false
+  },
+  "toolchain_pins": {
+    "rust": "1.99.0",
+    "buf": "1.73.0",
+    "controller_ci_python": "3.12"
+  },
+  "action_pins": {
+    "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
+    "actions/upload-artifact": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "bufbuild/buf-action": "8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3"
+  },
+  "verification_scope": {
+    "adapter_protocols": "Offline injected GitHub/Codex protocols plus real local subprocess and Git-worktree tests.",
+    "ci_controller": "Offline real-Git candidate/base fixtures and real check subprocesses.",
+    "codex_smoke": "Installed CLI version, help, and bundled model catalog read successfully; no paid turn.",
+    "github_actions": "Configuration and official interfaces inspected; no hosted run.",
+    "rust_and_buf_execution": "Not executed in authoring environment; prerequisite tools unavailable. Native contract checks must pass locally before freeze."
+  },
+  "sources": [
+    {"title": "Codex configuration reference", "url": "https://learn.chatgpt.com/docs/config-file/config-reference"},
+    {"title": "Codex subagents", "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents"},
+    {"title": "Codex noninteractive mode", "url": "https://learn.chatgpt.com/docs/non-interactive-mode"},
+    {"title": "Native Codex Goals", "url": "https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex"},
+    {"title": "GitHub CLI PR metadata", "url": "https://cli.github.com/manual/gh_pr_view"},
+    {"title": "GitHub CLI PR checks", "url": "https://cli.github.com/manual/gh_pr_checks"},
+    {"title": "GitHub workflow PR revision semantics", "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request"},
+    {"title": "Rust 1.99.0 release", "url": "https://blog.rust-lang.org/2026/10/01/Rust-1.99.0/"},
+    {"title": "Buf 1.73.0 release", "url": "https://github.com/bufbuild/buf/releases/tag/v1.73.0"},
+    {"title": "Buf setup-only GitHub action", "url": "https://buf.build/docs/bsr/ci-cd/github-actions/#run-setup-only"},
+    {"title": "Tauri Linux native prerequisites", "url": "https://v2.tauri.app/start/prerequisites/#linux"}
+  ]
+}

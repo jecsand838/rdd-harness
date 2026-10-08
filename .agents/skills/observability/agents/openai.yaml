@@ -1,0 +1,4 @@
+interface:
+  display_name: "Observability"
+  short_description: "Apply observability practices for RDD"
+  default_prompt: "Use $observability for the current approved RDD task."

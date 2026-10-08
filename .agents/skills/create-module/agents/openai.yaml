@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Module"
+  short_description: "Apply create module practices for RDD"
+  default_prompt: "Use $create-module for the current approved RDD task."

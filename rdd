@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Repository-local RDD controller; requires Python 3.11+."""
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tools"))
+from rdd.cli import main
+
+raise SystemExit(main())

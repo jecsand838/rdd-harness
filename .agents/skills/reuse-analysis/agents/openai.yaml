@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reuse Analysis"
+  short_description: "Prefer focused extensions over duplicate code"
+  default_prompt: "Use $reuse-analysis for the active RDD run."
