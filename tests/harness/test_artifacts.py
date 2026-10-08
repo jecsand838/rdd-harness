@@ -5,12 +5,14 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 from tools.rdd.artifacts import (anchor_path, anchors_verify, materialize, marker_line,
     plan_validate, remove_anchor, requirements, shell_is_empty, spec_validate, topological)
-from tools.rdd.common import (RddError, assert_inventory, file_hash, inventory,
+from tools.rdd.common import (RddError, assert_inventory, atomic_write, file_hash, inventory,
     safe_path, source_digest, validate)
 
 REPO = Path(__file__).resolve().parents[2]
@@ -369,7 +371,75 @@ class IdentityTests(Fixture):
         validate(1.0, {"const": 1})  # JSON Schema numbers compare by value.
 
 
+@unittest.skipUnless(os.name == "posix", "POSIX file modes are required")
+class AtomicWriteTests(Fixture):
+    def test_replacement_preserves_existing_mode(self):
+        for mode in (0o755, 0o640):
+            with self.subTest(mode=oct(mode)):
+                path = self.write("existing", "original\n")
+                path.chmod(mode)
+                atomic_write(path, b"replacement\n")
+                self.assertEqual(path.read_bytes(), b"replacement\n")
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), mode)
+
+    def test_new_file_remains_restrictive_under_permissive_umask(self):
+        path = self.root / "new"
+        previous_umask = os.umask(0)
+        try:
+            atomic_write(path, b"new\n")
+        finally:
+            os.umask(previous_umask)
+        self.assertEqual(path.read_bytes(), b"new\n")
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+
+    def test_fchmod_failure_preserves_original_and_cleans_temporary_file(self):
+        path = self.write("existing", "original\n")
+        path.chmod(0o755)
+        with patch("tools.rdd.common.os.fchmod", side_effect=OSError("injected fchmod failure")):
+            with self.assertRaisesRegex(OSError, "injected fchmod failure"):
+                atomic_write(path, b"replacement\n")
+        self.assertEqual(path.read_bytes(), b"original\n")
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o755)
+        self.assertEqual(list(self.root.glob(".rdd-write-*")), [])
+
+    def test_symlink_destinations_are_refused(self):
+        target = self.write("target", "original\n")
+        target.chmod(0o755)
+        for name in ("target", "missing"):
+            with self.subTest(target=name):
+                link = self.root / (name + "-link")
+                link.symlink_to(self.root / name)
+                with self.assertRaisesRegex(RddError, "Refusing symlink"):
+                    atomic_write(link, b"replacement\n")
+                self.assertTrue(link.is_symlink())
+        self.assertEqual(target.read_bytes(), b"original\n")
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o755)
+        self.assertFalse((self.root / "missing").exists())
+        self.assertEqual(list(self.root.glob(".rdd-write-*")), [])
+
+
 class MarkerTests(Fixture):
+    @unittest.skipUnless(os.name == "posix", "POSIX script execution is required")
+    def test_anchor_updates_preserve_executable_script(self):
+        t = task("T010", "modification", "scripts/fixture.sh", [])
+        plan = dict(tasks=[t], target_paths=t["writes"], shells=[])
+        state = dict(tasks={t["id"]: dict(status="pending")})
+        original = "#!/bin/sh\nprintf 'fixture-runnable\\n'\n"
+        marker = marker_line(t) + "\n"
+        for operation in ("materialize", "remove_anchor"):
+            with self.subTest(operation=operation):
+                path = self.write(t["anchor"]["path"], original + (marker if operation == "remove_anchor" else ""))
+                path.chmod(0o755)
+                if operation == "materialize":
+                    materialize(self.root, plan, state)
+                    self.assertEqual(path.read_text(), original + marker)
+                else:
+                    remove_anchor(self.root, t)
+                    self.assertEqual(path.read_text(), original)
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o755)
+                result = subprocess.run([str(path)], check=True, capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.stdout, "fixture-runnable\n")
+
     def test_materialization_is_idempotent_and_preserves_source(self):
         original = (self.root / "modules/current.rs").read_text()
         materialize(self.root, self.plan, self.state)

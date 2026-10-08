@@ -8,6 +8,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import sqlite3
+import stat
 import subprocess
 import tempfile
 import time
@@ -59,11 +60,14 @@ def atomic_write(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.is_symlink():
         raise RddError(f"Refusing symlink destination: {path}")
+    mode = stat.S_IMODE(path.stat().st_mode) if os.name == "posix" and path.exists() else None
     fd, name = tempfile.mkstemp(prefix=".rdd-write-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as stream:
             stream.write(data)
             stream.flush()
+            if mode is not None:
+                os.fchmod(stream.fileno(), mode)
             os.fsync(stream.fileno())
         os.replace(name, path)
     finally:

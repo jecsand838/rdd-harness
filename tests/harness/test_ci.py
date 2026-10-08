@@ -156,7 +156,7 @@ class CiTests(unittest.TestCase):
                 "cwd": ".", "timeout_seconds": 20, "platforms": platforms or ["any"],
                 "red_pattern": "EXPECTED_BEHAVIORAL_FAILURE", "metrics": [], "host_profile": host_profile}
 
-    def prepare(self, *, extras=None, ordinary_platforms=None, sidecar=False):
+    def prepare(self, *, extras=None, ordinary_platforms=None, sidecar=False, extra_first_phase_task=False):
         self.write(self.base, "requirements/requirements.md",
                    "# Requirements\n\n**FR-001 First behavior**\nThe app shall do the first thing.\nAcceptance: Verify first behavior.\n\n"
                    "**FR-002 Second behavior**\nThe app shall do the second thing.\nAcceptance: Verify second behavior.\n")
@@ -205,14 +205,22 @@ class CiTests(unittest.TestCase):
                           "anchor": {"path": f"tests/acceptance/behavior{number}.py", "mode": "inline"}, "reuse": None})
         if sidecar:
             tasks[0]["anchor"]["mode"] = "sidecar"
+        if extra_first_phase_task:
+            path = "tests/acceptance/behavior1_extra.py"
+            tasks.append({**tasks[0], "id": "T003", "title": "Additional first behavior assertion",
+                          "depends_on": ["T001"], "writes": [path],
+                          "anchor": {"path": path, "mode": "inline"}})
+            tasks[1]["depends_on"] = ["T003"]
+        first_phase_tasks = [task for task in tasks if task["phase"] == "P01"]
         self.plan = {
             "schema_version": 1, "spec_digest": self.spec_lock["digest"],
-            "phases": [{"id": "P01", "goal": "First behavior", "tasks": ["T001"],
+            "phases": [{"id": "P01", "goal": "First behavior", "tasks": [task["id"] for task in first_phase_tasks],
                         "checks": ["C-FIRST"] + [item["id"] for item in extras or []],
-                        "requirements_closed": ["FR-001"], "deliverables": ["tests/acceptance/behavior1.py"], "independent_evidence": ["First review"]},
+                        "requirements_closed": ["FR-001"], "deliverables": [task["writes"][0] for task in first_phase_tasks], "independent_evidence": ["First review"]},
                        {"id": "P02", "goal": "Second behavior", "tasks": ["T002"], "checks": ["C-SECOND"],
                         "requirements_closed": ["FR-002"], "deliverables": ["tests/acceptance/behavior2.py"], "independent_evidence": ["Second review"]}],
-            "tasks": tasks, "verticals": [{"id": "V-FIRST-SECOND", "goal": "Both behaviors", "tasks": ["T001", "T002"]}],
+            "tasks": tasks, "verticals": [{"id": "V-FIRST-SECOND", "goal": "Both behaviors",
+                                          "tasks": [task["id"] for task in first_phase_tasks] + ["T002"]}],
             "target_paths": [task["writes"][0] for task in tasks],
             "shells": [{"path": task["writes"][0], "content": "# Implementation shell\n"} for task in tasks],
         }
@@ -333,14 +341,136 @@ class CiTests(unittest.TestCase):
         self.assertEqual(report["status"], "harness_only")
         self.assertEqual(self.commands, ["C-CONTRACT"])
         self.assertEqual(report["anchors"]["remaining"], 2)
+        self.assertIsNone(report["observed_through_phase"])
+        self.assertFalse(report["application_complete"])
+        self.assertFalse(report["task_history_verified"])
+
+    def test_nonphase_prefixes_run_cumulative_checks_without_claiming_completion(self):
+        self.prepare()
+        self.clone()
+        for number in (1, 2):
+            self.complete_phase(number)
+            expected_checks = ["C-CONTRACT", "C-FIRST"] + (["C-SECOND"] if number == 2 else [])
+            for branch in ("main", "feature/example"):
+                with self.subTest(phase=number, branch=branch):
+                    self.commands.clear()
+                    try:
+                        report = self.verify(branch)
+                    except RddError as exc:
+                        self.fail(f"Whole-phase prefix rejected on {branch}: {exc}")
+                    self.assertEqual(report["status"], "passed")
+                    self.assertEqual(report["scope"], "source_cumulative")
+                    self.assertEqual(report["observed_through_phase"], f"P{number:02d}")
+                    self.assertEqual(report["branch"], branch)
+                    self.assertIsNone(report["phase"])
+                    self.assertEqual(report["scheduled_check_ids"], expected_checks)
+                    self.assertEqual(self.commands, expected_checks)
+                    self.assertEqual(report["source_commit"], head(self.candidate))
+                    self.assertEqual(report["anchors"]["remaining"], 2 - number)
+                    self.assertTrue(all(receipt["phase"] is None for receipt in report["checks"]))
+                    self.assertFalse(report["application_complete"])
+                    self.assertFalse(report["task_history_verified"])
+
+    def test_nonphase_partial_phase_is_rejected_before_checks(self):
+        self.prepare(extra_first_phase_task=True)
+        self.clone()
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][0])
+        self.commit(self.candidate, "remove only one of two first-phase markers")
+        with self.assertRaisesRegex(RddError, "whole-phase prefix"):
+            self.verify("main")
+        self.assertEqual(self.commands, [])
+        self.assertEqual(read_json(self.candidate / ".rdd/evidence/ci.json")["status"], "failed")
+
+    def test_nonphase_gap_is_rejected_before_checks(self):
+        self.prepare()
+        self.clone()
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][1])
+        self.commit(self.candidate, "remove later-phase marker while first remains")
+        with self.assertRaisesRegex(RddError, "whole-phase prefix"):
+            self.verify("main")
+        self.assertEqual(self.commands, [])
+
+    def test_nonphase_malformed_projections_are_rejected_before_checks(self):
+        self.prepare()
+        self.clone()
+        first, second = self.plan["tasks"]
+        path = artifacts.anchor_path(first)
+        original = (self.candidate / path).read_text(encoding="utf-8")
+        variants = {
+            "duplicate": artifacts.marker_line(first),
+            "orphaned": "# RDD:P01:T999 [tests] Unknown task",
+            "misplaced": artifacts.marker_line(second),
+        }
+        for kind, marker in variants.items():
+            with self.subTest(kind=kind):
+                self.write(self.candidate, path, original + marker + "\n")
+                self.commit(self.candidate, f"introduce {kind} marker")
+                with self.assertRaisesRegex(RddError, "whole-phase prefix"):
+                    self.verify("main")
+                self.assertEqual(self.commands, [])
+
+    def test_nonphase_candidate_cannot_reduce_coverage_below_integrated_base(self):
+        self.prepare()
+        first = self.plan["tasks"][0]
+        artifacts.remove_anchor(self.base, first)
+        self.commit(self.base, "integrate first-phase projection")
+        self.clone()
+        path = artifacts.anchor_path(first)
+        text = (self.candidate / path).read_text(encoding="utf-8")
+        self.write(self.candidate, path, text + artifacts.marker_line(first) + "\n")
+        self.commit(self.candidate, "restore first-phase marker")
+        with self.assertRaisesRegex(RddError, "reduces CI coverage below the trusted base"):
+            self.verify("feature/rollback")
+        self.assertEqual(self.commands, [])
+        self.assertEqual(read_json(self.candidate / ".rdd/evidence/ci.json")["status"], "failed")
+
+    def test_nonphase_candidate_can_preserve_or_advance_integrated_base_coverage(self):
+        self.prepare()
+        artifacts.remove_anchor(self.base, self.plan["tasks"][0])
+        self.commit(self.base, "integrate first-phase projection")
+        self.clone()
+        path = self.plan["tasks"][0]["writes"][0]
+        self.write(self.candidate, path, "# Source change after first phase\n")
+        self.commit(self.candidate, "change source without changing marker projection")
+        self.assertNotEqual(head(self.candidate), head(self.base))
+        for number in (1, 2):
+            with self.subTest(phase=number):
+                if number == 2:
+                    self.complete_phase(number)
+                self.commands.clear()
+                report = self.verify("feature/advance")
+                self.assertEqual(report["status"], "passed")
+                self.assertEqual(report["observed_through_phase"], f"P{number:02d}")
+                self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST"] + (["C-SECOND"] if number == 2 else []))
+
+    def test_nonphase_same_sha_push_runs_all_cumulative_checks(self):
+        self.prepare()
+        for task in self.plan["tasks"]:
+            artifacts.remove_anchor(self.base, task)
+        self.commit(self.base, "integrate all phase projections")
+        self.clone()
+        self.assertEqual(head(self.candidate), head(self.base))
+        report = self.verify("main")
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(report["scope"], "source_cumulative")
+        self.assertEqual(report["observed_through_phase"], "P02")
+        self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST", "C-SECOND"])
+        self.assertIsNone(report["phase"])
+        self.assertFalse(report["application_complete"])
+        self.assertFalse(report["task_history_verified"])
 
     def test_completed_sidecar_is_mutable_projection_and_future_anchor_survives(self):
         self.prepare(sidecar=True)
         self.clone()
         self.complete_phase(1)
-        report = self.verify("rdd/ci-fixture/p01")
-        self.assertEqual(report["status"], "passed")
-        self.assertEqual(report["anchors"]["remaining"], 1)
+        for branch in ("rdd/ci-fixture/p01", "main"):
+            with self.subTest(branch=branch):
+                self.commands.clear()
+                report = self.verify(branch)
+                self.assertEqual(report["status"], "passed")
+                self.assertEqual(report["anchors"]["remaining"], 1)
+                self.assertEqual(report["observed_through_phase"], "P01")
+                self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST"])
 
     def test_actual_failing_command_persists_failure_instead_of_green(self):
         failing = self.check("C-FAIL")
@@ -348,11 +478,13 @@ class CiTests(unittest.TestCase):
         self.prepare(extras=[failing])
         self.clone()
         self.complete_phase(1)
-        with self.assertRaisesRegex(RddError, "did not pass"):
-            self.verify("rdd/ci-fixture/p01")
-        receipt = read_json(self.candidate / ".rdd/evidence/ci.json")
-        self.assertEqual(receipt["status"], "failed")
-        self.assertEqual(receipt["checks"][-1]["returncode"], 7)
+        for branch in ("rdd/ci-fixture/p01", "main"):
+            with self.subTest(branch=branch):
+                with self.assertRaisesRegex(RddError, "did not pass"):
+                    self.verify(branch)
+                receipt = read_json(self.candidate / ".rdd/evidence/ci.json")
+                self.assertEqual(receipt["status"], "failed")
+                self.assertEqual(receipt["checks"][-1]["returncode"], 7)
 
     def test_current_phase_marker_must_be_gone_and_future_marker_must_remain(self):
         self.prepare()
@@ -382,11 +514,15 @@ class CiTests(unittest.TestCase):
         self.prepare(extras=[manual, benchmark])
         self.clone()
         self.complete_phase(1)
-        report = self.verify("rdd/ci-fixture/p01")
-        self.assertEqual(report["status"], "passed")
-        self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST"])
-        self.assertEqual([row["check_id"] for row in report["pending_external"]], ["C-MANUAL", "C-REFERENCE"])
-        self.assertFalse(report["application_complete"])
+        for branch in ("rdd/ci-fixture/p01", "main"):
+            with self.subTest(branch=branch):
+                self.commands.clear()
+                report = self.verify(branch)
+                self.assertEqual(report["status"], "passed")
+                self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST"])
+                self.assertEqual([row["check_id"] for row in report["pending_external"]], ["C-MANUAL", "C-REFERENCE"])
+                self.assertFalse(report["application_complete"])
+                self.assertFalse(report["task_history_verified"])
 
     def test_no_platform_relevant_ordinary_check_cannot_turn_green(self):
         other = "windows" if ci._host_platform() != "windows" else "linux"

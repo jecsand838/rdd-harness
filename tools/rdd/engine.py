@@ -479,7 +479,7 @@ class Controller:
                 raise RddError("Task attempt budget exhausted; report the concrete blocker", "budget")
             attempt = record["attempts"] + 1
             branch = f"rdd/{state['id']}/{tid.lower()}-a{attempt}"
-            path = f".rdd/runtime/worktrees/{tid}-a{attempt}"
+            path = f".rdd/runtime/worktrees/{state['id']}/{tid}-a{attempt}"
             record.update(status="claimed", attempts=attempt, worker=worker,
                           session_id=session_id or f"lease-{uuid.uuid4().hex}",
                           lease_expires=time.time() + self.config["limits"]["lease_seconds"],
@@ -514,7 +514,7 @@ class Controller:
             packet_text = json.dumps(packet, indent=2, ensure_ascii=False)
         if len(packet_text) > self.config["limits"]["max_packet_characters"]:
             raise RddError("Task packet exceeds bounded context budget; release and reduce task scope through preparation", "budget")
-        packet_path = f".rdd/runtime/packets/{tid}-a{record['attempts']}.json"
+        packet_path = f".rdd/runtime/packets/{state['id']}/{tid}-a{record['attempts']}.json"
         atomic_write(self.root / packet_path, packet_text.encode() + b"\n")
         return {"task": tid, "worker": worker, "packet": packet_path, "lease": record,
                 "model": self.config["models"]["large" if worker == "rdd_large" else "small"]}

@@ -166,6 +166,33 @@ def _selected_phase(root: Path, branch: str | None, plan: dict, run_id: str) -> 
     return phase, selected_branch
 
 
+def _observed_anchor_boundary(root: Path, plan: dict) -> tuple[int, dict]:
+    """Select CI coverage from marker shape, without asserting task history."""
+    rank = {phase["id"]: i for i, phase in enumerate(plan["phases"])}
+    matches = []
+    last_error = None
+    for boundary in range(-1, len(rank)):
+        expectations = {
+            task["id"]: {
+                "status": "done" if rank[task["phase"]] <= boundary else "pending"
+            }
+            for task in plan["tasks"]
+        }
+        try:
+            anchors = artifacts.anchors_verify(root, plan, {"tasks": expectations})
+        except RddError as exc:
+            last_error = exc
+        else:
+            matches.append((boundary, anchors))
+    if len(matches) != 1:
+        detail = f": {last_error}" if last_error is not None else ""
+        raise RddError(
+            "Anchors must match exactly one whole-phase prefix" + detail,
+            "verification",
+        ) from last_error
+    return matches[0]
+
+
 def _execute(root: Path, check: dict, **kwargs: Any) -> dict:
     # Keep the pure validation module importable before a process is requested.
     from .checks import execute_check
@@ -185,8 +212,8 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
     """Verify one candidate without SQLite state; persist success or failure receipt.
 
     A separate policy_root is the PR base checkout. With no frozen plan on either
-    side the result is explicitly harness_only. A prepared main branch verifies
-    contracts and pending markers without pretending tasks have been implemented.
+    side the result is explicitly harness_only. Nonphase branches select check
+    coverage from a whole-phase marker projection, without certifying completion.
     """
     root = root.resolve()
     policy_root = policy_root.resolve() if policy_root else root
@@ -195,6 +222,7 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
         "application_complete": False, "task_history_verified": False,
         "policy_source": "separate_base" if policy_root != root else "same_checkout",
         "started_at": now(), "phase": None, "branch": branch, "checks": [],
+        "observed_through_phase": None,
         "pending_external": [], "not_applicable_on_platform": [], "errors": [],
     }
     try:
@@ -239,15 +267,25 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
                        "spec_digest": spec_lock["digest"], "plan_digest": plan_lock["digest"]})
         phases = [item["id"] for item in plan["phases"]]
         rank = {value: i for i, value in enumerate(phases)}
-        boundary = rank[phase] if phase else -1
-        statuses = {task["id"]: {"status": "done" if rank[task["phase"]] <= boundary else "pending"}
-                    for task in plan["tasks"]}
-        report["anchors"] = artifacts.anchors_verify(root, plan, {"tasks": statuses})
+        if phase:
+            boundary = rank[phase]
+            statuses = {task["id"]: {"status": "done" if rank[task["phase"]] <= boundary else "pending"}
+                        for task in plan["tasks"]}
+            report["anchors"] = artifacts.anchors_verify(root, plan, {"tasks": statuses})
+        else:
+            boundary, report["anchors"] = _observed_anchor_boundary(root, plan)
+            if report["policy_commit"] != report["source_commit"]:
+                base_boundary, _ = _observed_anchor_boundary(policy_root, plan)
+                if boundary < base_boundary:
+                    raise RddError(
+                        "Candidate marker projection reduces CI coverage below the trusted base",
+                        "verification",
+                    )
+        report["observed_through_phase"] = phases[boundary] if boundary >= 0 else None
 
         ordered_ids = list(spec["contract_check_ids"])
-        if phase:
-            for record in plan["phases"][:boundary + 1]:
-                ordered_ids.extend(record["checks"])
+        for record in plan["phases"][:boundary + 1]:
+            ordered_ids.extend(record["checks"])
         checks = artifacts.unique(spec["checks"], "check")
         selected_ids = list(dict.fromkeys(ordered_ids))
         artifacts.subset(selected_ids, checks, "CI cumulative checks")
@@ -284,9 +322,11 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
         after_policy = _assert_trusted_policy(root, policy_root, config)
         if after_policy != protected:
             raise RddError("Trusted policy changed while checks ran", "policy")
-        report.update({"status": "passed" if phase else "harness_only",
-                       "scope": "phase_cumulative" if phase else "prepared_baseline",
-                       "note": "CI is a scoped check result. Task history, independent review, manual checks and reference-host qualification remain phase/project gate responsibilities."})
+        scope = ("phase_cumulative" if phase else
+                 "source_cumulative" if boundary >= 0 else "prepared_baseline")
+        report.update({"status": "passed" if boundary >= 0 else "harness_only",
+                       "scope": scope,
+                       "note": "Marker shape selects CI coverage; it is not completion evidence. Task history, independent review, manual checks and reference-host qualification remain phase/project gate responsibilities."})
         return report
     except RddError as exc:
         report["errors"].append({"kind": exc.kind, "message": str(exc)})

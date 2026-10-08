@@ -176,6 +176,65 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(draft.read_text(), content)
         self.assertTrue(self.f.g("status", "--porcelain", root=worker))
 
+    def regenerate_fixture(self):
+        """Re-prepare the same isolated tasks under a new run identity."""
+        spec = self.f.c.spec()
+        self.f.c.start("regenerate", "fixture-next")
+        archive = self.root / ".rdd/baselines/fixture-next/previous"
+        for rel in spec["documents"] + spec["contract_files"] + spec["generated_files"]:
+            shutil.copyfile(archive / rel, self.root / rel)
+        spec.update(id="fixture-next", parent_spec_digest=self.f.c.state()["parent_spec_digest"])
+        write_json(self.root / ".rdd/spec.json", spec)
+        self.f.opened()
+
+    def test_new_run_preserves_prior_worktree_and_packet(self):
+        self.f.opened()
+        first = self.f.c.task_claim("T001", "rdd_large")
+        worker = self.root / first["lease"]["worktree"]
+        draft = worker / "tests/behavior.py"
+        content = "# Preserve this unfinished work\n" + draft.read_text()
+        draft.write_text(content)
+        packet = (self.root / first["packet"]).read_bytes()
+        self.f.c.task_release("T001", "Preserve work before regeneration")
+        self.regenerate_fixture()
+        second = self.f.c.task_claim("T001", "rdd_large")
+        self.assertEqual(second["lease"]["attempts"], 1)
+        self.assertNotEqual(first["lease"]["worktree"], second["lease"]["worktree"])
+        self.assertNotEqual(first["packet"], second["packet"])
+        self.assertTrue((self.root / second["lease"]["worktree"] / ".git").is_file())
+        self.assertEqual(read_json(self.root / second["packet"])["run_id"], "fixture-next")
+        self.assertEqual(draft.read_text(), content)
+        self.assertEqual((self.root / first["packet"]).read_bytes(), packet)
+
+    def test_new_run_preserves_packets_without_worktrees(self):
+        self.f.opened()
+        first = self.f.c.task_claim("T001", "rdd_large", worktree=False)
+        packet = (self.root / first["packet"]).read_bytes()
+        self.f.c.task_release("T001", "Preserve packet before regeneration")
+        self.regenerate_fixture()
+        second = self.f.c.task_claim("T001", "rdd_large", worktree=False)
+        self.assertEqual(second["lease"]["attempts"], 1)
+        self.assertIsNone(second["lease"]["worktree"])
+        self.assertNotEqual(first["packet"], second["packet"])
+        self.assertEqual((self.root / first["packet"]).read_bytes(), packet)
+
+    def test_checkpoint_accepts_historical_worktree_path(self):
+        self.f.opened()
+        claim = self.f.c.task_claim("T001", "rdd_large")
+        legacy = ".rdd/runtime/worktrees/T001-a1"
+        if claim["lease"]["worktree"] != legacy:
+            self.f.g("worktree", "move", claim["lease"]["worktree"], legacy)
+        state = self.f.c.state()
+        state["tasks"]["T001"]["worktree"] = legacy
+        self.f.c.save(state)
+        checkpoint = self.export()
+        self.empty_runtime_store()
+        self.f.c.resume(checkpoint)
+        restored = self.f.c.state()["tasks"]["T001"]
+        self.assertEqual(restored["worktree"], legacy)
+        self.assertEqual(restored["status"], "claimed")
+        self.assertEqual(self.f.g("branch", "--show-current", root=self.root / legacy), claim["lease"]["branch"])
+
     def test_interrupted_integration_before_pick_can_resume_and_retry(self):
         self.f.opened()
         _, worker, sha = self.submission()
