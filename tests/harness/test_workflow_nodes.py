@@ -1,5 +1,9 @@
 """Durable authoring nodes and independent live observations exercise actual state."""
 import copy
+import json
+from pathlib import Path
+import subprocess
+import sys
 import unittest
 
 import test_engine as fixture
@@ -31,6 +35,32 @@ class WorkflowNodeTests(unittest.TestCase):
         self.assertEqual(self.c.workflow_next()["ready"], ["S0"])
         self.f.node_complete("S0")
         self.assertEqual(self.c.workflow_next()["ready"], ["S1", "S2"])
+
+    def test_cli_handoff_is_compact_and_preserves_canonical_claim(self):
+        entry = Path(__file__).resolve().parents[2] / "tools/rdd/cli.py"
+
+        def cli(*args):
+            result = subprocess.run([sys.executable, str(entry), "--root", str(self.root), *args],
+                                    capture_output=True, text=True, encoding="utf-8", timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return json.loads(result.stdout)
+
+        public = cli("workflow", "claim", "S0", "--session-id", "fixture-author",
+                     "--role", "rdd_coordinator", "--write", "docs/specs/fixture.md")["claim"]
+        canonical = self.c.state()["workflow_nodes"]["S0"]["claim"]
+        self.assertNotIn("sources", public)
+        self.assertGreater(public["source_file_count"], 0)
+        self.assertEqual(public["source_file_count"], len(canonical["sources"]))
+        for field in ("session_id", "attempt", "input_digest", "source_digest", "source_commit", "writes"):
+            self.assertEqual(public[field], canonical[field])
+        for output in (cli("workflow", "nodes"), cli("status")["workflow_nodes"]):
+            node = next(row for row in output["nodes"] if row["id"] == "S0")
+            self.assertNotIn("sources", node["claim"])
+            self.assertNotIn("sources", node["attempts"][0]["claim"])
+        self.assertEqual(self.c.state()["workflow_nodes"]["S0"]["claim"], canonical)
+        # The exact compact receipt still supplies every field needed for record.
+        self.record("S0", public)
+        self.assertEqual(self.c.state()["workflow_nodes"]["S0"]["attempts"][0]["claim"], canonical)
 
     def test_dependent_handoff_needs_observation_and_siblings_can_share_it(self):
         claim = self.claim()["claim"]

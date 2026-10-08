@@ -239,6 +239,21 @@ def dispatch(c: Controller, a: argparse.Namespace):
     raise RddError("Unhandled command")
 
 
+def workflow_display(value):
+    """Keep CLI handoffs bounded; full claim inventories remain in run exports."""
+    if isinstance(value, list):
+        return [workflow_display(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    result = {}
+    for key, item in value.items():
+        if key == "claim" and isinstance(item, dict) and isinstance(item.get("sources"), dict):
+            item = {**{k: v for k, v in item.items() if k != "sources"},
+                    "source_file_count": len(item["sources"])}
+        result[key] = workflow_display(item)
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
@@ -287,7 +302,9 @@ def main(argv: list[str] | None = None) -> int:
             if result["native_goal"]:
                 print("After Codex opens, activate native goal mode with /goal and the output of ./rdd goal.\n")
             return subprocess.call(result["argv"], cwd=controller.root)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        displayed = workflow_display(result) if args.command == "status" or (
+            args.command == "workflow" and args.stage in {"nodes", "claim"}) else result
+        print(json.dumps(displayed, indent=2, ensure_ascii=False))
         if isinstance(result, dict):
             if result.get("outcome") == "fail" or result.get("status") == "failed":
                 return 1
