@@ -31,15 +31,19 @@ Only specification resolves requirement and architectural ambiguity. Preparation
 
 ## Stage one: specification
 
-Start from a clean Git baseline as directed by the README. The controller records exact source identities, not a filename alone.
+Start from a clean dedicated authoring branch as directed by the README. `main` is a merge-only release branch. For a fresh clone, create the baseline before starting the run:
 
 ```bash
+git fetch origin
+git switch -c codex/todo-baseline origin/main
 ./rdd init
 ./rdd doctor
 ./rdd start --mode regenerate
 ./rdd requirements index
 ./rdd spec init
 ```
+
+Create this branch once; subsequent specification and preparation operations must stay on the baseline recorded by `start`. The controller refuses source writes on `main`, detached HEAD, and the wrong named branch without switching or discarding work. Read-only status, validation, CI and prompt inspection remain available. The controller records exact source identities, not a filename alone.
 
 Ask Codex:
 
@@ -85,7 +89,9 @@ Resolve graph, coverage, ownership, category, shell, and phase-closure findings 
 ./rdd anchors verify
 ```
 
-`prepare` runs after plan freeze. It verifies the specification and compiled contracts, creates only approved shells, projects phase-prefixed markers, and writes the implementation matrix and preparation receipt. It does not implement application behavior. Commit the resulting prepared baseline before beginning implementation, using the normal Git workflow. No phase should inherit uncommitted preparation work.
+`prepare` runs after plan freeze. It verifies the specification and compiled contracts, creates only approved shells, projects phase-prefixed markers, and writes the implementation matrix and preparation receipt. It does not implement application behavior. Commit and push the resulting prepared baseline on its dedicated branch before beginning implementation, and verify its exact push in CI. No phase should inherit uncommitted preparation work. The first phase PR targets this baseline; do not merge preparation into `main`.
+
+The GitHub adapter requires readable required-check results. Configure `verify` on the prepared baseline, and on each exact predecessor branch after it is sealed. Avoid wildcard status rules on active phase branches, which need to publish and repair commits before their PR checks can run. The [manual demo](blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) supplies the setup sequence.
 
 Use sidecars for editable noncommentable files and deletion targets. Frozen contracts and generated interfaces are read/check inputs; a sidecar cannot make a protected path writable. Comment-only Rust shells may exist without being imported into a build graph. Do not create bogus JSON or manifests merely to reserve paths.
 
@@ -166,6 +172,8 @@ For a worker failure, preserve its worktree and use the supported release/resume
 ./rdd status
 ```
 
+Run recovery from the recorded baseline or phase branch. If a mistaken checkout left you on `main` or another branch, inspect and preserve dirty work before returning; do not force-switch or reset. Older runs recorded on `main` can be inspected and exported, but source authoring requires a fresh run on a dedicated baseline. Never rewrite the recorded branch or frozen identities to relocate a run.
+
 Use `./rdd block --kind KIND --reason TEXT` for specification, planning, environment, authorization, budget, review, or closure blockers. A missing required platform is incomplete evidence, not an automatic skip. A sealed-phase defect uses `closure` and requires an amendment. Do not silently repair it in a later phase.
 
 After all phases:
@@ -175,6 +183,12 @@ After all phases:
 ```
 
 Success requires complete task state and marker reconciliation, current required tests/benchmarks/platform evidence, preserved contracts/spec/plan, completed phase PR policy, accepted independent reviews, and the generated project validation artifact. The evidence directory is ignored by Git to avoid a report changing the revision it claims to test; export or archive the resulting evidence according to the README after completion.
+
+## Release after project acceptance
+
+Keep the accepted phase branches and PR bases intact. Create a separate `codex/rdd-release/<run-id>` branch at the final project-accepted head for one release PR into `main`. The operator pins the prepared-policy commit and accepted source commit with repository Actions variables `RDD_RELEASE_POLICY_SHA` and `RDD_RELEASE_SOURCE_SHA`; candidate files or PR descriptions cannot select them.
+
+The release workflow runs the verifier from `main`, checks the separate pinned prepared policy against the candidate, requires complete source with no remaining anchors, and runs the applicable contract, phase and project check inventory. It reports source verification, not new manual/platform acceptance. Normal PR review and successful checks precede merge; no failed-CI baseline adoption is needed. After merge, verify ancestry, identical tracked contents, clean status and main push CI. Keep the original acceptance report tied to its accepted phase commit and record the main merge commit separately. See the [full release commands](blog-demo.md#8-verify-and-merge-one-complete-release-pr-into-main).
 
 ## Amendment and regeneration
 

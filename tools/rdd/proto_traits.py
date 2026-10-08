@@ -22,8 +22,10 @@ from typing import Any
 if not __package__:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from tools.rdd.adapters import CommandResult, RddAdapterError, run_argv
+    from tools.rdd.common import RddError, Store, read_json, require_source_branch
 else:
     from .adapters import CommandResult, RddAdapterError, run_argv
+    from .common import RddError, Store, read_json, require_source_branch
 
 
 class ContractCheckError(RuntimeError):
@@ -108,6 +110,22 @@ def run_contracts(
     no shell interpretation is used. Targets supplement the host check.
     """
     root = root.resolve()
+    if write:
+        try:
+            require_source_branch(root)
+            locator_path = root / ".rdd/run.json"
+            locator = read_json(locator_path) if locator_path.is_file() else {}
+            if locator.get("run_id"):
+                state = Store.read(root, locator["run_id"])
+                if not state.get("base_branch"):
+                    raise RddError("The active run has no recorded authoring baseline; preserve it and start a fresh run.", "environment")
+                require_source_branch(root, state["base_branch"])
+                if state["status"] != "specification":
+                    raise RddError("Generated contracts are writable only during specification; preserve the frozen outputs and start a new specification run.", "environment")
+            elif any((root / rel).exists() for rel in (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json")):
+                raise RddError("This checkout has frozen artifacts without an active run. Restore its checkpoint or start a new specification run before generating contracts; seed qualification requires an unfrozen checkout.", "environment")
+        except RddError as error:
+            raise ContractCheckError(str(error), blocked=True) from error
     cargo = shutil.which("cargo")
     buf = shutil.which("buf")
     missing = [name for name, found in (("cargo", cargo), ("buf", buf)) if not found]

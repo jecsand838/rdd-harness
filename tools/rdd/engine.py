@@ -14,9 +14,9 @@ import uuid
 from . import artifacts
 from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
 from .checks import execute_check, platform_name, verify_receipt
-from .common import (RddError, Store, assert_inventory, atomic_write, clean, digest, event,
+from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, Store, assert_inventory, atomic_write, clean, digest, event,
                      file_hash, git, head, inventory, now, read_json, safe_path,
-                     source_digest, validate_artifact, write_json)
+                     require_source_branch, source_digest, validate_artifact, write_json)
 
 POLICY_PREFIXES = (".agents/", ".codex/", ".github/", "tools/rdd/", "tools/proto-codegen/", "tests/harness/",
                    ".rdd/schemas/", ".rdd/templates/", ".rdd/goals/")
@@ -45,10 +45,48 @@ class Controller:
     def __init__(self, root: Path):
         self.root = root.resolve()
         self.config = read_json(self.root / ".rdd/config.json")
-        self.store = Store(self.root)
+        self._store = None
+
+    @property
+    def store(self) -> Store:
+        if self._store is None:
+            self._store = Store(self.root)
+        return self._store
 
     def close(self):
-        self.store.close()
+        if self._store is not None:
+            self._store.close()
+
+    def guard_source_write(self, state: dict | None = None, *, baseline: bool = False) -> str:
+        """Admit only the recorded authoring/implementation checkout before writes."""
+        require_source_branch(self.root)
+        if state is None:
+            locator = read_json(self.root / ".rdd/run.json")
+            if not locator.get("run_id"):
+                raise RddError("No active run. Start with ./rdd start --mode regenerate.")
+            state = Store.read(self.root, locator["run_id"])
+        base = state.get("base_branch")
+        if not isinstance(base, str) or not base or base == "main":
+            raise RddError("This run has no writable authoring baseline. Inspect/export it, then start a fresh amend/regenerate run on a dedicated baseline branch; its recorded baseline cannot be rewritten.", "environment")
+        expected = base
+        if not baseline:
+            pid = state.get("active_phase")
+            phases = state.get("phases")
+            if not isinstance(phases, dict) or any(not isinstance(p, dict) for p in phases.values()):
+                raise RddError("The run has no valid recorded phase identities. Preserve its state and inspect the checkpoint before retrying.", "environment")
+            if pid:
+                if not isinstance(pid, str) or pid not in phases:
+                    raise RddError("The run has no valid recorded active phase identity. Preserve its state and inspect the checkpoint before retrying.", "environment")
+                expected = phases[pid].get("branch")
+            else:
+                opened = [(key, p) for key, p in phases.items() if p.get("status") != "pending"]
+                if opened:
+                    if any(not re.fullmatch(r"P[0-9]{2,3}", key) for key, _ in opened):
+                        raise RddError("The run has invalid recorded phase IDs. Preserve its state and inspect the checkpoint before retrying.", "environment")
+                    expected = max(opened, key=lambda row: int(row[0][1:]))[1].get("branch")
+        if not isinstance(expected, str) or not expected:
+            raise RddError("The run has no recorded branch for this write. Preserve its state and inspect the checkpoint before retrying.", "environment")
+        return require_source_branch(self.root, expected)
 
     def state(self, *, allow_blocked: bool = False) -> dict:
         locator = read_json(self.root / ".rdd/run.json")
@@ -134,12 +172,10 @@ class Controller:
         return result
 
     def start(self, mode: str, run_id: str | None = None) -> dict:
+        baseline_branch = require_source_branch(self.root)
         if mode not in {"regenerate", "amend"}:
             raise RddError("Run mode must be regenerate or amend")
         clean(self.root)
-        baseline_branch = git(self.root, "branch", "--show-current")
-        if not baseline_branch:
-            raise RddError("Start a run from a named Git branch, not detached HEAD")
         run_id = run_id or time.strftime("R%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + uuid.uuid4().hex[:6]
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", run_id):
             raise RddError("Run ID must be 1-64 plain letters, digits, dots, underscores or hyphens")
@@ -224,6 +260,7 @@ class Controller:
                 "requirements": [{"id": r["id"], "title": r["title"]} for r in reqs["records"].values()]}
 
     def spec_init(self) -> dict:
+        self.guard_source_write(baseline=True)
         state = self.state()
         if state["status"] != "specification":
             raise RddError("Specifications can only be authored in specification workflow", "specification")
@@ -261,6 +298,7 @@ class Controller:
         return result
 
     def spec_freeze(self) -> dict:
+        self.guard_source_write(baseline=True)
         state = self.state()
         if state["status"] != "specification":
             raise RddError("Specification is already frozen; use a new specification run", "specification")
@@ -288,6 +326,7 @@ class Controller:
         return lock_value(inventory(self.root, list(paths)), requirements_digest=state["requirements_digest"])
 
     def plan_init(self) -> dict:
+        self.guard_source_write(baseline=True)
         self.frozen(planned=False)
         path = self.root / ".rdd/plan/plan.json"
         if path.exists():
@@ -307,6 +346,7 @@ class Controller:
         return result
 
     def plan_freeze(self) -> dict:
+        self.guard_source_write(baseline=True)
         state = self.state()
         if state["status"] != "specified":
             raise RddError("Plan can be frozen only after specification and before preparation")
@@ -324,6 +364,7 @@ class Controller:
         return {"status": "planned", "plan_digest": lock["digest"], **result}
 
     def prepare(self) -> dict:
+        self.guard_source_write(baseline=True)
         self.frozen()
         state = self.state()
         if state["status"] == "prepared":
@@ -380,10 +421,11 @@ class Controller:
         if not pid or state["phases"][pid]["status"] not in {"active", "gated"}:
             raise RddError("There is no open implementation phase")
         if git(self.root, "branch", "--show-current") != state["phases"][pid]["branch"]:
-            raise RddError("The checkout is not on the recorded active phase branch")
+            raise RddError("The checkout is not on the recorded active phase branch", "environment")
         return pid
 
     def phase_begin(self, phase: str) -> dict:
+        self.guard_source_write()
         self.frozen()
         clean(self.root)
         state, plan = self.state(), self.plan()
@@ -458,6 +500,7 @@ class Controller:
         state["reviews"].pop(phase, None)
 
     def task_claim(self, tid: str, worker: str, worktree: bool = True, session_id: str | None = None) -> dict:
+        self.guard_source_write()
         self.frozen()
         clean(self.root)
         task, state = self.task(tid), self.state()
@@ -520,6 +563,7 @@ class Controller:
                 "model": self.config["models"]["large" if worker == "rdd_large" else "small"]}
 
     def task_integrate(self, tid: str, commit: str) -> dict:
+        self.guard_source_write()
         self.frozen()
         clean(self.root)
         if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
@@ -550,6 +594,7 @@ class Controller:
                 raise RddError("Worker changed a frozen contract or harness policy", "specification")
         if record["worktree"]:
             worker_root = safe_path(self.root, record["worktree"])
+            require_source_branch(worker_root, record["branch"])
             clean(worker_root)
             if head(worker_root) != commit:
                 raise RddError("Worktree HEAD differs from submitted commit")
@@ -632,6 +677,7 @@ class Controller:
         return {"status": "imported", "evidence": evidence["id"], "trust": "Explicit provenance assertion; hashes establish identity, not remote attestation."}
 
     def task_complete(self, tid: str, evidence_id: str | None = None) -> dict:
+        self.guard_source_write()
         self.frozen()
         clean(self.root)
         state, task = self.state(), self.task(tid)
@@ -673,6 +719,7 @@ class Controller:
         return {"task": tid, "status": "todo", "preserved_worktree": record["worktree"]}
 
     def task_reopen(self, tid: str, reason: str) -> dict:
+        self.guard_source_write()
         self.frozen()
         state, task = self.state(), self.task(tid)
         pid = self.active(state)
@@ -690,6 +737,7 @@ class Controller:
         return {"task": tid, "status": "todo", "scope": "Existing frozen task only; repair selection obeys the same category order."}
 
     def anchors_reconcile(self) -> dict:
+        self.guard_source_write()
         self.frozen()
         state, plan = self.state(), self.plan()
         for task in plan["tasks"]:
@@ -983,7 +1031,15 @@ class Controller:
         return {"status": "blocked", "blocker": blocker,
                 "next": "Return to specification for specification/planning/closure issues; fix external environment then resume for environment/review issues."}
 
+    def guard_export(self, path: Path) -> None:
+        """Source-visible export destinations need the same branch preflight."""
+        if path.resolve().is_relative_to(self.root):
+            rel = path.resolve().relative_to(self.root).as_posix()
+            if not rel.startswith(EXCLUDED_PREFIXES) and rel not in EXCLUDED_FILES:
+                self.guard_source_write()
+
     def export_run(self, path: Path) -> dict:
+        self.guard_export(path)
         state = self.state(allow_blocked=True)
         evidence = {}
         for receipt in state["checks"].values():
@@ -1007,13 +1063,23 @@ class Controller:
         return {"path": str(path), "run_id": state["id"], "sha256": file_hash(path),
                 "contains": "Run state, raw check logs and final reports; source and frozen baseline remain in Git."}
 
+    def guard_resume(self, file: Path | None = None) -> dict | None:
+        """Bound and validate checkpoint identity before runtime/lock creation."""
+        require_source_branch(self.root)
+        if not file:
+            self.guard_source_write()
+            return None
+        if file.stat().st_size > 128 * 1024 * 1024:
+            raise RddError("Checkpoint exceeds import size budget", "budget")
+        checkpoint = read_json(file)
+        validate_artifact(self.root, "checkpoint", checkpoint)
+        self.guard_source_write(checkpoint["state"])
+        return checkpoint
+
     def resume(self, file: Path | None = None) -> dict:
+        checkpoint = self.guard_resume(file)
         if file:
             clean(self.root)
-            if file.stat().st_size > 128 * 1024 * 1024:
-                raise RddError("Checkpoint exceeds import size budget", "budget")
-            checkpoint = read_json(file)
-            validate_artifact(self.root, "checkpoint", checkpoint)
             if checkpoint["source_commit"] != head(self.root) or checkpoint["source_digest"] != source_digest(self.root):
                 raise RddError("Checkout must match the checkpoint's exact commit and source digest before restoring")
             state = checkpoint["state"]
@@ -1158,12 +1224,26 @@ class Controller:
             raise RddError("Implementation goal must contain 1-3999 characters")
         return text
 
-    def workflow(self, stage: str, mode: str | None = None) -> dict:
+    def guard_workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False) -> None:
+        """Preflight a workflow before the CLI takes its mutation lock."""
+        if print_only and not mode:
+            return
+        require_source_branch(self.root)
+        if stage == "specification":
+            locator = read_json(self.root / ".rdd/run.json")
+            state = Store.read(self.root, locator["run_id"]) if locator.get("run_id") else None
+            if state and (not mode or (state["status"] == "specification" and state["mode"] == mode)):
+                self.guard_source_write(state, baseline=True)
+        else:
+            self.guard_source_write(baseline=stage == "preparation")
+
+    def workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False) -> dict:
         if stage not in {"specification", "preparation", "implementation"}:
             raise RddError("Unknown workflow")
+        self.guard_workflow(stage, mode, print_only=print_only)
         if stage == "specification" and mode:
             locator = read_json(self.root / ".rdd/run.json")
-            state = self.state(allow_blocked=True) if locator.get("run_id") else None
+            state = Store.read(self.root, locator["run_id"]) if locator.get("run_id") else None
             if not state or state["status"] != "specification" or state["mode"] != mode:
                 self.start(mode)
         if stage == "preparation":

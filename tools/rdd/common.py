@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shutil
 import sqlite3
 import stat
 import subprocess
@@ -111,6 +112,18 @@ def head(root: Path) -> str:
     return git(root, "rev-parse", "HEAD")
 
 
+def require_source_branch(root: Path, expected: str | None = None) -> str:
+    """Check source-write identity without switching branches or creating runtime state."""
+    branch = git(root, "branch", "--show-current")
+    if not branch:
+        raise RddError("Source writes require a named Git branch; detached HEAD is read-only. Create or switch deliberately to a dedicated baseline or recorded phase branch first.", "environment")
+    if branch == "main":
+        raise RddError("Source writes are disabled on main. Create or switch deliberately to a dedicated baseline or recorded phase branch first; existing files and run baselines are preserved.", "environment")
+    if expected is not None and branch != expected:
+        raise RddError(f"Source writes require the recorded branch {expected!r}; this checkout is on {branch!r}. Switch deliberately before retrying; the recorded baseline is preserved.", "environment")
+    return branch
+
+
 def clean(root: Path) -> None:
     dirty = git(root, "status", "--porcelain")
     if dirty:
@@ -167,6 +180,39 @@ class Store:
         if row is None:
             raise RddError(f"No local state for {run_id}; use resume --from an exported checkpoint.", "environment")
         return json.loads(row[0])
+
+    @staticmethod
+    def read(root: Path, run_id: str) -> dict:
+        """Read a stable DB/WAL copy; even read-only SQLite can write auxiliary files."""
+        path = root / ".rdd/runtime/state.sqlite3"
+        wal = path.with_name(path.name + "-wal")
+
+        def inputs():
+            return {p.name: file_hash(p) for p in (path, wal) if p == path or p.is_file()}
+
+        failure = "database changed during preflight"
+        with tempfile.TemporaryDirectory(prefix="rdd-state-preflight-") as directory:
+            snapshot = Path(directory)
+            for _ in range(3):
+                for previous in snapshot.iterdir():
+                    previous.unlink()
+                try:
+                    before = inputs()
+                    for name in before:
+                        shutil.copyfile(path.parent / name, snapshot / name)
+                    if before != inputs() or any(file_hash(snapshot / name) != value for name, value in before.items()):
+                        failure = "database changed during preflight"
+                        continue
+                    # SQLite reconstructs the WAL index only in the disposable copy.
+                    with contextlib.closing(sqlite3.connect((snapshot / path.name).as_uri() + "?mode=ro", uri=True)) as db:
+                        row = db.execute("SELECT value FROM runs WHERE id=?", (run_id,)).fetchone()
+                except (OSError, sqlite3.Error) as exc:
+                    failure = str(exc)
+                    continue
+                if row is None:
+                    raise RddError(f"No local state for {run_id}; use resume --from an exported checkpoint.", "environment")
+                return json.loads(row[0])
+        raise RddError(f"Cannot read a stable local state for {run_id}; retry after the writer stops or restore its checkpoint: {failure}", "environment")
 
     def put(self, state: dict) -> None:
         self.db.execute("INSERT INTO runs VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",

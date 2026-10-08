@@ -13,7 +13,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rdd.adapters import RddAdapterError
-from rdd.common import RddError, operation_lock
+from rdd.common import RddError, operation_lock, require_source_branch
 from rdd.engine import Controller
 
 
@@ -94,6 +94,8 @@ def parser() -> argparse.ArgumentParser:
     ci = commands.add_parser("ci", help="Stateless trusted-baseline verification of a candidate checkout")
     ci.add_argument("--policy-root", type=Path)
     ci.add_argument("--branch")
+    ci.add_argument("--release-policy", help="Exact operator-approved prepared policy commit (requires --release-source)")
+    ci.add_argument("--release-source", help="Exact project-accepted release commit (requires --release-policy)")
     return p
 
 
@@ -164,10 +166,11 @@ def dispatch(c: Controller, a: argparse.Namespace):
     if cmd == "goal":
         return c.goal()
     if cmd == "workflow":
-        return c.workflow(a.stage, a.mode)
+        return c.workflow(a.stage, a.mode, print_only=a.print_only)
     if cmd == "contracts":
         from rdd.proto_traits import run_contracts, ContractCheckError
         if a.action == "generate":
+            c.guard_source_write(baseline=True)
             state = c.state()
             if state["status"] != "specification":
                 raise RddError("Generated contracts are writable only during specification; downstream drift is a blocker", "specification")
@@ -185,7 +188,8 @@ def dispatch(c: Controller, a: argparse.Namespace):
                 "application_complete": False, "returncode": result.returncode}
     if cmd == "ci":
         from rdd.ci import verify
-        return verify(c.root, a.policy_root, a.branch)
+        return verify(c.root, a.policy_root, a.branch,
+                      release_policy=a.release_policy, release_source=a.release_source)
     raise RddError("Unhandled command")
 
 
@@ -196,9 +200,27 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     controller = None
     try:
+        source_write = args.command in {"start", "prepare", "resume", "phase"} or (
+            args.command in {"spec", "plan"} and args.action in {"init", "freeze"}) or (
+            args.command == "contracts" and args.action == "generate") or (
+            args.command == "anchors" and args.action == "reconcile") or (
+            args.command == "task" and args.action in {"claim", "integrate", "complete", "reopen"}) or (
+            args.command == "workflow" and (not args.print_only or args.mode is not None))
+        if source_write:
+            # Refuse before constructing runtime state or acquiring a write lock.
+            require_source_branch(args.root)
         controller = Controller(args.root)
+        if args.command == "workflow":
+            controller.guard_workflow(args.stage, args.mode, print_only=args.print_only)
+        elif args.command == "resume":
+            controller.guard_resume(args.file)
+        elif args.command == "export-run":
+            controller.guard_export(args.file)
+        elif source_write and args.command != "start":
+            controller.guard_source_write(baseline=args.command in {"spec", "plan", "prepare", "contracts"})
         readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "selftest", "ci"} or (
-            args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"})
+            args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
+            args.command == "workflow" and args.print_only and args.mode is None)
         with contextlib.nullcontext() if readonly else operation_lock(controller.root):
             result = dispatch(controller, args)
         if args.command == "goal":

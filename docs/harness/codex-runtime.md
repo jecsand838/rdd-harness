@@ -132,7 +132,9 @@ replacement or force push is implemented.
 
 ## Stacked PR policy
 
-The phase branch name is `rdd/RUN_ID/pNN`. Phase 1 targets the recorded base branch;
+The phase branch name is `rdd/RUN_ID/pNN`. Specification and preparation use a
+dedicated `codex/*-baseline` branch; `main` is merge-only. Phase 1 targets that
+recorded base branch;
 each later phase targets its predecessor's branch. The body includes a stable
 run/phase marker. `publish_phase_pr()` checks all PR states for this exact head
 branch before creation and verifies the resulting head/base afterward. Repeating
@@ -144,8 +146,9 @@ PR descriptions are written to a real file and passed to `gh pr create` using
 `--body-file`. The adapter never sends messages, requests reviewers, merges, closes
 PRs, force-pushes, or restacks sealed phases. A changed or missing remote base
 blocks publication. These rules follow the chosen `ready` completion policy: the
-deliverable is a validated open stack. Merging the stack is a separate user action
-that needs a deliberate strategy and fresh integration validation.
+deliverable is a validated open stack. After project acceptance, the operator
+publishes a separate release branch at the accepted final commit and merges one
+release PR into `main`, preserving the stack and its accepted revisions.
 
 `phase_status()` reads both PR metadata and required checks, then rereads the PR
 revision to detect movement during collection. It verifies the expected complete
@@ -156,7 +159,11 @@ unknown, truncated, or unreadable check results cannot produce readiness.
 
 The configured required-check list must be nonempty. The supplied workflow exposes
 the aggregate check **`verify`**. Configure GitHub branch rules to require this
-check for `main` and the phase branches. See [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+check for `main`, the prepared baseline, and each exact sealed phase branch before
+it becomes a successor's base. Do not protect active or future phase branches
+with a wildcard rule that prevents their publication or repair. See the
+[demo runbook](blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline)
+and [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 If `gh pr checks --required` cannot establish the server-required checks, inspect
 the repository rules and CLI response; do not waive the controller check.
 
@@ -190,17 +197,40 @@ candidate code. A PR's head is checked explicitly; GitHub otherwise defaults to 
 synthetic merge revision for this trigger, as described in its
 [event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
 
-For a PR, the workflow checks out the candidate and its base into sibling
-directories. It tests the trusted base controller, then invokes the **base
+For an ordinary phase PR, the workflow checks out the candidate and its base into
+sibling directories. It tests the trusted base controller, then invokes the **base
 controller's** CLI with `--root candidate ci --policy-root baseline --branch
 BRANCH`. The frozen verifier policy comes from that separate base checkout, so
 editing the candidate CLI does not change the validator being executed. The
 trusted phase base must already contain the harness and prepared plan. Push runs
-on `main` use their own revision as policy and provide diagnostics. Phase branches
-produce the `verify` check only through the base-bound PR run, avoiding a same-name
+on `main` and `codex/*-baseline` use their own revision as policy and provide
+diagnostics. Phase branches produce the `verify` check only through the base-bound
+PR run, avoiding a same-name
 push/dispatch check with weaker provenance. Protect the workflow itself through
 repository rules and review; a repository-contained verifier cannot establish
 an external trust root for a workflow file it is allowed to replace.
+
+A same-repository `codex/rdd-release/RUN_ID` PR targeting `main` uses a separate
+release route. After project acceptance, the operator sets repository variables
+`RDD_RELEASE_POLICY_SHA` to the committed prepared baseline and
+`RDD_RELEASE_SOURCE_SHA` to the project-gated final commit. The workflow runs the
+trusted `main` base controller with a third checkout at the approved policy SHA:
+
+```text
+python baseline/tools/rdd/cli.py --root candidate ci
+  --policy-root prepared-policy --branch codex/rdd-release/RUN_ID
+  --release-policy POLICY_SHA --release-source SOURCE_SHA
+```
+
+Both pins are required; the candidate, PR body and branch name cannot select
+them. Before executing frozen checks, the verifier requires clean checkouts at
+those exact revisions, prepared-baseline ancestry, intact frozen artifacts,
+identical protected policy, a complete phase projection and no remaining anchors.
+Missing, stale or unrelated pins fail explicitly. The selected prepared policy
+also supplies the toolchain inventory. This route supports the first application
+release and subsequent releases whose prepared policy differs from `main`.
+The support change must be reviewed and installed on `main` before this route is
+used; a release cannot bootstrap its own verifier.
 
 The `verify` job succeeds only if all prerequisite jobs succeed. A canceled,
 failed, or skipped prerequisite cannot become a green aggregate. Pinning actions
@@ -211,8 +241,10 @@ Application build prerequisites and platform-specific command inventory must be
 qualified and pinned during specification/preparation. Before those artifacts
 exist, CI validates the boilerplate/controller only. A prepared baseline checks
 its contracts and pending task projections without claiming implementation. Phase
-CI runs cumulative ordinary checks applicable to its platform. A missing native
-dependency needed by those checks is an environment blocker.
+CI runs cumulative ordinary checks applicable to its platform. A complete source
+revision, including a release or post-merge `main`, also runs every project check
+applicable to that platform. A missing native dependency needed by those checks
+is an environment blocker.
 
 When the trusted baseline contains a frozen plan, the supplied workflow installs
 the exact version in its `rust-toolchain.toml`, including the listed components

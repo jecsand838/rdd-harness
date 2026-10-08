@@ -36,15 +36,19 @@ class VerifierSelectionTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("fixture\n", encoding="utf-8")
 
-    def select(self, branch="codex/initialize-rdd-harness"):
+    def select(self, branch="codex/initialize-rdd-harness", **environment):
         self.output.unlink(missing_ok=True)
         return run_argv([sys.executable, "-c", self.selector], self.home,
-                        env={"GITHUB_OUTPUT": str(self.output), "RDD_HEAD_BRANCH": branch})
+                        env={"GITHUB_OUTPUT": str(self.output), "RDD_HEAD_BRANCH": branch, **environment})
+
+    def outputs(self):
+        return dict(line.split("=", 1) for line in self.output.read_text(encoding="utf-8").splitlines())
 
     def test_empty_base_uses_candidate_for_initial_import(self):
         result = self.select()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.output.read_text(encoding="utf-8"), "root=candidate\n")
+        self.assertEqual(self.outputs()["root"], "candidate")
+        self.assertEqual(self.outputs()["policy_root"], "candidate")
 
     def test_complete_base_is_selected_despite_candidate_policy_changes(self):
         for path in self.required:
@@ -53,7 +57,8 @@ class VerifierSelectionTests(unittest.TestCase):
         self.write(self.candidate, ".rdd/spec.lock.json")
         result = self.select("rdd/example/p01")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.output.read_text(encoding="utf-8"), "root=baseline\n")
+        self.assertEqual(self.outputs()["root"], "baseline")
+        self.assertEqual(self.outputs()["policy_root"], "baseline")
 
     def test_partial_base_cannot_bootstrap(self):
         for path in (*self.required, ".rdd/leftover", "tools/rdd/leftover"):
@@ -94,10 +99,81 @@ class VerifierSelectionTests(unittest.TestCase):
                 self.assertFalse(self.output.exists())
                 self.write(self.candidate, path)
 
+    def release_environment(self):
+        return {"GITHUB_EVENT_NAME": "pull_request", "GITHUB_REPOSITORY": "example/repo",
+                "RDD_HEAD_REPOSITORY": "example/repo", "RDD_BASE_REPOSITORY": "example/repo",
+                "RDD_BASE_BRANCH": "main", "RDD_HEAD_SHA": "b" * 40,
+                "RDD_POLICY_SHA": "c" * 40,
+                "RDD_RELEASE_POLICY_SHA": "a" * 40, "RDD_RELEASE_SOURCE_SHA": "b" * 40}
+
+    def test_release_selects_base_code_and_pinned_policy_with_or_without_main_freezes(self):
+        for path in self.required:
+            self.write(self.base, path)
+        for frozen_main in (False, True):
+            with self.subTest(frozen_main=frozen_main):
+                if frozen_main:
+                    for path in (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json"):
+                        self.write(self.base, path)
+                result = self.select("codex/rdd-release/example", **self.release_environment())
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.outputs(), {"root": "baseline", "policy_root": "prepared-policy",
+                    "policy_sha": "a" * 40, "release_policy": "a" * 40,
+                    "release_source": "b" * 40, "prepared": "true"})
+
+    def test_release_event_target_fork_and_pin_errors_cannot_fallback(self):
+        for path in self.required:
+            self.write(self.base, path)
+        variants = {"push": {"GITHUB_EVENT_NAME": "push"},
+                    "wrong target": {"RDD_BASE_BRANCH": "codex/example-baseline"},
+                    "fork": {"RDD_HEAD_REPOSITORY": "fork/repo"},
+                    "wrong base repository": {"RDD_BASE_REPOSITORY": "other/repo"},
+                    "missing policy": {"RDD_RELEASE_POLICY_SHA": ""},
+                    "missing source": {"RDD_RELEASE_SOURCE_SHA": ""},
+                    "short policy": {"RDD_RELEASE_POLICY_SHA": "a" * 12},
+                    "uppercase source": {"RDD_RELEASE_SOURCE_SHA": "B" * 40},
+                    "stale source": {"RDD_RELEASE_SOURCE_SHA": "c" * 40}}
+        for kind, replacement in variants.items():
+            with self.subTest(kind=kind):
+                result = self.select("codex/rdd-release/example", **(self.release_environment() | replacement))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.output.exists())
+        result = self.select("codex/rdd-release/example/extra", **self.release_environment())
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not canonical", result.stderr)
+
+    def test_release_cannot_bootstrap_its_verifier(self):
+        result = self.select("codex/rdd-release/example", **self.release_environment())
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("bootstrap is forbidden", result.stderr)
+
+    def test_nonrelease_events_ignore_even_invalid_repository_release_pins(self):
+        for path in self.required:
+            self.write(self.base, path)
+        for event, branch, target, source_repo in (
+            ("push", "main", "", ""),
+            ("push", "codex/example-baseline", "", ""),
+            ("pull_request", "rdd/example/p01", "codex/example-baseline", "example/repo"),
+            ("pull_request", "feature/example", "main", "fork/repo"),
+        ):
+            with self.subTest(event=event, branch=branch):
+                environment = self.release_environment() | {"GITHUB_EVENT_NAME": event,
+                    "RDD_BASE_BRANCH": target, "RDD_HEAD_REPOSITORY": source_repo,
+                    "RDD_RELEASE_POLICY_SHA": "malformed", "RDD_RELEASE_SOURCE_SHA": "stale"}
+                result = self.select(branch, **environment)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.outputs()["root"], "baseline")
+                self.assertEqual(self.outputs()["policy_root"], "baseline")
+                self.assertEqual(self.outputs()["release_policy"], "")
+                self.assertEqual(self.outputs()["release_source"], "")
+                self.assertEqual(self.outputs()["policy_sha"], environment["RDD_POLICY_SHA"])
+
 
 @unittest.skipUnless(shutil.which("git"), "Git is required for isolated CI candidate tests")
 class CiTests(unittest.TestCase):
     def setUp(self):
+        actions = patch.dict(os.environ, {"GITHUB_ACTIONS": "false"})
+        actions.start()
+        self.addCleanup(actions.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.home = Path(self.temp.name)
@@ -156,7 +232,7 @@ class CiTests(unittest.TestCase):
                 "cwd": ".", "timeout_seconds": 20, "platforms": platforms or ["any"],
                 "red_pattern": "EXPECTED_BEHAVIORAL_FAILURE", "metrics": [], "host_profile": host_profile}
 
-    def prepare(self, *, extras=None, ordinary_platforms=None, sidecar=False, extra_first_phase_task=False):
+    def prepare(self, *, extras=None, project_checks=None, ordinary_platforms=None, sidecar=False, extra_first_phase_task=False):
         self.write(self.base, "requirements/requirements.md",
                    "# Requirements\n\n**FR-001 First behavior**\nThe app shall do the first thing.\nAcceptance: Verify first behavior.\n\n"
                    "**FR-002 Second behavior**\nThe app shall do the second thing.\nAcceptance: Verify second behavior.\n")
@@ -168,13 +244,15 @@ class CiTests(unittest.TestCase):
                   self.check("C-FIRST", platforms=ordinary_platforms),
                   self.check("C-SECOND", platforms=ordinary_platforms)]
         checks += extras or []
+        checks += project_checks or []
         self.spec = {
             "schema_version": 1, "id": "spec-fixture", "requirements_digest": requirement_digest,
             "mode": "regenerate", "parent_spec_digest": None,
             "change_summary": "This is a deliberately minimal, executable controller test fixture.",
             "documents": ["docs/specs/application.md"], "decisions": [],
             "contract_files": ["contracts/example.proto"], "generated_files": ["gen/example.rs"],
-            "contract_check_ids": ["C-CONTRACT"], "project_check_ids": ["C-FIRST", "C-SECOND"],
+            "contract_check_ids": ["C-CONTRACT"],
+            "project_check_ids": ["C-FIRST", "C-SECOND"] + [item["id"] for item in project_checks or []],
             "modules": [{"id": "example", "requirements": ["FR-001", "FR-002"],
                          "contract_paths": ["contracts/example.proto"], "owns_paths": ["modules/"], "depends_on": []}],
             "scenarios": [{"id": "S-FIRST", "requirements": ["FR-001"], "kind": "golden",
@@ -217,7 +295,8 @@ class CiTests(unittest.TestCase):
             "phases": [{"id": "P01", "goal": "First behavior", "tasks": [task["id"] for task in first_phase_tasks],
                         "checks": ["C-FIRST"] + [item["id"] for item in extras or []],
                         "requirements_closed": ["FR-001"], "deliverables": [task["writes"][0] for task in first_phase_tasks], "independent_evidence": ["First review"]},
-                       {"id": "P02", "goal": "Second behavior", "tasks": ["T002"], "checks": ["C-SECOND"],
+                       {"id": "P02", "goal": "Second behavior", "tasks": ["T002"],
+                        "checks": ["C-SECOND"] + [item["id"] for item in project_checks or []],
                         "requirements_closed": ["FR-002"], "deliverables": ["tests/acceptance/behavior2.py"], "independent_evidence": ["Second review"]}],
             "tasks": tasks, "verticals": [{"id": "V-FIRST-SECOND", "goal": "Both behaviors",
                                           "tasks": [task["id"] for task in first_phase_tasks] + ["T002"]}],
@@ -259,6 +338,13 @@ class CiTests(unittest.TestCase):
     def verify(self, branch):
         with patch("tools.rdd.ci._execute", side_effect=self.execute):
             return ci.verify(self.candidate, self.base, branch)
+
+    def verify_release(self, **kwargs):
+        values = {"branch": "codex/rdd-release/ci-fixture", "release_policy": head(self.base),
+                  "release_source": head(self.candidate), "policy_root": self.base}
+        values.update(kwargs)
+        with patch("tools.rdd.ci._execute", side_effect=self.execute):
+            return ci.verify(self.candidate, **values)
 
     def test_bootstrap_is_explicitly_harness_only(self):
         self.clone()
@@ -560,6 +646,212 @@ class CiTests(unittest.TestCase):
             return receipt
         with patch("tools.rdd.ci._execute", side_effect=mutation), self.assertRaises(RddError):
             ci.verify(self.candidate, self.base, "rdd/ci-fixture/p01")
+
+    def test_release_verifies_exact_completed_source_without_claiming_history(self):
+        self.prepare(sidecar=True, project_checks=[self.check("C-PROJECT")])
+        self.clone()
+        self.complete_phase(2)
+        report = self.verify_release()
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(report["scope"], "release_source")
+        self.assertEqual(report["policy_source"], "pinned_prepared_baseline")
+        self.assertEqual(report["release_policy"], head(self.base))
+        self.assertEqual(report["release_source"], head(self.candidate))
+        self.assertEqual(report["scheduled_check_ids"], ["C-CONTRACT", "C-FIRST", "C-SECOND", "C-PROJECT"])
+        self.assertEqual(self.commands, report["scheduled_check_ids"])
+        self.assertEqual(report["observed_through_phase"], "P02")
+        self.assertEqual(report["anchors"]["remaining"], 0)
+        self.assertIsNone(report["phase"])
+        self.assertFalse(report["application_complete"])
+        self.assertFalse(report["task_history_verified"])
+
+    def test_release_does_not_read_candidate_run_locator_as_authority(self):
+        self.prepare()
+        self.clone()
+        self.complete_phase(2)
+        write_json(self.candidate / ".rdd/run.json", {"run_id": "other", "release_policy": "0" * 40,
+                                                     "release_source": "0" * 40})
+        report = self.verify_release()
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(report["run_id"], "ci-fixture")
+        self.assertEqual(report["release_policy"], head(self.base))
+
+    def test_release_partial_phase_cannot_run_checks(self):
+        self.prepare(extra_first_phase_task=True)
+        self.clone()
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][0])
+        self.commit(self.candidate, "partial first release phase")
+        with self.assertRaisesRegex(RddError, "whole-phase prefix"):
+            self.verify_release()
+        self.assertEqual(self.commands, [])
+
+    def test_release_requires_paired_exact_pins_and_its_run_branch(self):
+        self.prepare()
+        self.clone()
+        self.complete_phase(2)
+        variants = [{"release_policy": None}, {"release_source": None},
+                    {"release_policy": ""}, {"release_source": "b" * 12},
+                    {"release_policy": "A" * 40}, {"release_policy": "0" * 40},
+                    {"release_source": "0" * 40}, {"branch": "main"},
+                    {"branch": "codex/rdd-release/other"},
+                    {"branch": "codex/rdd-release/ci-fixture/extra"},
+                    {"policy_root": self.candidate, "release_policy": head(self.candidate)}]
+        for values in variants:
+            with self.subTest(values=values), self.assertRaises(RddError):
+                self.verify_release(**values)
+            self.assertEqual(self.commands, [])
+        with self.assertRaisesRegex(RddError, "explicit paired"):
+            self.verify("codex/rdd-release/ci-fixture")
+
+    def test_release_does_not_allow_bootstrap_or_partial_policy_freezes(self):
+        self.clone()
+        with self.assertRaisesRegex(RddError, "frozen prepared"):
+            self.verify_release()
+        self.assertEqual(self.commands, [])
+        self.write(self.base, ".rdd/spec.lock.json", "{}\n")
+        self.commit(self.base, "partial policy freeze")
+        self.command(self.candidate, "pull", "--ff-only")
+        with self.assertRaisesRegex(RddError, "freezes must exist"):
+            self.verify_release()
+        self.assertEqual(self.commands, [])
+
+    def test_release_rejects_dirty_or_unrelated_policy_and_dirty_source(self):
+        self.prepare()
+        self.clone()
+        self.complete_phase(2)
+        for checkout in (self.base, self.candidate):
+            with self.subTest(checkout=checkout):
+                path = self.write(checkout, "uncommitted.txt", "uncommitted\n")
+                with self.assertRaisesRegex(RddError, "working-tree changes"):
+                    self.verify_release()
+                path.unlink()
+                self.assertEqual(self.commands, [])
+        unrelated = self.home / "unrelated"
+        self.command(self.home, "clone", "--no-hardlinks", str(self.base), str(unrelated))
+        self.command(unrelated, "config", "user.name", "RDD Test")
+        self.command(unrelated, "config", "user.email", "rdd-test@example.invalid")
+        self.command(unrelated, "checkout", "--orphan", "other-history")
+        self.commit(unrelated, "unrelated policy root")
+        with self.assertRaisesRegex(RddError, "ancestor"):
+            self.verify_release(policy_root=unrelated, release_policy=head(unrelated))
+        self.assertEqual(self.commands, [])
+
+    def test_release_rejects_candidate_policy_changes_before_checks(self):
+        self.prepare()
+        self.clone()
+        self.complete_phase(2)
+        self.write(self.candidate, "tools/rdd/policy.py", "# Candidate policy rewrite\n")
+        self.commit(self.candidate, "alter release policy")
+        with self.assertRaisesRegex(RddError, "trusted policy"):
+            self.verify_release()
+        self.assertEqual(self.commands, [])
+
+    def test_release_requires_full_completion_and_well_formed_anchors(self):
+        self.prepare(extra_first_phase_task=True)
+        self.clone()
+        for boundary in (0, 1):
+            with self.subTest(boundary=boundary):
+                if boundary:
+                    self.complete_phase(boundary)
+                with self.assertRaisesRegex(RddError, "completed full phase prefix"):
+                    self.verify_release()
+                self.assertEqual(self.commands, [])
+        artifacts.remove_anchor(self.candidate, self.plan["tasks"][1])
+        path = self.plan["tasks"][1]["writes"][0]
+        self.write(self.candidate, path, "# RDD:P02:T999 [tests] Unknown task\n")
+        self.commit(self.candidate, "orphaned release marker")
+        with self.assertRaisesRegex(RddError, "whole-phase prefix"):
+            self.verify_release()
+        self.assertEqual(self.commands, [])
+
+    def test_release_policy_must_be_the_prepared_baseline_not_completed_source(self):
+        self.prepare()
+        self.clone()
+        self.complete_phase(2)
+        completed_policy = self.home / "completed-policy"
+        self.command(self.home, "clone", "--no-hardlinks", str(self.candidate), str(completed_policy))
+        with self.assertRaisesRegex(RddError, "requires exactly one anchor"):
+            self.verify_release(policy_root=completed_policy, release_policy=head(completed_policy))
+        self.assertEqual(self.commands, [])
+
+    def test_release_policy_preparation_shells_must_match_their_receipt(self):
+        self.prepare()
+        path = self.plan["tasks"][0]["writes"][0]
+        content = (self.base / path).read_text(encoding="utf-8")
+        self.write(self.base, path, content + "# Changed after preparation\n")
+        self.commit(self.base, "change prepared shell")
+        self.clone()
+        self.complete_phase(2)
+        with self.assertRaisesRegex(RddError, "preparation shell changed"):
+            self.verify_release()
+        self.assertEqual(self.commands, [])
+
+    def test_required_project_check_failure_blocks_release_and_ordinary_final_source(self):
+        failing = self.check("C-PROJECT")
+        failing["argv"] = ["{python}", "-c", "raise SystemExit(8)"]
+        self.prepare(project_checks=[failing])
+        self.clone()
+        self.complete_phase(2)
+        for mode in ("release", "ordinary"):
+            with self.subTest(mode=mode):
+                self.commands.clear()
+                with self.assertRaisesRegex(RddError, "did not pass"):
+                    self.verify_release() if mode == "release" else self.verify("main")
+                report = read_json(self.candidate / ".rdd/evidence/ci.json")
+                self.assertEqual(report["status"], "failed")
+                self.assertEqual(report["checks"][-1]["check_id"], "C-PROJECT")
+                self.assertEqual(report["checks"][-1]["returncode"], 8)
+                self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST", "C-SECOND", "C-PROJECT"])
+
+    def test_release_external_project_checks_remain_pending(self):
+        manual = self.check("C-PROJECT-MANUAL", "manual")
+        manual["argv"] = []
+        self.prepare(project_checks=[manual])
+        self.clone()
+        self.complete_phase(2)
+        report = self.verify_release()
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(self.commands, ["C-CONTRACT", "C-FIRST", "C-SECOND"])
+        self.assertEqual([row["check_id"] for row in report["pending_external"]], [manual["id"]])
+        self.assertFalse(report["application_complete"])
+
+    def test_release_rechecks_policy_after_candidate_commands(self):
+        self.prepare()
+        self.clone()
+        self.complete_phase(2)
+        def mutate_policy(root, check, **kwargs):
+            receipt = self.execute(root, check, **kwargs)
+            self.write(self.base, "uncommitted.txt", "changed by test\n")
+            return receipt
+        with patch("tools.rdd.ci._execute", side_effect=mutate_policy), self.assertRaises(RddError):
+            ci.verify(self.candidate, self.base, "codex/rdd-release/ci-fixture",
+                      release_policy=head(self.base), release_source=head(self.candidate))
+
+    def test_actions_release_verifier_checks_event_identity_independently(self):
+        self.prepare()
+        self.clone()
+        self.complete_phase(2)
+        event_path = self.home / "event.json"
+        pr = {"head": {"ref": "codex/rdd-release/ci-fixture", "sha": head(self.candidate),
+                       "repo": {"full_name": "example/repo"}},
+              "base": {"ref": "main", "repo": {"full_name": "example/repo"}}}
+        write_json(event_path, {"pull_request": pr})
+        environment = {"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "pull_request",
+                       "GITHUB_REPOSITORY": "example/repo", "GITHUB_EVENT_PATH": str(event_path)}
+        with patch.dict(os.environ, environment):
+            self.assertEqual(self.verify_release()["status"], "passed")
+        self.commands.clear()
+        for field, value in (("ref", "feature/other"), ("sha", "0" * 40),
+                             ("repo", {"full_name": "fork/repo"}), ("repo", None)):
+            with self.subTest(field=field, value=value):
+                write_json(event_path, {"pull_request": {**pr, "head": {**pr["head"], field: value}}})
+                with patch.dict(os.environ, environment), self.assertRaises(RddError):
+                    self.verify_release()
+                self.assertEqual(self.commands, [])
+        write_json(event_path, {"pull_request": pr})
+        with patch.dict(os.environ, environment | {"GITHUB_EVENT_NAME": "push"}), self.assertRaisesRegex(RddError, "pull_request"):
+            self.verify_release()
+        self.assertEqual(self.commands, [])
 
     @unittest.skipIf(os.name == "nt", "Symlink creation needs extra privilege on Windows")
     def test_symlinked_policy_directory_is_rejected(self):
