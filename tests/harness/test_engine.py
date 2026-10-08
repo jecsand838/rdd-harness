@@ -529,6 +529,173 @@ class EngineTests(Fixture):
         self.assertIsNone(self.c.state()["phases"]["P01"]["gate"])
         self.assertNotIn("P01", self.c.state()["reviews"])
 
+    def finding(self, fid="F1", tasks=("T001",), severity="high"):
+        return dict(id=fid, severity=severity, requirements=["FR-001"], tasks=list(tasks),
+                    path="tests/behavior.py", message="Correct the scoped fixture assertion.",
+                    evidence="Independent inspection of the fixture assertion and required behavior.")
+
+    def pending_submission(self, tid="T001"):
+        claim = self.c.task_claim(tid, "rdd_complex_implementor", session_id=f"worker-{tid}")
+        worker = self.root / claim["lease"]["worktree"]
+        path = worker / self.c.task(tid)["writes"][0]
+        path.write_text(BEHAVIOR_TEST + "\n" + path.read_text(encoding="utf-8"), encoding="utf-8")
+        return worker, self.commit("Introduce fixture assertion", root=worker)
+
+    def transition_snapshot(self):
+        # Include ignored evidence, packets and all worker files, but not SQLite
+        # internals or Git metadata which are not controller acceptance artifacts.
+        files = {p.relative_to(self.root).as_posix(): p.read_bytes() for p in self.root.rglob("*")
+                 if p.is_file() and ".git" not in p.relative_to(self.root).parts
+                 and not p.name.startswith("state.sqlite3")}
+        return head(self.root), self.c.state(), files
+
+    def assert_transition_rejected(self, action, message):
+        before = self.transition_snapshot()
+        with self.assertRaisesRegex(RddError, message):
+            action()
+        after = self.transition_snapshot()
+        self.assertEqual(after[:2], before[:2])
+        self.assertTrue(after[2] == before[2], "Rejected transition changed source, evidence, packets or worker files")
+
+    def test_live_finding_after_claim_blocks_integration_before_side_effects(self):
+        self.opened()
+        _, sha = self.pending_submission()
+        self.live_review(findings=[self.finding()])
+        self.assert_transition_rejected(lambda: self.c.task_integrate("T001", sha), "F1")
+
+    def test_live_finding_after_integration_blocks_completion_before_side_effects(self):
+        self.opened()
+        red = self.red_task()
+        self.live_review(findings=[self.finding()])
+        self.assert_transition_rejected(lambda: self.c.task_complete("T001", red["id"]), "F1")
+
+    def test_claimed_repair_enrolls_exact_findings_without_extending_lease(self):
+        self.opened()
+        worker, sha = self.pending_submission()
+        self.live_review(findings=[self.finding()])
+        before = self.c.state()["tasks"]["T001"]
+        result = self.c.task_reopen("T001", "Correct the independently identified assertion")
+        self.assertEqual(result["finding_ids"], ["F1"])
+        after = self.c.state()["tasks"]["T001"]
+        self.assertEqual({k: v for k, v in after.items() if k != "repair_findings"}, before)
+        self.live_review(findings=[self.finding("F2")])
+        self.assert_transition_rejected(lambda: self.c.task_integrate("T001", sha), "F2")
+        self.assertEqual(self.c.task_reopen("T001", "Include the second scoped correction")["finding_ids"], ["F1", "F2"])
+        path = worker / "tests/behavior.py"
+        path.write_text(path.read_text(encoding="utf-8") + "\n# Correct both reviewed fixture assertions.\n", encoding="utf-8")
+        sha = self.commit("Correct fixture assertions", root=worker)
+        self.c.task_integrate("T001", sha)
+        red = self.c.check("behavior", "fail", "T001")
+        self.assert_transition_rejected(lambda: self.c.task_complete("T001", red["id"]), "F1")
+        self.live_review(resolutions=[dict(finding_id=fid, evidence="Verified the corrected assertion on current coordinator source.")
+                                     for fid in ("F1", "F2")])
+        self.finish("T001", red["id"])
+
+    def test_integrated_repair_requires_fresh_lease_and_independent_resolution(self):
+        self.opened()
+        red = self.red_task()
+        self.live_review(findings=[self.finding()])
+        old = self.c.state()["tasks"]["T001"]
+        before = head(self.root)
+        self.assertEqual(self.c.task_reopen("T001", "Repair the integrated assertion")["status"], "todo")
+        record = self.c.state()["tasks"]["T001"]
+        self.assertEqual(record["evidence"], [])
+        self.assertEqual(record["attempts"], old["attempts"])
+        self.assertEqual(head(self.root), before)
+        self.assertTrue((self.root / old["worktree"]).is_dir())
+        self.assert_transition_rejected(lambda: self.c.task_integrate("T001", old["submission"]), "active lease")
+        claim = self.c.task_claim("T001", "rdd_complex_implementor", session_id="independent-repair-author")
+        self.assertEqual(claim["lease"]["attempts"], 2)
+        self.assertEqual(claim["lease"]["base_commit"], before)
+        self.assertNotEqual(claim["lease"]["worktree"], old["worktree"])
+        worker = self.root / claim["lease"]["worktree"]
+        path = worker / "tests/behavior.py"
+        path.write_text(path.read_text(encoding="utf-8") + "\n# Correct the integrated assertion.\n", encoding="utf-8")
+        self.c.task_integrate("T001", self.commit("Correct integrated assertion", root=worker))
+        red = self.c.check("behavior", "fail", "T001")
+        self.assert_transition_rejected(lambda: self.c.task_complete("T001", red["id"]), "F1")
+        resolution = [dict(finding_id="F1", evidence="Reviewed the corrected assertion at current source.")]
+        with self.assertRaisesRegex(RddError, "author or implementor"):
+            self.live_review(session_id=old["session_id"], resolutions=resolution)
+        self.live_review(resolutions=resolution)
+        self.finish("T001", red["id"])
+
+    def test_task_review_scope_and_severity_preserve_unaffected_progress(self):
+        self.opened()
+        _, sha = self.pending_submission()
+        self.live_review(findings=[self.finding("OTHER", tasks=("T003",)), self.finding("LOW", severity="low")])
+        self.c.task_integrate("T001", sha)
+        red = self.c.check("behavior", "fail", "T001")
+        self.c.task_complete("T001", red["id"])
+        self.commit("Preserve unaffected task completion")
+        # A global finding is never authorized by a task-scoped repair.
+        self.live_review(findings=[self.finding("GLOBAL", tasks=())])
+        self.assert_transition_rejected(lambda: self.c.task_reopen("T001", "Cannot bypass a global issue"), "GLOBAL")
+
+    def test_new_global_finding_cannot_use_an_existing_repair_authorization(self):
+        self.opened()
+        _, sha = self.pending_submission()
+        self.live_review(findings=[self.finding()])
+        self.c.task_reopen("T001", "Enroll only the scoped assertion")
+        self.live_review(findings=[self.finding("GLOBAL", tasks=())])
+        self.assert_transition_rejected(lambda: self.c.task_integrate("T001", sha), "GLOBAL")
+        self.assert_transition_rejected(lambda: self.c.task_reopen("T001", "Cannot enroll global issues"), "GLOBAL")
+
+    def test_two_integrated_peers_can_both_enter_repair_without_deadlock(self):
+        peer = task("T006", "modification", "modules/peer.py", ["T002"])
+        self.write("modules/peer.py", "peer = None\n")
+        self.spec["modules"][0]["owns_paths"].append("modules/peer.py")
+        self.spec["target_tree"].append(dict(path="modules/peer.py", kind="file", owner="E-DOMAIN",
+                                             purpose="Independent peer fixture.", disposition="modify"))
+        write_json(self.root / ".rdd/spec.json", self.spec)
+        self.plan["tasks"].append(peer)
+        self.plan["target_paths"].append("modules/peer.py")
+        self.plan["phases"][0]["tasks"].append("T006")
+        self.plan["verticals"].append(dict(self.plan["verticals"][0], id="V02", tasks=["T001", "T002", "T006"]))
+        for row in self.plan["element_coverage"]:
+            row["tasks"].append("T006")
+        self.plan["resource_uses"].append(dict(resource="runner", consumer_kind="task_completion", consumer="T006"))
+        self.opened()
+        red = self.red_task()
+        self.finish("T001", red["id"])
+        self.submit("T002", {"modules/obsolete.py": None})
+        self.finish("T002")
+        self.submit("T003", {"modules/value.py": "def value():\n    return 41\n"})
+        self.submit("T006", {"modules/peer.py": "peer = 41\n"})
+        self.live_review(findings=[self.finding("F3", ("T003",)), self.finding("F6", ("T006",))])
+        before = head(self.root)
+        for tid in ("T003", "T006"):
+            self.assertEqual(self.c.task_reopen(tid, "Correct independent peer value")["status"], "todo")
+        self.assertEqual(head(self.root), before)
+        self.submit("T003", {"modules/value.py": "def value():\n    return 42\n"})
+        self.submit("T006", {"modules/peer.py": "peer = 42\n"})
+        self.live_review(resolutions=[dict(finding_id=fid, evidence="Verified the current corrected peer value.")
+                                     for fid in ("F3", "F6")])
+        self.finish("T003")
+        self.finish("T006")
+
+    def test_existing_lease_cannot_bypass_earlier_category_or_dependency_repairs(self):
+        self.opened()
+        red = self.red_task()
+        self.finish("T001", red["id"])
+        claim = self.c.task_claim("T002", "rdd_complex_implementor", session_id="deletion-author")
+        worker = self.root / claim["lease"]["worktree"]
+        (worker / "modules/obsolete.py").unlink()
+        sha = self.commit("Delete obsolete fixture", root=worker)
+        state = self.c.state()
+        # Simulate a stale lease across a restored earlier repair. Reopen itself
+        # forbids this live-peer combination; transitions also defend against it.
+        state["tasks"]["T001"]["status"] = "todo"
+        self.c.save(state)
+        self.assert_transition_rejected(lambda: self.c.task_integrate("T002", sha), "category/dependency")
+        state["tasks"]["T001"]["status"] = "done"
+        self.c.save(state)
+        self.c.task_integrate("T002", sha)
+        state = self.c.state()
+        state["tasks"]["T001"]["status"] = "todo"
+        self.c.save(state)
+        self.assert_transition_rejected(lambda: self.c.task_complete("T002"), "category/dependency")
+
     def test_pending_ci_does_not_seal_a_phase(self):
         self.opened()
         self.implement_all()

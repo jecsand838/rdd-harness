@@ -325,7 +325,8 @@ def main(argv: list[str] | None = None) -> int:
         if controller and kind in {"specification", "planning", "closure"}:
             try:
                 state = controller.state(allow_blocked=True)
-                if state["status"] in {"specified", "planned", "preparing", "prepared", "implementation", "complete"}:
+                if state["status"] in {"specified", "planned", "preparing", "prepared", "implementation", "complete"} and (
+                        kind != "planning" or state.get("plan_digest")):
                     controller.block(kind, str(exc))
             except (RddError, OSError):
                 pass

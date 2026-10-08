@@ -200,6 +200,92 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(draft.read_text(), content)
         self.assertTrue(self.f.g("status", "--porcelain", root=worker))
 
+    def test_released_and_expired_attempts_can_enroll_without_losing_work(self):
+        self.f.opened()
+        c = self.f.c
+        for expired in (False, True):
+            claim = c.task_claim("T001", "rdd_complex_implementor", session_id=f"repair-author-{expired}")
+            worker = self.root / claim["lease"]["worktree"]
+            path = worker / "tests/behavior.py"
+            path.write_text("# Uncommitted valuable correction\n" + path.read_text(encoding="utf-8"), encoding="utf-8")
+            content = path.read_bytes()
+            self.f.live_review(findings=[self.f.finding(f"F-{expired}")])
+            if expired:
+                state = c.state()
+                state["tasks"]["T001"]["lease_expires"] = 0
+                c.save(state)
+                c.resume()
+            else:
+                c.task_release("T001", "Preserve the interrupted attempt")
+            result = c.task_reopen("T001", "Enroll the attempted task for a scoped correction")
+            self.assertIn(f"F-{expired}", result["finding_ids"])
+            self.assertEqual(c.state()["tasks"]["T001"]["attempts"], claim["lease"]["attempts"])
+            self.assertEqual(path.read_bytes(), content)
+            self.assertTrue(self.f.g("status", "--porcelain", root=worker))
+        final = c.task_claim("T001", "rdd_complex_implementor", session_id="final-repair-author")
+        self.assertEqual(final["lease"]["attempts"], 3)
+        self.assertNotEqual(final["lease"]["worktree"], claim["lease"]["worktree"])
+
+    def test_repair_authorization_checkpoint_roundtrip_and_tampering(self):
+        self.f.opened()
+        c = self.f.c
+        c.task_claim("T001", "rdd_complex_implementor", session_id="repair-author")
+        self.f.live_review(findings=[self.f.finding(), self.f.finding("OTHER", ("T003",)),
+                                     self.f.finding("GLOBAL", (), "low")])
+        c.task_reopen("T001", "Enroll the exact reviewed assertion")
+        path = self.export()
+        checkpoint = read_json(path)
+        self.empty_runtime_store()
+        c = self.f.c
+        c.resume(path)
+        self.assertEqual(c.state()["tasks"]["T001"]["repair_findings"], ["F1"])
+        # Later reviews do not invalidate the old prefix or expand its permission.
+        self.f.live_review(findings=[self.f.finding("NEW")])
+        self.f.live_review(resolutions=[dict(finding_id="F1", evidence="Verified the correction in the current fixture.")])
+        current = read_json(self.export())
+        c.validate_checkpoint_state(current["state"], current)
+        for case in ("invented", "missing-event", "missing-list", "mismatch", "unscoped", "other-task",
+                     "future-finding", "wrong-cursor", "already-resolved"):
+            changed = copy.deepcopy(current)
+            state = changed["state"]
+            record = state["tasks"]["T001"]
+            repair = next(e for e in reversed(state["events"]) if e["action"] == "open_phase_repair")
+            if case == "missing-event":
+                state["events"].remove(repair)
+            elif case == "missing-list":
+                record.pop("repair_findings")
+            elif case == "mismatch":
+                record["repair_findings"] = []
+            elif case == "wrong-cursor":
+                repair["review_cursor"] = True
+            elif case == "already-resolved":
+                state["events"].remove(repair)
+                state["events"].append(repair)
+                repair["review_cursor"] = len(state["live_reviews"])
+            else:
+                fid = {"invented": "INVENTED", "unscoped": "GLOBAL", "other-task": "OTHER",
+                       "future-finding": "NEW"}[case]
+                record["repair_findings"] = repair["finding_ids"] = [fid]
+            with self.subTest(case=case), self.assertRaisesRegex(RddError, "repair authorization"):
+                c.validate_checkpoint_state(state, changed)
+        # Reject import before writing either state or exported evidence.
+        write_json(path, changed)
+        self.empty_runtime_store()
+        with self.assertRaisesRegex(RddError, "repair authorization"):
+            self.f.c.resume(path)
+        self.assert_no_import()
+
+    def test_unattempted_task_and_invented_live_repair_cannot_gain_exemptions(self):
+        self.f.opened()
+        c = self.f.c
+        self.f.live_review(findings=[self.f.finding()])
+        self.f.assert_transition_rejected(lambda: c.task_reopen("T001", "Not an attempted repair"), "prior attempt")
+        state = c.state()
+        state["tasks"]["T001"]["repair_findings"] = ["F1"]
+        c.save(state)  # Deliberately corrupt the mutable list, with no repair event.
+        self.f.assert_transition_rejected(
+            lambda: c.task_claim("T001", "rdd_complex_implementor", session_id="invented-repair"), "repair authorization")
+
     def regenerate_fixture(self):
         """Re-prepare the same isolated tasks under a new run identity."""
         spec = self.f.c.spec()

@@ -544,6 +544,15 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         return [t for t in unfinished if t["category"] == category and state["tasks"][t["id"]]["status"] == "todo"
                 and all(state["tasks"][dep]["status"] == "done" for dep in t["depends_on"])]
 
+    def guard_task_order(self, state: dict, task: dict) -> None:
+        """An existing lease cannot bypass dependencies or a reopened category."""
+        unfinished = [t for t in self.plan()["tasks"] if t["phase"] == task["phase"]
+                      and state["tasks"][t["id"]]["status"] != "done"]
+        if (any(artifacts.CATEGORIES.index(t["category"]) < artifacts.CATEGORIES.index(task["category"])
+                for t in unfinished)
+                or any(state["tasks"][dep]["status"] != "done" for dep in task["depends_on"])):
+            raise RddError("Task is not ready in the active phase/category/dependency order")
+
     def next(self) -> dict:
         self.frozen()
         state = self.state()
@@ -573,11 +582,11 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         self.frozen()
         if not isinstance(session_id, str) or not session_id.strip():
             raise RddError("Task claims require the actual implementor --session-id; lease labels are not session provenance")
+        task, state = self.task(tid), self.state()
         self.live_review_guard(final=False, stage="implementation", task=tid,
-            task_repair=bool(self.state()["tasks"][tid].get("repair_findings")))
+            repair_findings=self.task_repair_authorization(state, tid))
         self.guard_author_identity(session_id)
         clean(self.root)
-        task, state = self.task(tid), self.state()
         pid = self.active(state)
         self.review_category_handoff(state, task)
         if worker not in IMPLEMENTOR_SCOPES:
@@ -599,6 +608,10 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             attempt = record["attempts"] + 1
             branch = f"rdd/{state['id']}/{tid.lower()}-a{attempt}"
             path = f".rdd/runtime/worktrees/{state['id']}/{tid}-a{attempt}"
+            authors = state.setdefault("authors", {}).setdefault("implementation", [])
+            for author in (record.get("session_id"), session_id):
+                if author and author not in authors:
+                    authors.append(author)
             record.update(status="claimed", attempts=attempt, worker=worker, requested_runtime=requested_runtime,
                           session_id=session_id,
                           lease_expires=time.time() + self.config["limits"]["lease_seconds"],
@@ -651,6 +664,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             raise RddError("Task must have an active lease in the current phase")
         if record["lease_expires"] < time.time():
             raise RddError("Lease expired. Resume/release preserves work; claim a fresh attempt before integrating.", "budget")
+        self.guard_task_order(state, task)
+        self.live_review_guard(final=False, stage="implementation", task=tid,
+            repair_findings=self.task_repair_authorization(state, tid))
         base = record["base_commit"]
         if git(self.root, "merge-base", base, commit) != base:
             raise RddError("Submitted commit is not descended from the leased base")
@@ -783,6 +799,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         record = state["tasks"][tid]
         if task["phase"] != pid or record["status"] != "integrated":
             raise RddError("Only an integrated task in the open phase can complete")
+        self.guard_task_order(state, task)
+        self.live_review_guard(final=False, stage="implementation", task=tid)
         if task["category"] == "tests":
             ids = [evidence_id] if evidence_id else record["evidence"]
             evidence = [state["checks"][eid] for eid in ids if eid in state["checks"]]
@@ -821,23 +839,34 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
     def task_reopen(self, tid: str, reason: str) -> dict:
         self.guard_source_write()
         self.frozen()
-        self.live_review_guard(final=False, stage="implementation", task=tid, task_repair=True)
         state, task = self.state(), self.task(tid)
         pid = self.active(state)
         if task["phase"] != pid or state["phases"][task["phase"]]["status"] == "sealed":
             raise RddError("A sealed phase cannot be reopened; start a specification amendment", "closure")
-        if state["tasks"][tid]["status"] != "done":
-            raise RddError("Only a completed task can be reopened for an open-phase repair")
-        if any(t["status"] in {"claimed", "integrated"} for t in state["tasks"].values()):
-            raise RddError("Finish or release live work before starting a repair sweep")
-        state["tasks"][tid].update(status="todo", evidence=[], lease_expires=None)
-        state["tasks"][tid]["repair_findings"] = [fid for fid, row in state.get("live_findings", {}).items()
-            if not row["resolution"] and tid in row["finding"]["tasks"]]
+        record = state["tasks"][tid]
+        self.validate_review_stream(state)
+        cursor = len(state.get("live_reviews", []))
+        ids = self.task_findings_at(state, tid, cursor)
+        if record["status"] != "done" and (not record["attempts"] or not ids):
+            raise RddError("In-progress repair requires a prior attempt and unresolved task-scoped findings", "review")
+        for peer_id, peer in state["tasks"].items():
+            if peer_id == tid or peer["status"] not in {"claimed", "integrated"}:
+                continue
+            peer_task = self.task(peer_id)
+            if record["status"] == "done" or (peer_task["phase"], peer_task["category"]) != (pid, task["category"]):
+                raise RddError("Finish or release live work before starting a repair sweep")
+        self.live_review_guard(final=False, stage="implementation", task=tid, repair_findings=frozenset(ids))
+        if record["status"] != "claimed":
+            record.update(status="todo", evidence=[], lease_expires=None)
+            record.pop("red_evidence", None)
+        record["repair_findings"] = ids
         self.invalidate(state, pid)
-        event(state, "open_phase_repair", task=tid, reason=reason)
+        event(state, "open_phase_repair", task=tid, reason=reason, finding_ids=ids, review_cursor=cursor)
         self.save(state)
-        self.anchors_reconcile()
-        return {"task": tid, "status": "todo", "scope": "Existing frozen task only; repair selection obeys the same category order."}
+        if record["status"] == "todo":
+            self.anchors_reconcile()
+        return {"task": tid, "status": record["status"], "finding_ids": ids,
+                "scope": "Existing frozen task only; repair selection obeys the same category order."}
 
     def anchors_reconcile(self) -> dict:
         self.guard_source_write()
@@ -1328,6 +1357,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 if (task.get("status") not in {"todo", "claimed", "integrated", "done"}
                         or type(task.get("attempts")) is not int or task["attempts"] < 0):
                     raise RddError("Checkpoint task status is invalid")
+                self.task_repair_authorization(state, tid)
                 worker = task.get("worker")
                 claimed_before = task["attempts"] > 0 or task["status"] != "todo"
                 if claimed_before or worker is not None or task.get("requested_runtime") is not None:

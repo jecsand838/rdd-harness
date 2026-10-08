@@ -105,7 +105,7 @@ class ReviewStream:
 
     def live_review_guard(self, *, final: bool, cursor: int | None = None, stage: str | None = None,
                           node: str | None = None, correction: str | None = None, task: str | None = None,
-                          task_repair: bool = False) -> None:
+                          repair_findings: frozenset[str] = frozenset()) -> None:
         state = self.state(allow_blocked=True)
         stage = stage or self.review_stage(state)
         reviews = state.get("live_reviews", [])
@@ -138,12 +138,43 @@ class ReviewStream:
                 continue
             if task and finding.get("tasks") and task not in finding["tasks"]:
                 continue
-            if task_repair and task in finding.get("tasks", []):
+            if not final and fid in repair_findings and task in finding.get("tasks", []):
                 continue
             if node and finding.get("nodes") and node not in finding["nodes"]:
                 continue
             if final or finding["severity"] in {"blocking", "high", "medium"}:
                 raise RddError(f"Independent live finding {fid} remains unresolved", "review")
+
+    def task_findings_at(self, state: dict, tid: str, cursor: int) -> list[str]:
+        """Task-scoped findings unresolved at an immutable review-stream prefix."""
+        phase = self.task(tid)["phase"]
+        return sorted(fid for fid, row in state.get("live_findings", {}).items()
+                      if row["stage"] == "implementation" and row["phase"] == phase
+                      and tid in row["finding"]["tasks"] and row["sequence"] <= cursor
+                      and (not row["resolution"] or row["resolution"]["sequence"] > cursor))
+
+    def task_repair_authorization(self, state: dict, tid: str) -> frozenset[str]:
+        """Bind repair IDs; the consuming live guard/checkpoint verifies the stream."""
+        record = state["tasks"][tid]
+        repairs = [e for e in state["events"] if e["action"] == "open_phase_repair" and e.get("task") == tid]
+        if not repairs and "repair_findings" not in record:
+            return frozenset()
+        latest = repairs[-1] if repairs else {}
+        ids, cursor = record.get("repair_findings"), latest.get("review_cursor")
+        if (not isinstance(ids, list) or any(not isinstance(fid, str) for fid in ids)
+                or ids != sorted(set(ids)) or latest.get("finding_ids") != ids
+                or type(cursor) is not int or not 1 <= cursor <= len(state.get("live_reviews", []))):
+            raise RddError("Task repair authorization is missing or differs from its repair event", "review")
+        # Use list order: live-review events have their own sequence field.
+        observed = 0
+        for entry in state["events"]:
+            if entry["action"] == "live_review_recorded":
+                observed += 1
+            if entry is latest:
+                break
+        if observed != cursor or ids != self.task_findings_at(state, tid, cursor):
+            raise RddError("Task repair authorization differs from its scoped review prefix", "review")
+        return frozenset(ids)
 
     def validate_review_stream(self, state: dict) -> None:
         reviews = state.get("live_reviews", [])

@@ -125,6 +125,8 @@ A phase is independent when its claims depend only on the baseline, earlier acce
 
 Resolve graph, coverage, ownership, category, work-site and phase-closure findings before freezing. Trace each check’s complete prerequisites to a verified baseline resource, a correctly ordered task, or an external producer with a tested transfer route. Distinguish what must exist at preparation from what a future test task may author before its RED run. Use disposable qualification fixtures without implementing product behavior. A frozen design defect is a critical escape; do not encode the question as a task.
 
+Before plan freeze, a planning validation error returns its diagnostic without persisting a blocker; correct the same draft and validate again. Frozen specification defects, failures after plan freeze, and explicit blocker commands retain their blocking behavior.
+
 Commit the hydrated plan and obtain semantic and execution reviews of the same candidate, independently of the authors. These review/fix iterations are part of preparation, not implementation gates on individual tasks.
 
 ```bash
@@ -226,6 +228,10 @@ For a fix inside the current open phase's accepted scope:
 ```
 
 Reopen the related test task when a regression assertion is needed. Reopened tasks form a repair sweep with the same category order. Reopening invalidates gate/review evidence. It cannot add scope or modify a sealed phase.
+
+Live findings are checked again before integration and completion. For task-scoped findings, `task reopen` enrolls the exact current finding IDs: a claimed task keeps its existing lease and expiry; an integrated task returns to `todo` for a fresh repair lease, preserving committed work. Released or expired tasks can enroll only after a prior attempt. Same-category peers may enter these corrections together; reopening completed work still requires no live peers. No enrollment extends a lease or bypasses dependency, category, capacity or write-ownership limits.
+
+The correction sequence is **enroll → correct → integrate → run checks → independent reviewer verifies resolution → complete**. Enrollment permits corrective integration only for its recorded IDs; another finding requires renewed enrollment. Global findings cannot be bypassed, and completion always requires applicable blocking findings to be resolved. This is continuous review enforcement, without individual task approval gates.
 
 For a worker failure, preserve its worktree and use the supported release/resume commands:
 
