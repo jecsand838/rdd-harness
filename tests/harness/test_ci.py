@@ -769,7 +769,7 @@ class CiTests(unittest.TestCase):
         self.clone()
         self.complete_phase(2)
         completed_policy = self.home / "completed-policy"
-        self.command(self.home, "clone", "--no-hardlinks", str(self.candidate), str(completed_policy))
+        self.command(self.home, "clone", "-c", "core.autocrlf=false", "--no-hardlinks", str(self.candidate), str(completed_policy))
         with self.assertRaisesRegex(RddError, "requires exactly one anchor"):
             self.verify_release(policy_root=completed_policy, release_policy=head(completed_policy))
         self.assertEqual(self.commands, [])

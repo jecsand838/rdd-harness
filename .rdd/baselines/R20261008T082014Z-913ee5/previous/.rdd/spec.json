@@ -1,0 +1,2601 @@
+{
+  "amendment": {
+    "requirements": [
+      "FR-001",
+      "FR-002",
+      "FR-003",
+      "FR-004",
+      "FR-005",
+      "FR-006",
+      "FR-007",
+      "FR-008",
+      "FR-009",
+      "FR-010",
+      "FR-011",
+      "FR-012",
+      "FR-013",
+      "FR-014",
+      "FR-015",
+      "FR-016",
+      "FR-017",
+      "FR-018",
+      "FR-019",
+      "FR-020",
+      "FR-021",
+      "FR-022",
+      "FR-023",
+      "FR-024",
+      "FR-025",
+      "NFR-A11Y-001",
+      "NFR-A11Y-002",
+      "NFR-A11Y-003",
+      "NFR-ARCH-001",
+      "NFR-ARCH-002",
+      "NFR-DATA-001",
+      "NFR-DATA-002",
+      "NFR-DATA-003",
+      "NFR-DATA-004",
+      "NFR-MAINT-001",
+      "NFR-OBS-001",
+      "NFR-OFF-001",
+      "NFR-PERF-001",
+      "NFR-PERF-002",
+      "NFR-PERF-003",
+      "NFR-PERF-004",
+      "NFR-PERF-005",
+      "NFR-PLAT-001",
+      "NFR-PRIV-001",
+      "NFR-PRIV-002",
+      "NFR-QUAL-001",
+      "NFR-QUAL-002",
+      "NFR-SEC-001",
+      "NFR-SEC-002",
+      "NFR-TECH-001",
+      "NFR-TECH-002",
+      "NFR-TECH-003",
+      "NFR-TECH-004"
+    ],
+    "paths": [
+      "CONTRIBUTING.md",
+      "Cargo.lock",
+      "Cargo.toml",
+      "README.md",
+      "apps/README.md",
+      "apps/desktop/Cargo.toml",
+      "apps/desktop/build.rs",
+      "apps/desktop/capabilities/main.json",
+      "apps/desktop/icons/icon.png",
+      "apps/desktop/permissions/application.toml",
+      "apps/desktop/src/commands.rs",
+      "apps/desktop/src/diagnostics.rs",
+      "apps/desktop/src/instance.rs",
+      "apps/desktop/src/lib.rs",
+      "apps/desktop/src/main.rs",
+      "apps/desktop/src/runtime.rs",
+      "apps/desktop/tauri.conf.json",
+      "apps/ui/Cargo.toml",
+      "apps/ui/index.html",
+      "apps/ui/resources/help.md",
+      "apps/ui/src/dialogs.rs",
+      "apps/ui/src/editor.rs",
+      "apps/ui/src/lib.rs",
+      "apps/ui/src/state.rs",
+      "apps/ui/src/styles.css",
+      "apps/ui/src/transport.rs",
+      "apps/ui/src/views.rs",
+      "benchmarks/README.md",
+      "docs/compatibility.md",
+      "docs/dependency-inventory.md",
+      "docs/developer-guide.md",
+      "docs/release-handoff.md",
+      "docs/specs/preparation-policy-amendment.md",
+      "docs/specs/preparation-policy-review.md",
+      "docs/user-guide.md",
+      "modules/README.md",
+      "modules/core/Cargo.toml",
+      "modules/core/src/application/admission.rs",
+      "modules/core/src/application/lifecycle.rs",
+      "modules/core/src/application/mod.rs",
+      "modules/core/src/backup/format.rs",
+      "modules/core/src/backup/mod.rs",
+      "modules/core/src/backup/publication.rs",
+      "modules/core/src/backup/selection.rs",
+      "modules/core/src/collection/mod.rs",
+      "modules/core/src/collection/query.rs",
+      "modules/core/src/collection/types.rs",
+      "modules/core/src/lib.rs",
+      "modules/core/src/storage/mod.rs",
+      "modules/core/src/storage/preflight.rs",
+      "modules/core/src/storage/receipts.rs",
+      "modules/core/src/storage/schema.sql",
+      "tests/acceptance/Cargo.lock",
+      "tests/acceptance/Cargo.toml",
+      "tests/acceptance/README.md",
+      "tests/acceptance/fixtures/instance-child/Cargo.lock",
+      "tests/acceptance/fixtures/instance-child/Cargo.toml",
+      "tests/acceptance/fixtures/instance-child/src/main.rs",
+      "tests/acceptance/fixtures/recovery-child/Cargo.lock",
+      "tests/acceptance/fixtures/recovery-child/Cargo.toml",
+      "tests/acceptance/fixtures/recovery-child/src/main.rs",
+      "tests/acceptance/src/backup_fixtures.rs",
+      "tests/acceptance/src/commit_gate.rs",
+      "tests/acceptance/src/fixtures.rs",
+      "tests/acceptance/src/ledger.rs",
+      "tests/acceptance/src/lib.rs",
+      "tests/acceptance/tests/backup.rs",
+      "tests/acceptance/tests/capacity.rs",
+      "tests/acceptance/tests/diagnostics.rs",
+      "tests/acceptance/tests/functional.rs",
+      "tests/acceptance/tests/lifecycle.rs",
+      "tests/acceptance/tests/pending.rs",
+      "tests/acceptance/tests/query.rs",
+      "tests/acceptance/tests/recovery.rs",
+      "tests/architecture/check.py",
+      "tests/desktop/accessibility.py",
+      "tests/desktop/benchmark.py",
+      "tests/desktop/evaluator.py",
+      "tests/desktop/manual-protocols.md",
+      "tests/desktop/observer/Cargo.lock",
+      "tests/desktop/observer/Cargo.toml",
+      "tests/desktop/observer/src/main.rs",
+      "tests/desktop/security.py",
+      "tests/desktop/test_evaluator.py",
+      "tests/harness/test_artifacts.py",
+      "tests/integration/README.md",
+      "tests/release/build.py",
+      "tests/release/handoff.py",
+      "tools/rdd/artifacts.py"
+    ],
+    "rationale": "No requirement meaning changed. A frozen controller policy defect prevented safe absent-file sidecar preparation; repair only that validator condition and regression tests. Because no product implementation or accepted phase exists, the blocked full draft remains the unimplemented impact closure, and its exact intended writes/all53unchanged obligations must be prepared under the corrected freeze. Preserve previous blocked run and all contract/generated identities."
+  },
+  "change_summary": "Developer-authorized narrow controller-policy correction permits absent implementation files represented by task sidecars, preserving all requirements, selected Todo behavior, dependencies, canonical contracts and generated bytes; then resume full preparation.",
+  "checks": [
+    {
+      "id": "C-CONTRACTS",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "tools/rdd/proto_traits.py",
+        "--target",
+        "wasm32-unknown-unknown"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-SPEC-INPUTS",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "tools/proto-codegen/verify_todo_qualification.py",
+        "inputs"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-CONSUMER",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "tools/proto-codegen/verify_todo_qualification.py",
+        "consumer"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-FILESYSTEM",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "tools/proto-codegen/verify_todo_qualification.py",
+        "filesystem"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-INSTANCE",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "tools/proto-codegen/verify_todo_qualification.py",
+        "instance"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-QUALIFICATION",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "tools/proto-codegen/verify_todo_qualification.py",
+        "dependencies"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 7200,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "FUNCTIONAL",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "functional"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "QUERY",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "query"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "BACKUP",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "backup"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "RECOVERY",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "recovery"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "LIFECYCLE",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "lifecycle"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-CAPACITY",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "capacity"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-PENDING",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "pending"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-DIAGNOSTICS",
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "tests/acceptance/Cargo.toml",
+        "--test",
+        "diagnostics"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-ARCH",
+      "kind": "architecture",
+      "argv": [
+        "{python}",
+        "tests/architecture/check.py"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-BUILD",
+      "kind": "build",
+      "argv": [
+        "{python}",
+        "tests/release/build.py"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-SECURITY",
+      "kind": "security",
+      "argv": [
+        "{python}",
+        "tests/desktop/security.py"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-HANDOFF",
+      "kind": "test",
+      "argv": [
+        "{python}",
+        "tests/release/handoff.py"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": "panicked at|AssertionError:",
+      "metrics": [],
+      "host_profile": null
+    },
+    {
+      "id": "C-PACKAGE",
+      "kind": "manual",
+      "argv": [],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-OFFLINE",
+      "kind": "manual",
+      "argv": [],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-PRIVACY",
+      "kind": "manual",
+      "argv": [],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-A11Y-KEYBOARD",
+      "kind": "manual",
+      "argv": [],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-A11Y-VOICEOVER",
+      "kind": "manual",
+      "argv": [],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-A11Y-VISUAL",
+      "kind": "manual",
+      "argv": [],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-PERF-LAUNCH",
+      "kind": "benchmark",
+      "argv": [
+        "{python}",
+        "tests/desktop/benchmark.py",
+        "P1"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [
+        {
+          "name": "launch_ms",
+          "statistic": "p95",
+          "limit": 2000,
+          "comparison": "lte",
+          "minimum_samples": 30,
+          "unit": "ms"
+        }
+      ],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-PERF-INTERACTIONS",
+      "kind": "benchmark",
+      "argv": [
+        "{python}",
+        "tests/desktop/benchmark.py",
+        "P2"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [
+        {
+          "name": "create_ms",
+          "statistic": "p95",
+          "limit": 200,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "edit_ms",
+          "statistic": "p95",
+          "limit": 200,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "complete_ms",
+          "statistic": "p95",
+          "limit": 200,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "reopen_ms",
+          "statistic": "p95",
+          "limit": 200,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "delete_ms",
+          "statistic": "p95",
+          "limit": 200,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "search_ms",
+          "statistic": "p95",
+          "limit": 250,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "status_filter_ms",
+          "statistic": "p95",
+          "limit": 250,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "date_filter_ms",
+          "statistic": "p95",
+          "limit": 250,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        },
+        {
+          "name": "ordering_ms",
+          "statistic": "p95",
+          "limit": 250,
+          "comparison": "lte",
+          "minimum_samples": 100,
+          "unit": "ms"
+        }
+      ],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-PERF-BACKUP",
+      "kind": "benchmark",
+      "argv": [
+        "{python}",
+        "tests/desktop/benchmark.py",
+        "P3"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 3600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [
+        {
+          "name": "export_ms",
+          "statistic": "p95",
+          "limit": 5000,
+          "comparison": "lte",
+          "minimum_samples": 30,
+          "unit": "ms"
+        },
+        {
+          "name": "restore_ms",
+          "statistic": "p95",
+          "limit": 5000,
+          "comparison": "lte",
+          "minimum_samples": 30,
+          "unit": "ms"
+        }
+      ],
+      "host_profile": "REF-MAC-M3MAX"
+    },
+    {
+      "id": "C-POLICY-SIDECARS",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/harness",
+        "-p",
+        "test_artifacts.py"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 300,
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null
+    }
+  ],
+  "contract_check_ids": [
+    "C-CONTRACTS",
+    "C-SPEC-INPUTS",
+    "C-CONSUMER",
+    "C-FILESYSTEM",
+    "C-INSTANCE",
+    "C-QUALIFICATION",
+    "C-POLICY-SIDECARS"
+  ],
+  "contract_files": [
+    "contracts/fixtures/D1-oracle.json",
+    "contracts/fixtures/D1.json",
+    "contracts/fixtures/D2-oracle.json",
+    "contracts/fixtures/D2.json",
+    "contracts/qualification-inputs.json",
+    "contracts/rdd/v1/harness.proto",
+    "contracts/todo/v1/application.proto",
+    "contracts/todo/v1/backup.proto",
+    "contracts/todo/v1/collection.proto",
+    "contracts/todo/v1/model.proto",
+    "contracts/todo/v1/storage.proto"
+  ],
+  "decisions": [
+    "docs/decisions/ADR-001-boundaries-and-runtime.md",
+    "docs/decisions/ADR-002-backups-and-distribution.md"
+  ],
+  "documents": [
+    "docs/specs/solution.md",
+    "docs/specs/functional-analysis.md",
+    "docs/specs/fixture-inventory.json",
+    "docs/specs/reference-host.json",
+    "docs/specs/filesystem-qualification.md",
+    "docs/specs/quality.md",
+    "docs/specs/check-design.md",
+    "docs/specs/dependencies.md",
+    "docs/specs/instance-qualification.md",
+    "docs/specs/independent-review.md",
+    "docs/specs/preparation-policy-amendment.md",
+    "docs/specs/preparation-policy-review.md"
+  ],
+  "generated_files": [
+    "gen/rust/.rdd-generated.json",
+    "gen/rust/Cargo.lock",
+    "gen/rust/Cargo.toml",
+    "gen/rust/src/generated/rdd.v1.rs",
+    "gen/rust/src/generated/todo.v1.rs",
+    "gen/rust/src/lib.rs"
+  ],
+  "id": "TODO-SPEC-R2-SIDECARS-20261008",
+  "mode": "amend",
+  "modules": [
+    {
+      "id": "collection",
+      "requirements": [
+        "FR-004",
+        "FR-003",
+        "FR-005",
+        "FR-007",
+        "FR-008",
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "NFR-PERF-001"
+      ],
+      "contract_paths": [
+        "contracts/todo/v1/collection.proto",
+        "contracts/todo/v1/model.proto"
+      ],
+      "owns_paths": [
+        "modules/core/src/collection/"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "storage",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-016",
+        "FR-017",
+        "FR-023",
+        "NFR-TECH-003",
+        "NFR-DATA-001",
+        "NFR-DATA-002",
+        "NFR-DATA-003",
+        "NFR-DATA-004"
+      ],
+      "contract_paths": [
+        "contracts/todo/v1/storage.proto"
+      ],
+      "owns_paths": [
+        "modules/core/src/storage/"
+      ],
+      "depends_on": [
+        "collection"
+      ]
+    },
+    {
+      "id": "backup",
+      "requirements": [
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "NFR-PRIV-002"
+      ],
+      "contract_paths": [
+        "contracts/todo/v1/backup.proto"
+      ],
+      "owns_paths": [
+        "modules/core/src/backup/"
+      ],
+      "depends_on": [
+        "collection"
+      ]
+    },
+    {
+      "id": "application",
+      "requirements": [
+        "FR-006",
+        "FR-009",
+        "FR-015",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-022",
+        "FR-023"
+      ],
+      "contract_paths": [
+        "contracts/todo/v1/application.proto"
+      ],
+      "owns_paths": [
+        "modules/core/src/application/"
+      ],
+      "depends_on": [
+        "collection",
+        "storage",
+        "backup"
+      ]
+    },
+    {
+      "id": "desktop",
+      "requirements": [
+        "FR-001",
+        "FR-024",
+        "FR-025",
+        "NFR-TECH-002",
+        "NFR-PLAT-001",
+        "NFR-SEC-002",
+        "NFR-OBS-001"
+      ],
+      "contract_paths": [
+        "contracts/todo/v1/application.proto"
+      ],
+      "owns_paths": [
+        "apps/desktop/"
+      ],
+      "depends_on": [
+        "application"
+      ]
+    },
+    {
+      "id": "ui",
+      "requirements": [
+        "FR-006",
+        "FR-010",
+        "FR-014",
+        "FR-015",
+        "FR-025",
+        "NFR-TECH-001",
+        "NFR-ARCH-002",
+        "NFR-A11Y-001",
+        "NFR-A11Y-002",
+        "NFR-A11Y-003"
+      ],
+      "contract_paths": [
+        "contracts/todo/v1/application.proto"
+      ],
+      "owns_paths": [
+        "apps/ui/"
+      ],
+      "depends_on": [
+        "application"
+      ]
+    }
+  ],
+  "parent_spec_digest": "924507a8dc3876585af71d1065d94fa9131c56da15a6c6e8961d2a9dae47eaa7",
+  "project_check_ids": [
+    "FUNCTIONAL",
+    "QUERY",
+    "BACKUP",
+    "RECOVERY",
+    "LIFECYCLE",
+    "C-CAPACITY",
+    "C-PENDING",
+    "C-DIAGNOSTICS",
+    "C-ARCH",
+    "C-BUILD",
+    "C-SECURITY",
+    "C-HANDOFF",
+    "C-PACKAGE",
+    "C-OFFLINE",
+    "C-PRIVACY",
+    "C-A11Y-KEYBOARD",
+    "C-A11Y-VOICEOVER",
+    "C-A11Y-VISUAL",
+    "C-PERF-LAUNCH",
+    "C-PERF-INTERACTIONS",
+    "C-PERF-BACKUP",
+    "C-CONTRACTS",
+    "C-SPEC-INPUTS",
+    "C-CONSUMER"
+  ],
+  "requirement_map": [
+    {
+      "requirement": "FR-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR001-FIRST-LAUNCH",
+        "RECOVERY-STORAGE-PRESERVATION"
+      ]
+    },
+    {
+      "requirement": "FR-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR002-RESTART-FIELDS",
+        "RECOVERY-TASK-CRASH-CUTS",
+        "RECOVERY-RESTORE-CRASH-CUTS",
+        "RECOVERY-STORAGE-PRESERVATION"
+      ]
+    },
+    {
+      "requirement": "FR-003",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR003-CREATE-DUPLICATES",
+        "MUTATION-TRIM-EXPANSION"
+      ]
+    },
+    {
+      "requirement": "FR-004",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR004-VALID-LIMITS",
+        "VALIDATION-REJECT-VECTORS",
+        "VALIDATION-SCALAR-NORMALIZATION",
+        "CAPACITY-9999-10000-10001",
+        "NOOP-AND-BACKWARD-CLOCK",
+        "BACKUP-INVALID-MATRIX",
+        "RECOVERY-REJECTED-ATOMIC-WRITES",
+        "QUERY-CANONICAL-EXPANSION",
+        "MUTATION-TRIM-EXPANSION"
+      ]
+    },
+    {
+      "requirement": "FR-005",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR005-EDIT-FIELDS",
+        "NOOP-AND-BACKWARD-CLOCK",
+        "RECOVERY-REJECTED-ATOMIC-WRITES",
+        "MUTATION-TRIM-EXPANSION"
+      ]
+    },
+    {
+      "requirement": "FR-006",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR006-DRAFT-PROTECTION",
+        "DRAFT-SURVIVES-HIDDEN-ROW",
+        "RESTORE-CANCEL-EMPTY-CHANGED",
+        "LIFECYCLE-CLOSE-AND-DOUBLE-LAUNCH"
+      ]
+    },
+    {
+      "requirement": "FR-007",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR007-COMPLETE",
+        "NOOP-AND-BACKWARD-CLOCK",
+        "RECOVERY-REJECTED-ATOMIC-WRITES"
+      ]
+    },
+    {
+      "requirement": "FR-008",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR008-REOPEN",
+        "NOOP-AND-BACKWARD-CLOCK",
+        "RECOVERY-REJECTED-ATOMIC-WRITES"
+      ]
+    },
+    {
+      "requirement": "FR-009",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR009-DELETE-CONFIRM",
+        "RECOVERY-REJECTED-ATOMIC-WRITES"
+      ]
+    },
+    {
+      "requirement": "FR-010",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR010-STATUS-VIEWS",
+        "QUERY-LATEST-CONSTRAINTS",
+        "DRAFT-SURVIVES-HIDDEN-ROW",
+        "QUERY-ERROR-KEEPS-CONTROLS"
+      ]
+    },
+    {
+      "requirement": "FR-011",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR011-DATE-AND",
+        "QUERY-LATEST-CONSTRAINTS"
+      ]
+    },
+    {
+      "requirement": "FR-012",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR012-LITERAL-UNICODE",
+        "QUERY-LATEST-CONSTRAINTS",
+        "QUERY-CANONICAL-EXPANSION"
+      ]
+    },
+    {
+      "requirement": "FR-013",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR013-DETERMINISTIC-ORDER",
+        "NOOP-AND-BACKWARD-CLOCK",
+        "QUERY-LATEST-CONSTRAINTS"
+      ]
+    },
+    {
+      "requirement": "FR-014",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR014-COUNTS-EMPTY",
+        "QUERY-LATEST-CONSTRAINTS",
+        "QUERY-ERROR-KEEPS-CONTROLS"
+      ]
+    },
+    {
+      "requirement": "FR-015",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR015-CALENDAR-REFRESH"
+      ]
+    },
+    {
+      "requirement": "FR-016",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR016-COMMIT-ACK",
+        "RECOVERY-TASK-CRASH-CUTS",
+        "RECOVERY-RESTORE-CRASH-CUTS",
+        "PENDING-RESPONSIVE"
+      ]
+    },
+    {
+      "requirement": "FR-017",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR017-REJECT-RECONCILE",
+        "QUERY-ERROR-KEEPS-CONTROLS",
+        "RECOVERY-TASK-CRASH-CUTS",
+        "RECOVERY-RESTORE-CRASH-CUTS",
+        "RECOVERY-STORAGE-PRESERVATION",
+        "RECOVERY-REJECTED-ATOMIC-WRITES"
+      ]
+    },
+    {
+      "requirement": "FR-018",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR018-SINGLE-PENDING",
+        "QUERY-LATEST-CONSTRAINTS",
+        "DRAFT-SURVIVES-HIDDEN-ROW",
+        "QUERY-ERROR-KEEPS-CONTROLS",
+        "BACKUP-CONSISTENT-SNAPSHOT",
+        "RECOVERY-TASK-CRASH-CUTS",
+        "LIFECYCLE-CLOSE-AND-DOUBLE-LAUNCH",
+        "PENDING-RESPONSIVE"
+      ]
+    },
+    {
+      "requirement": "FR-019",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR019-FULL-EXPORT",
+        "BACKUP-CONSISTENT-SNAPSHOT"
+      ]
+    },
+    {
+      "requirement": "FR-020",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR020-SAFE-DESTINATION",
+        "BACKUP-REJECT-ALIASES",
+        "BACKUP-UNSUPPORTED-PUBLICATION"
+      ]
+    },
+    {
+      "requirement": "FR-021",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR021-VALIDATE-ALL",
+        "BACKUP-INVALID-MATRIX",
+        "RESTORE-CANCEL-EMPTY-CHANGED"
+      ]
+    },
+    {
+      "requirement": "FR-022",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR022-RESTORE-CONFIRM",
+        "RESTORE-CANCEL-EMPTY-CHANGED"
+      ]
+    },
+    {
+      "requirement": "FR-023",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR023-ATOMIC-REPLACE",
+        "BACKUP-CONSISTENT-SNAPSHOT",
+        "RESTORE-CANCEL-EMPTY-CHANGED",
+        "RECOVERY-RESTORE-CRASH-CUTS",
+        "RECOVERY-REJECTED-ATOMIC-WRITES"
+      ]
+    },
+    {
+      "requirement": "FR-024",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR024-SINGLE-INSTANCE",
+        "LIFECYCLE-CLOSE-AND-DOUBLE-LAUNCH",
+        "LIFECYCLE-INSTANCE-LEASE"
+      ]
+    },
+    {
+      "requirement": "FR-025",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md"
+      ],
+      "scenarios": [
+        "FR025-OFFLINE-HELP"
+      ]
+    },
+    {
+      "requirement": "NFR-A11Y-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-KEYBOARD-JOURNEYS"
+      ]
+    },
+    {
+      "requirement": "NFR-A11Y-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-VOICEOVER-JOURNEYS"
+      ]
+    },
+    {
+      "requirement": "NFR-A11Y-003",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-VISUAL-READABILITY"
+      ]
+    },
+    {
+      "requirement": "NFR-ARCH-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-CONTRACT-BOUNDARIES"
+      ]
+    },
+    {
+      "requirement": "NFR-ARCH-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-CONTRACT-BOUNDARIES",
+        "Q-ACCOUNT-SCOPE",
+        "Q-RELEASE-PRIVILEGES",
+        "LIFECYCLE-INSTANCE-LEASE"
+      ]
+    },
+    {
+      "requirement": "NFR-DATA-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "RECOVERY-TASK-CRASH-CUTS",
+        "RECOVERY-RESTORE-CRASH-CUTS",
+        "Q-CRASH-HISTORY",
+        "Q-ATOMIC-FAILURES"
+      ]
+    },
+    {
+      "requirement": "NFR-DATA-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "RECOVERY-TASK-CRASH-CUTS",
+        "RECOVERY-RESTORE-CRASH-CUTS",
+        "RECOVERY-REJECTED-ATOMIC-WRITES",
+        "Q-CRASH-HISTORY",
+        "Q-ATOMIC-FAILURES"
+      ]
+    },
+    {
+      "requirement": "NFR-DATA-003",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "RECOVERY-STORAGE-PRESERVATION",
+        "Q-PRESERVE-STORAGE"
+      ]
+    },
+    {
+      "requirement": "NFR-DATA-004",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "RECOVERY-STORAGE-PRESERVATION",
+        "Q-VERSION-ONE"
+      ]
+    },
+    {
+      "requirement": "NFR-MAINT-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-SCOPE-REVIEW"
+      ]
+    },
+    {
+      "requirement": "NFR-OBS-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-PRIVATE-DIAGNOSTICS"
+      ]
+    },
+    {
+      "requirement": "NFR-OFF-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-OFFLINE-JOURNEYS"
+      ]
+    },
+    {
+      "requirement": "NFR-PERF-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "CAPACITY-9999-10000-10001",
+        "Q-CAPACITY-MAX",
+        "QUERY-CANONICAL-EXPANSION"
+      ]
+    },
+    {
+      "requirement": "NFR-PERF-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-P1-LAUNCH"
+      ]
+    },
+    {
+      "requirement": "NFR-PERF-003",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-P2-MUTATIONS",
+        "Q-P2-QUERIES"
+      ]
+    },
+    {
+      "requirement": "NFR-PERF-004",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-P3-BACKUP"
+      ]
+    },
+    {
+      "requirement": "NFR-PERF-005",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "PENDING-RESPONSIVE",
+        "Q-DELAYED-PENDING"
+      ]
+    },
+    {
+      "requirement": "NFR-PLAT-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-TAURI-PACKAGE"
+      ]
+    },
+    {
+      "requirement": "NFR-PRIV-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-NO-OUTBOUND",
+        "LIFECYCLE-INSTANCE-LEASE"
+      ]
+    },
+    {
+      "requirement": "NFR-PRIV-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "BACKUP-REJECT-ALIASES",
+        "Q-ACCOUNT-SCOPE",
+        "LIFECYCLE-INSTANCE-LEASE"
+      ]
+    },
+    {
+      "requirement": "NFR-QUAL-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-EXACT-REVISION-EVIDENCE"
+      ]
+    },
+    {
+      "requirement": "NFR-QUAL-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-HANDOFF"
+      ]
+    },
+    {
+      "requirement": "NFR-SEC-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "VALIDATION-REJECT-VECTORS",
+        "Q-UNTRUSTED-INPUT",
+        "QUERY-CANONICAL-EXPANSION",
+        "MUTATION-TRIM-EXPANSION"
+      ]
+    },
+    {
+      "requirement": "NFR-SEC-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-RELEASE-PRIVILEGES"
+      ]
+    },
+    {
+      "requirement": "NFR-TECH-001",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-RUST-SCOPE"
+      ]
+    },
+    {
+      "requirement": "NFR-TECH-002",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-TAURI-PACKAGE"
+      ]
+    },
+    {
+      "requirement": "NFR-TECH-003",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-TURSO-LOCAL"
+      ]
+    },
+    {
+      "requirement": "NFR-TECH-004",
+      "specifications": [
+        "docs/specs/solution.md",
+        "docs/specs/quality.md"
+      ],
+      "scenarios": [
+        "Q-REPRODUCIBLE",
+        "Q-HANDOFF"
+      ]
+    }
+  ],
+  "requirements_digest": "d038897476ed992b7c04bca4d2641790cd4f828f3f305529ba74a14655d0e2fe",
+  "scenarios": [
+    {
+      "id": "FR001-FIRST-LAUNCH",
+      "requirements": [
+        "FR-001"
+      ],
+      "kind": "golden",
+      "description": "Fixture: absent application-data profile on the supported Mac, runtime networking blocked. Launch the delivered package, use its create action, exit normally and launch the same profile again. Oracle: profile identity, empty task set and default-view controls recorded independently. Evidence: packaged journey, profile manifest and screenshots.",
+      "expected": "Both launches reach usable Open/Any/empty-search/newest-created views of the same initially empty collection; no service credentials are requested and creation is available.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR002-RESTART-FIELDS",
+      "requirements": [
+        "FR-002"
+      ],
+      "kind": "golden",
+      "description": "Fixture: acknowledged Open and Completed records, duplicate content, absent/present dates, Unicode text and a clock-corrected history whose updated time precedes completed time. Exit with no pending operation and relaunch. Oracle: independent acknowledgment ledger containing every field and identity; do not derive expected records from storage reads. Evidence: before/after semantic records.",
+      "expected": "Every stored identity, title, notes, due date, status and all three timestamp fields equals the ledger; no record is dropped, rewritten or incorrectly restamped.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "RECOVERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR003-CREATE-DUPLICATES",
+      "requirements": [
+        "FR-003"
+      ],
+      "kind": "golden",
+      "description": "Fixture: empty collection and controlled UTC clock. Submit a valid title with outer Unicode whitespace, CRLF/CR notes and a date, wait for acknowledgment, then deliberately submit identical input again. Oracle: explicit normalized text constants, two distinct canonical IDs and initially equal created/updated instants. Evidence: command outcomes, visible task set and reopened state.",
+      "expected": "Each deliberate submission creates exactly one Open task with no completed time. Normalized values are stored, initial timestamps agree, and the two opaque identities differ.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR004-VALID-LIMITS",
+      "requirements": [
+        "FR-004"
+      ],
+      "kind": "golden",
+      "description": "Fixture: independent vectors with 1 and 200-scalar normalized titles, empty and 10000-scalar normalized notes, Unicode combining sequences, valid dates 0001-01-01/2000-02-29/2028-02-29/9999-12-31, and both valid statuses in a backup. Exercise create, edit and restore with the same applicable vectors. Oracle: scalar counts and normalized constants generated independently of product validators. Evidence: boundary responses and semantic snapshots.",
+      "expected": "All exactly valid boundary values succeed without truncation. Title trim and CRLF/CR-to-LF notes normalization are consistent at all entry boundaries; valid history permits clock corrections.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "BACKUP",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR005-EDIT-FIELDS",
+      "requirements": [
+        "FR-005"
+      ],
+      "kind": "golden",
+      "description": "Fixture: two identical-content tasks, one Completed with a known completed instant. Edit title, notes and due date independently; clear notes/date; also edit the Completed task. Restart after acknowledgment. Oracle: expected per-ID records, with immutable identity/created/status/completed fields marked explicitly. Evidence: command responses and reopened records.",
+      "expected": "Only the selected identity changes its content. Optional fields can be cleared. Created time and status remain unchanged; editing Completed retains its completed instant. Changed content updates updated time.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "RECOVERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR006-DRAFT-PROTECTION",
+      "requirements": [
+        "FR-006"
+      ],
+      "kind": "golden",
+      "description": "Fixture: changed create draft and changed existing-task editor, including invalid entered values. For each of task switch, another create, cancel, restore initiation and normal close, attempt the action and choose retain, then repeat choosing discard. Oracle: exact raw editor values and preexisting committed-record snapshot. Evidence: dialog/focus journey and database snapshot.",
+      "expected": "Retain cancels the attempted navigation and preserves exact input for correction. Explicit discard permits navigation while leaving committed task data unchanged. No draft is exported or treated as committed.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR007-COMPLETE",
+      "requirements": [
+        "FR-007"
+      ],
+      "kind": "golden",
+      "description": "Fixture: Open task due yesterday and an unaffected twin; controlled completion clock. Complete the selected task, inspect Open and Completed views, then repeat the explicit set-Completed request with a different clock value. Oracle: exact records and view identity sets. Evidence: responses, view snapshots and restart.",
+      "expected": "First transition preserves content/identity/created, sets completed and updated to the completion instant, removes the task from Open and adds it to Completed. Repeated set-Completed changes neither data nor timestamps.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "QUERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR008-REOPEN",
+      "requirements": [
+        "FR-008"
+      ],
+      "kind": "golden",
+      "description": "Fixture: Completed task due yesterday with known timestamps and fixed Today. Reopen, inspect status/date views, then repeat explicit set-Open with a different clock value. Oracle: expected task and identity sets. Evidence: responses, visible results and restart.",
+      "expected": "Reopening preserves content/identity/created, clears completed time, sets updated time and recalculates Overdue. Repeated set-Open has no additional effect or timestamp change.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "QUERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR009-DELETE-CONFIRM",
+      "requirements": [
+        "FR-009"
+      ],
+      "kind": "golden",
+      "description": "Fixture: two identical-content tasks and a backup captured before deletion. Cancel deletion of one, then confirm its prompt and restart; export again. Oracle: selected identity and independent before/after task sets. Evidence: identifying permanent-deletion prompt, persisted set and both backup documents.",
+      "expected": "Cancel changes nothing. Confirmation removes only the selected identity from every view and the new backup; the twin remains. The old backup may retain the deleted identity, and the prompt states deletion is permanent.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "BACKUP",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR010-STATUS-VIEWS",
+      "requirements": [
+        "FR-010"
+      ],
+      "kind": "golden",
+      "description": "Fixture Q1 is defined in functional-analysis.md with explicit identities/fields. Inspect Open, Completed and All with selected search/date constraints; open each notes editor. Change all query preferences, exit and relaunch. Oracle: the authored Q1 set table, not the product query evaluator. Evidence: identity sets, row semantics and launch controls.",
+      "expected": "Visible IDs equal the requested status AND search AND date set. Each row exposes title, status and present due date plus notes inspection/edit. Every relaunch resets Open, Any date, empty search and newest-created ordering.",
+      "check_ids": [
+        "QUERY",
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR011-DATE-AND",
+      "requirements": [
+        "FR-011"
+      ],
+      "kind": "golden",
+      "description": "Fixture Q1 at Today=2028-02-29. Exercise all 3 status views x 4 date filters with empty, one-match and no-match search. Oracle: independent authored truth table, including All/Overdue={01}, All/Today={02,03,08}, All/NoDate={05,07,0a}, Completed/Overdue={}. Evidence: exact visible sets/counts.",
+      "expected": "Any adds no date predicate; Today includes dated Open and Completed tasks; Overdue includes only Open tasks before Today; NoDate includes only absent dates. Constraints combine with logical AND.",
+      "check_ids": [
+        "QUERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR012-LITERAL-UNICODE",
+      "requirements": [
+        "FR-012"
+      ],
+      "kind": "golden",
+      "description": "Fixture Q1 and isolated folding vectors; use empty and outer-Unicode-whitespace queries, STRASSE, caf\u00e9 versus cafe, decomposed \u00e9clair, notes-only needle, literal [a.*%_], Greek sigma forms and non-Turkic I/dotless-I/dotted-I vectors. Oracle: frozen normalized/folded comparison constants and explicit ID sets. Snapshot stored text before/after. Evidence: query results and untouched semantic records.",
+      "expected": "Empty trimmed query adds no restriction. NFC then default full non-Turkic fold finds case/canonical equivalents and notes-only matches, preserves diacritic significance and treats punctuation as literal. Stored text is never rewritten.",
+      "check_ids": [
+        "QUERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR013-DETERMINISTIC-ORDER",
+      "requirements": [
+        "FR-013"
+      ],
+      "kind": "golden",
+      "description": "Fixture Q1 includes tied created instants, tied due dates and missing dates. Query all three orderings, then repeat after restart and on status/date/search subsets. Oracle: authored ordered ID lists in functional-analysis.md. Evidence: complete visible order, not just first/last rows.",
+      "expected": "Newest/oldest use created descending/ascending followed by canonical identity ascending. Earliest due uses dates ascending with absent last, then created descending and identity ascending; ties are stable in every view.",
+      "check_ids": [
+        "QUERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR014-COUNTS-EMPTY",
+      "requirements": [
+        "FR-014"
+      ],
+      "kind": "golden",
+      "description": "Fixture: empty profile then Q1. Inspect empty collection, no-match query and nonempty matches; create/edit/complete/reopen/delete/restore records that change membership. Oracle: independent resulting identity sets and counts after each acknowledged action. Evidence: count/state text and clear-controls journey.",
+      "expected": "Count equals the matching set after every successful change. Empty collection offers create; nonempty collection with zero matches offers clear search/filters. Clearing constraints returns the correct default-compatible results.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "QUERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR015-CALENDAR-REFRESH",
+      "requirements": [
+        "FR-015"
+      ],
+      "kind": "golden",
+      "description": "Fixture: controlled local calendar at 2028-02-28, 2028-02-29 and 2028-03-01, Open/Completed tasks on each date, and zone changes that cross a date boundary. Exercise active midnight/leap-day/zone transitions and suspend/resume/focus after a transition. Oracle: authored sets at each local date and monotonic deadline measurements. Evidence: timed visible result changes plus unchanged stored date snapshot.",
+      "expected": "Active Today/Overdue results refresh within 60 seconds; resume or focus refreshes within one second. Stored due dates never change and Completed tasks never become Overdue.",
+      "check_ids": [
+        "QUERY",
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR016-COMMIT-ACK",
+      "requirements": [
+        "FR-016"
+      ],
+      "kind": "golden",
+      "description": "Fixture: deterministic barriers before transaction commit and after commit before reply. Exercise create/edit/complete/reopen/delete/restore. Pause each operation before commit, inspect UI and independent store; release and wait for acknowledgment. Oracle: commit checkpoint, independent acknowledgment ledger and exact old/new states. Evidence: checkpoint trace and UI states.",
+      "expected": "UI reports pending while persistence is unresolved; no saved-success claim precedes commit. After acknowledged commit the correct results appear. Any optimistic content remains visibly pending until acknowledgment.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "BACKUP",
+        "RECOVERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR017-REJECT-RECONCILE",
+      "requirements": [
+        "FR-017"
+      ],
+      "kind": "golden",
+      "description": "Fixture: rejected-before-commit write and a lost reply after possible commit, with separately exercised wholly-present and wholly-absent outcomes. Preserve exact submitted input and generated attempt identity. Attempt retry before reconciliation, then after an authoritative outcome. Oracle: ledger, receipt/attempt correlation and semantic store state. Evidence: actionable messages and retry-gate trace.",
+      "expected": "Confirmed rejection leaves old committed state and permits correction/retry. Unknown outcome is neither success nor confirmed failure; conflicting/duplicate-capable retry stays blocked until reconciled. Available input survives and messages contain neither raw SQL nor stack traces.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "RECOVERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR018-SINGLE-PENDING",
+      "requirements": [
+        "FR-018"
+      ],
+      "kind": "golden",
+      "description": "Fixture: delayed create and delayed set-status, plus another selected task. Rapidly repeat the initiating action; try conflicting edit/delete/restore and use search/views/focus while pending. Request normal close before outcome. After resolution perform a deliberate identical-content create. Oracle: native admission/effect counts and independent task ledger. Evidence: pending controls, responsive journey and close timeline.",
+      "expected": "One pending task mutation/restore is admitted and repeated activation has one effect. Conflicting mutations remain unavailable until resolved; viewing/search work. Normal close displays waiting and awaits outcome without discarding submitted input. Later deliberate create may create a distinct task.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR019-FULL-EXPORT",
+      "requirements": [
+        "FR-019"
+      ],
+      "kind": "golden",
+      "description": "Fixture: Q1 plus an unsubmitted draft and restrictive active filters. Export to selected local SSD file, exit source package, restore that file into a fresh profile on the same supported Mac. Oracle: independent full committed-field ledger and parsed versioned UTF-8 JSON document. Evidence: saved location, unencrypted-data UI notice and independent fresh-profile records.",
+      "expected": "Export includes every committed identity and required field in one consistent snapshot, disregards filters and excludes drafts. Round trip preserves field meaning and identity independently of source database. Today/Overdue are recomputed, not authoritative backup fields.",
+      "check_ids": [
+        "BACKUP",
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR020-SAFE-DESTINATION",
+      "requirements": [
+        "FR-020"
+      ],
+      "kind": "golden",
+      "description": "Fixture: existing sentinel destination file and a new destination on qualified local SSD. Cancel overwrite, then confirm export, injecting failure before publication and interruption at publication boundaries. Oracle: old-file digest and complete parsed new backup digest; saved location. Evidence: permission/overwrite journey and reconciled filesystem state.",
+      "expected": "Existing file changes only after explicit replacement confirmation, and then only to a complete valid backup. Cancellation/confirmed prepublication failure preserve it. Uncertain publication leaves whole old or whole new; outcome reconciles before retry. New incomplete file is never called complete.",
+      "check_ids": [
+        "BACKUP",
+        "RECOVERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR021-VALIDATE-ALL",
+      "requirements": [
+        "FR-021"
+      ],
+      "kind": "golden",
+      "description": "Fixture: full valid backup, valid empty backup, and one defective record located last in an otherwise valid 10000-record backup. Validate before offering restore confirmation. Oracle: independent full-document validity vectors and current collection/source-file digests. Evidence: candidate summary/error and unchanged digests.",
+      "expected": "Every record/document condition is validated before replacement is offered. Valid empty backup is accepted. A defect anywhere rejects the candidate, identifies its record or document condition, and changes neither source file nor collection.",
+      "check_ids": [
+        "BACKUP",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR022-RESTORE-CONFIRM",
+      "requirements": [
+        "FR-022"
+      ],
+      "kind": "golden",
+      "description": "Fixture: existing collection A of 3 tasks, validated file B of 2 tasks and a changed editor draft. Initiate restore, retain draft once, then explicitly discard and inspect/cancel confirmation; repeat and confirm. Oracle: candidate identity and exact A/B counts. Evidence: dialog text, draft journey and cancellation snapshot.",
+      "expected": "Draft protection occurs before discard. Confirmation identifies selected file and both counts, states entire-collection replacement rather than merge, and requires explicit action. Cancellation preserves A. Only the confirmed validated candidate becomes eligible to apply.",
+      "check_ids": [
+        "BACKUP",
+        "FUNCTIONAL",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR023-ATOMIC-REPLACE",
+      "requirements": [
+        "FR-023"
+      ],
+      "kind": "golden",
+      "description": "Fixture: disjoint collections A and B with different identities/content, including a Completed clock-corrected record. Validate B, then change source-file bytes to C while retaining native candidate B; confirm B. Repeat restore with deterministic process cuts. Oracle: independently authored A/B/C ledgers, candidate token and default-view set. Evidence: semantic records and recovery states.",
+      "expected": "Successful restore contains exactly B with its original required values/timestamps, resets default view and does not merge or restamp history. Source changes cannot substitute C: use retained B or renew validation/confirmation. Interruption yields whole A or whole B.",
+      "check_ids": [
+        "BACKUP",
+        "RECOVERY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR024-SINGLE-INSTANCE",
+      "requirements": [
+        "FR-024"
+      ],
+      "kind": "golden",
+      "description": "Fixture: delivered package/profile with changed unsubmitted draft; sequential second launch then repeated simultaneous launches. Observe processes, collection ownership and windows before/after. Oracle: permitted one database owner and exact draft values. Evidence: process/window trace and draft screenshot.",
+      "expected": "One usable collection window and at most one database-owning application process exist. The existing window activates, extra launches exit before becoming writers and the existing draft remains intact.",
+      "check_ids": [
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "FR025-OFFLINE-HELP",
+      "requirements": [
+        "FR-025"
+      ],
+      "kind": "golden",
+      "description": "Fixture: installed release package with network access blocked and no runtime development tools. Open local help and application identity using keyboard. Oracle: required topics and release evidence version/package digest. Evidence: displayed help/version and functional journey.",
+      "expected": "Offline help explains task operations, local date semantics, data/backup locations, whole replacement on restore, permanent deletion without built-in undo and old backups retaining deleted tasks. Displayed version matches the installed release.",
+      "check_ids": [
+        "LIFECYCLE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "VALIDATION-REJECT-VECTORS",
+      "requirements": [
+        "FR-004",
+        "NFR-SEC-001"
+      ],
+      "kind": "negative",
+      "description": "Fixture: empty/Unicode-whitespace title, 201-scalar title, internal LF/CR/VT/FF/NEL/LS/PS, NUL in title/notes, 10001-scalar normalized notes, invalid Gregorian dates including 1900-02-29, year 0000/10000, malformed YYYY-MM-DD, unknown status, Open with completed time and Completed without completed time. Submit through UI and direct native boundary, then import backups. Oracle: independently authored validity matrix and old-state digest. Evidence: typed errors/raw draft retention.",
+      "expected": "Every invalid vector is rejected before state change, without truncation. Errors identify field/capacity or backup record/document condition; editable values remain for correction. Backup source bytes remain unchanged.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "VALIDATION-SCALAR-NORMALIZATION",
+      "requirements": [
+        "FR-004"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: exactly 200 scalar title using 100 decomposed e+combining-accent pairs, 201-scalar counterpart, multiscalar emoji sequences, internal tabs/spaces, Unicode trim boundaries, notes with 10000 CRLF pairs and CR-only lines. Exercise native create/edit and candidate validation. Oracle: authored post-normalization scalars and exact text byte constants. Evidence: persisted text and rejection responses.",
+      "expected": "Limits count Unicode scalar values after only required trim/line-ending normalization. Combining/emoji text is not counted as graphemes/bytes. Internal title whitespace and other notes whitespace remain intact; storage performs no search normalization.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "CAPACITY-9999-10000-10001",
+      "requirements": [
+        "FR-004",
+        "NFR-PERF-001"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: independently authored 9999, 10000 and 10001-record collections, with valid maximum-length fields for the capacity correctness run and mixed statuses. Create at 9999 and 10000, delete at 10000 then create, and validate/apply restore candidates at each size. Oracle: exact ID ledger and count including Completed records. Evidence: snapshots and capacity errors.",
+      "expected": "9999->10000 creation succeeds; further creation and 10001-record restore reject without loss. Deleting one permits another create. 10000 valid maximum-length records round trip successfully; capacity is not restricted to Open tasks.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "NOOP-AND-BACKWARD-CLOCK",
+      "requirements": [
+        "FR-004",
+        "FR-005",
+        "FR-007",
+        "FR-008",
+        "FR-013"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: controlled clock, normalized content already stored, Completed record with completed time later than a subsequent legitimate edit instant. Save equivalent trimmed/line-ending-normalized values and repeat explicit set-status; then edit under backward clock and export/restore. Oracle: exact old/new timestamps and sort list. Evidence: operation results and semantic records.",
+      "expected": "Normalization-identical save and idempotent status set preserve updated/completed values. Actual changed content records its current UTC instant even when earlier than prior timestamps. Restore accepts that history; deterministic created-time/ID ordering still holds.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "QUERY",
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "QUERY-LATEST-CONSTRAINTS",
+      "requirements": [
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "FR-018"
+      ],
+      "kind": "boundary",
+      "description": "Fixture Q1 with controlled asynchronous query completion. Issue query A, then B; complete B before A. Repeat while a mutation is pending and after its commit, including a calendar change. Oracle: latest active constraints, current committed revision and explicit expected IDs/count/order. Evidence: request/reply sequence and visible set.",
+      "expected": "Late results cannot replace results for newer active constraints or an acknowledged newer collection revision. Viewing remains available during writes; each settled result/count/order corresponds to one committed snapshot and the currently requested calendar/query state.",
+      "check_ids": [
+        "QUERY",
+        "FUNCTIONAL"
+      ]
+    },
+    {
+      "id": "DRAFT-SURVIVES-HIDDEN-ROW",
+      "requirements": [
+        "FR-006",
+        "FR-010",
+        "FR-018"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: editor with exact changed/invalid input on a task subsequently hidden by search/status/date changes. Use query controls during a delayed unrelated mutation, and cause a date-dependent row to leave results. Oracle: pinned editor identity and raw draft values. Evidence: visible query results plus editor state.",
+      "expected": "Changing the result set never silently discards input. Editor remains associated with its selected identity or invokes draft protection before removal; unrelated pending operations and calendar refresh do not replace the draft.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "QUERY"
+      ]
+    },
+    {
+      "id": "QUERY-ERROR-KEEPS-CONTROLS",
+      "requirements": [
+        "FR-010",
+        "FR-014",
+        "FR-017",
+        "FR-018"
+      ],
+      "kind": "failure",
+      "description": "Fixture Q1 with an injected read/query failure and delayed read recovery while a task mutation is unresolved. Oracle: last valid committed snapshot and explicitly failed latest query request. Evidence: actionable error, visible loading/failure states and subsequent successful set.",
+      "expected": "A read failure is not displayed as a valid empty/no-results collection or success. User can retry, view/focus/window controls remain responsive, drafts survive and eventual successful query restores correct IDs/count/order.",
+      "check_ids": [
+        "QUERY",
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "BACKUP-INVALID-MATRIX",
+      "requirements": [
+        "FR-004",
+        "FR-021"
+      ],
+      "kind": "negative",
+      "description": "Fixture documents: malformed/truncated JSON, invalid UTF-8, unsupported/absent version, missing required fields, wrong field types, duplicate JSON members where candidate semantics would be ambiguous, duplicate task IDs, malformed canonical IDs/timestamps, inconsistent status/completion, invalid date/text and 10001 tasks. Include early and final defective records. Oracle: authored document/record errors and original digests. Evidence: typed validation errors.",
+      "expected": "Invalid full candidates never reach replacement confirmation. Collection/source remain unchanged and errors identify a record or document condition. Unknown format/version is rejected; no partial record import, silent truncation or defaulting required data.",
+      "check_ids": [
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "BACKUP-CONSISTENT-SNAPSHOT",
+      "requirements": [
+        "FR-018",
+        "FR-019",
+        "FR-023"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: disjoint pre/post mutation states, paused create/edit/delete/restore transaction, export admitted during that pause and another export request. Oracle: independently authored pre/post full ledgers and one-export admission trace. Evidence: parsed backups and operation sequencing.",
+      "expected": "Each export is exactly one complete committed snapshot, wholly before or after the write, never mixed and never including a draft/pending overlay. Export jobs are separately serialized; they do not admit a second task mutation or weaken restore exclusion.",
+      "check_ids": [
+        "BACKUP",
+        "FUNCTIONAL"
+      ]
+    },
+    {
+      "id": "BACKUP-REJECT-ALIASES",
+      "requirements": [
+        "FR-020",
+        "NFR-PRIV-002"
+      ],
+      "kind": "negative",
+      "description": "Fixture: selected destination paths equal or alias application database/recovery/migration/diagnostic files, including normalized path, symlink and hard-link aliases where supported; one selected file in an otherwise unselected directory. Oracle: protected file identities/digests and granted exact selection scope. Evidence: destination rejection and denied unrelated access.",
+      "expected": "Every protected-file alias rejects before modification. Selecting one import/export file does not permit arbitrary sibling access. Protected data and previous destination bytes remain intact.",
+      "check_ids": [
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "BACKUP-UNSUPPORTED-PUBLICATION",
+      "requirements": [
+        "FR-020"
+      ],
+      "kind": "failure",
+      "description": "Fixture: destination/storage incapable of qualified same-directory complete atomic replacement, denied write, exhausted space, failed serialization/sync/rename and interruption around publication. Test existing sentinel and new destination. Oracle: old/new complete document digests and publication checkpoints. Evidence: filesystem outcomes and messages.",
+      "expected": "Unsupported guarantee rejects before changing an existing file. Confirmed prepublication failures preserve it; uncertain publication leaves complete old/new and reconciles before retry. A new incomplete destination is not announced successful; completion identifies the actual saved location.",
+      "check_ids": [
+        "BACKUP",
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "RESTORE-CANCEL-EMPTY-CHANGED",
+      "requirements": [
+        "FR-006",
+        "FR-021",
+        "FR-022",
+        "FR-023"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: nonempty A, valid empty candidate E, changed draft and selected source file changed/deleted after validation. Cancel draft prompt/confirmation; then confirm retained E. Oracle: retained candidate token/digest and exact counts, A/E ledgers. Evidence: prompts and stored state.",
+      "expected": "Cancellation preserves A and retained draft as chosen. Confirmed empty restore atomically empties the collection and offers create with default controls. A changed/deleted source cannot silently substitute content; retained validated candidate or renewed confirmation is required.",
+      "check_ids": [
+        "BACKUP",
+        "FUNCTIONAL"
+      ]
+    },
+    {
+      "id": "RECOVERY-TASK-CRASH-CUTS",
+      "requirements": [
+        "FR-002",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "NFR-DATA-001",
+        "NFR-DATA-002"
+      ],
+      "kind": "failure",
+      "description": "Fixture: actual embedded local Turso on the supported Mac, independently reset task datasets and acknowledgment ledger. For create/edit/complete/reopen/delete, force process termination before commit, while commit is pending and after acknowledgment, 20 repetitions per operation/cut. Deterministic checkpoints make each cut meaningful; OS/filesystem/device remain functioning. Evidence: raw cut logs, ledgers and reopened full records.",
+      "expected": "Reopened state is a valid sequential history containing every acknowledged operation, with later effects allowed to supersede earlier ones. The terminal unacknowledged operation is wholly present/absent; no mixed fields, duplicate create or loss of unrelated earlier commits.",
+      "check_ids": [
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "RECOVERY-RESTORE-CRASH-CUTS",
+      "requirements": [
+        "FR-002",
+        "FR-016",
+        "FR-017",
+        "FR-023",
+        "NFR-DATA-001",
+        "NFR-DATA-002"
+      ],
+      "kind": "failure",
+      "description": "Fixture: disjoint actual-Turso collections A/B and independent acknowledgment ledger. Force termination before restore commit, while commit is pending and after acknowledgment, 20 repetitions per cut on supported Mac. Reopen from disk after each cut. Evidence: deterministic checkpoint logs and independent semantic comparison.",
+      "expected": "Each reopened collection is wholly A or B, never merged. Acknowledged restore must appear in the valid history, subject only to later superseding operations; unacknowledged terminal restore may be wholly present/absent.",
+      "check_ids": [
+        "RECOVERY",
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "RECOVERY-STORAGE-PRESERVATION",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-017",
+        "NFR-DATA-003",
+        "NFR-DATA-004"
+      ],
+      "kind": "failure",
+      "description": "Fixture: existing read-only, denied-permission, corrupt/invalid-file and unknown-newer-format storage; version-one storage fixture. Record original file digests/metadata before launch and retry. Oracle: unchanged available original artifacts and no successful normal mutation. Evidence: error/retry/exit journey and filesystem snapshots.",
+      "expected": "Inaccessible existing data is not first launch. Normal modification stops and actionable retry/exit appears; originals remain available. No empty replacement, deletion, automatic corruption repair or downgrade occurs. Release one rejects future versions; prior-release migration is inapplicable.",
+      "check_ids": [
+        "RECOVERY",
+        "LIFECYCLE"
+      ]
+    },
+    {
+      "id": "RECOVERY-REJECTED-ATOMIC-WRITES",
+      "requirements": [
+        "FR-004",
+        "FR-005",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-017",
+        "FR-023",
+        "NFR-DATA-002"
+      ],
+      "kind": "failure",
+      "description": "Fixture: actual Turso, prior acknowledged task A and staged edit/status/delete/restore to B. Inject validation/storage failure at transaction entry, after partial statements but before commit and at a confirmed rejected commit. Oracle: independent full previous ledger and transaction result. Evidence: snapshots, errors and successful subsequent retry.",
+      "expected": "Confirmed rejection leaves full previous committed state without rolling back unrelated earlier commits. No task mixes old/new fields and restore exposes no mixed collection. Input/candidate remains available for correction or safe retry.",
+      "check_ids": [
+        "RECOVERY",
+        "FUNCTIONAL",
+        "BACKUP"
+      ]
+    },
+    {
+      "id": "LIFECYCLE-CLOSE-AND-DOUBLE-LAUNCH",
+      "requirements": [
+        "FR-006",
+        "FR-018",
+        "FR-024"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: pending mutation with submitted input and separate unsubmitted-draft case, then concurrent second launches while existing process is pending, closing or showing a draft prompt. Oracle: one owner, pending outcome and exact input snapshots. Evidence: process/window/close traces.",
+      "expected": "Normal close waits for submitted operation outcome; it does not invoke discard as if submission were an unsubmitted draft. Changed unsubmitted input receives retain/discard protection. Additional launches never create another writer or lose existing input.",
+      "check_ids": [
+        "LIFECYCLE",
+        "FUNCTIONAL"
+      ]
+    },
+    {
+      "id": "PENDING-RESPONSIVE",
+      "requirements": [
+        "FR-016",
+        "FR-018",
+        "NFR-PERF-005"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: operation deliberately remains pending beyond 500 ms in packaged or explicitly identified instrumented same-revision application. Exercise query, focus and window interactions during delay; also expose success/rejection/uncertainty endings. Oracle: monotonic times and accessibility state capture. Evidence: event timeline and visible/accessibility tree.",
+      "expected": "Accessible busy feedback appears within 500 ms; focus/window interactions respond within 250 ms. Viewing works, conflicting mutation controls stay unavailable and eventual outcome removes or updates pending state correctly.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "LIFECYCLE"
+      ]
+    },
+    {
+      "id": "Q-RUST-SCOPE",
+      "requirements": [
+        "NFR-TECH-001"
+      ],
+      "kind": "architecture",
+      "description": "Fixture: exact delivered source, Cargo metadata and package resource inventory. Stimulus: inspect every first-party production owner and Rust/WASM UI callsite; classify generated interop and test/build tooling separately. Oracle: frozen owner and dependency allowlists. Evidence: path-to-purpose inventory, Rust toolchain identity and reviewer source references.",
+      "expected": "All first-party business rules, native operations, persistence and UI state/events are Rust on the pinned stable toolchain; declarative assets and generated interop contain no first-party application behavior.",
+      "check_ids": [
+        "C-ARCH"
+      ]
+    },
+    {
+      "id": "Q-TAURI-PACKAGE",
+      "requirements": [
+        "NFR-TECH-002",
+        "NFR-PLAT-001"
+      ],
+      "kind": "golden",
+      "description": "Fixture: delivered ad-hoc-signed arm64 .app on REF-MAC-M3MAX in a clean authorized account/data profile. Stimulus: install/copy to the user Applications location and exercise native journeys with developer tools unavailable in the application process environment. Oracle: Tauri 2 locked dependency/runtime inventory and independent expected collection. Evidence: install transcript, package/signature/resource digests, process environment and native journey results.",
+      "expected": "The actual Tauri 2 package launches and operates without Rust compiler, dev server, Turso CLI, database service, service credentials or administrator privileges for normal use; standalone-browser results do not satisfy this scenario.",
+      "check_ids": [
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "Q-TURSO-LOCAL",
+      "requirements": [
+        "NFR-TECH-003"
+      ],
+      "kind": "golden",
+      "description": "Fixture: fresh actual embedded-turso store in the current account and an independent task-field ledger. Stimulus: packaged create/edit/status/delete/restore, normal exit and restart; inspect locked dependency, adapter and real opened store. Oracle: ledger replay and semantic backup decode independent of production database/query helpers. Evidence: engine version, disk artifacts and exact field/identity comparison.",
+      "expected": "The persistent local turso crate is authoritative and survives restart; no libsql substitution, browser or in-memory-only store, remote primary, cloud token/account or server is required.",
+      "check_ids": [
+        "C-PACKAGE",
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "Q-REPRODUCIBLE",
+      "requirements": [
+        "NFR-TECH-004"
+      ],
+      "kind": "architecture",
+      "description": "Fixture: clean checkout and committed toolchain/dependency/generator locks, dependency qualification packet, reference-host inventory. Stimulus: locked native and Rust/WASM builds, generated contract proof, local API call and reference-Mac .app packaging using recorded prerequisites. Oracle: exact approved versions/inventories. Evidence: commands, lock digests, build/package/API results and tool versions; dependency updates rerun affected qualification.",
+      "expected": "Pinned compatible versions reproduce all compilation units and actual packaged local API transport before contract freeze. Missing tools, unqualified generator/runtime/frontend combinations or unavailable required host evidence are unresolved rather than passes.",
+      "check_ids": [
+        "C-QUALIFICATION",
+        "C-CONTRACTS",
+        "C-BUILD",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "Q-CONTRACT-BOUNDARIES",
+      "requirements": [
+        "NFR-ARCH-001",
+        "NFR-ARCH-002"
+      ],
+      "kind": "architecture",
+      "description": "Fixture: frozen Protobuf inventory, generated Rust traits/messages, actual service providers, typed UI transport and registered custom commands. Stimulus: real contracts check, provider/consumer compilation and C-ARCH; run checker self-fixtures inserting forbidden dependencies, unregistered calls, direct UI SQL/filesystem access and trait/signature bypasses. Oracle: frozen inventories, module allowlist and exact approved call graph. Evidence: source-referenced provider/consumer proof and expected checker rejections.",
+      "expected": "Every specified module/local API boundary consumes generated shapes/signatures in real adapters; checker fixtures fail for bypasses. UI task access uses only approved native API and cannot directly access SQL/database/arbitrary files; generated files alone are insufficient proof.",
+      "check_ids": [
+        "C-CONTRACTS",
+        "C-ARCH",
+        "C-SECURITY"
+      ]
+    },
+    {
+      "id": "Q-SCOPE-REVIEW",
+      "requirements": [
+        "NFR-MAINT-001"
+      ],
+      "kind": "architecture",
+      "description": "Fixture: production source and direct dependency graph at the delivered revision. Stimulus: independent ownership/purpose and rule-duplication review plus unused-dependency/source inventory. Oracle: accepted requirements and frozen owners. Evidence: each module/direct dependency mapped to requirement/enabling purpose and concrete authoritative rule callsites.",
+      "expected": "No speculative or unused production feature/dependency, duplicate invariant owner, unexplained wrapper/trait/crate or unreferenced public API remains. Feedback-only UI validation is native-authoritative and its consistency is tested; generated mappings have explicit purposes.",
+      "check_ids": [
+        "C-ARCH"
+      ]
+    },
+    {
+      "id": "Q-OFFLINE-JOURNEYS",
+      "requirements": [
+        "NFR-OFF-001"
+      ],
+      "kind": "golden",
+      "description": "Fixture: delivered installed package, D1-derived collection and selected backup destination on the local SSD. Stimulus: block runtime networking and execute create, edit, complete, reopen, delete, all search/filter/order controls, export, fresh-profile restore, normal restart and help. Oracle: independent lifecycle/query/round-trip expectations. Evidence: isolation policy, full journey transcript, package identity and field comparisons.",
+      "expected": "Every in-scope operation succeeds under blocked runtime network without credentials or remote resources. Installation prerequisites are separate from this installed-package runtime workload.",
+      "check_ids": [
+        "C-OFFLINE",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "Q-NO-OUTBOUND",
+      "requirements": [
+        "NFR-PRIV-001"
+      ],
+      "kind": "security",
+      "description": "Fixture: delivered package and the complete acceptance workload. Stimulus: start qualified process-attributed socket tracing before launch; observe app and attributed WebView/helper processes through workload/exit with network available and repeat under isolation. Independently run a known-connect positive control outside the app. Oracle: zero app-initiated outbound connections, including loopback; classify OS-only traffic separately. Evidence: PID/process lineage, raw socket/trace records, capture coverage/drop status and positive-control detection.",
+      "expected": "No telemetry, crash upload, font fetch, updater, HTTP listener/client or task transmission is initiated by the production application. Bundled/IPC URLs create no network connection. Polling snapshots alone, failed observation permissions or undetected positive controls cannot establish a pass.",
+      "check_ids": [
+        "C-PRIVACY",
+        "C-OFFLINE"
+      ]
+    },
+    {
+      "id": "Q-ACCOUNT-SCOPE",
+      "requirements": [
+        "NFR-PRIV-002",
+        "NFR-ARCH-002"
+      ],
+      "kind": "security",
+      "description": "Fixture: app-managed directory/database/sidecars/diagnostics, two distinct unprivileged OS accounts, one specifically selected backup and unrelated sibling/managed-file hardlink/symlink fixtures. Stimulus: second-account read attempts and native-boundary requests for arbitrary paths, sibling files, aliases and unselected resources. Oracle: current-account managed locations and exact selected-file scope. Evidence: UID-independent permission/ACL records, denied read results and file digests.",
+      "expected": "Managed directories are 0700 and managed files 0600 without broader granting ACLs; the other unprivileged account cannot read them. Selection grants only the selected file and necessary narrow temporary artifacts; managed aliases and arbitrary paths are denied. No protection against same-account hostile processes is claimed.",
+      "check_ids": [
+        "C-PRIVACY",
+        "C-SECURITY"
+      ]
+    },
+    {
+      "id": "Q-CRASH-HISTORY",
+      "requirements": [
+        "NFR-DATA-001",
+        "NFR-DATA-002"
+      ],
+      "kind": "failure",
+      "description": "Fixture: actual locked embedded engine, independent external acknowledgment ledger and small distinct before/after collection fixtures. Stimulus: six classes create/edit/complete/reopen/delete/whole restore, three deterministic cut points before commit/inside actual pending commit at the qualified turso 0.8.2 WAL File::sync barrier/after observed acknowledgment, twenty SIGKILL trials each (360 total); reopen disk after every kill. Oracle: replay acknowledged operations in admission order, allowing only the one terminal unacknowledged operation wholly absent/present. Evidence: all 360 keyed trial records, checkpoint traces, killed PID, durable external ledger and exact reopened semantic state.",
+      "expected": "Every reopened collection equals an allowed complete sequential history; no lost acknowledgment, partial task fields, mixed restore or unrelated rollback occurs. After acknowledgment the operation is present subject only to later acknowledged supersession. Checkpoint inability/missing trials is unresolved evidence, not a pass.",
+      "check_ids": [
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "Q-ATOMIC-FAILURES",
+      "requirements": [
+        "NFR-DATA-001",
+        "NFR-DATA-002"
+      ],
+      "kind": "failure",
+      "description": "Fixture: actual engine with independent A/B snapshots and acknowledged history, including later edits/deletes/restores superseding earlier values. Stimulus: invalid input, genuine transaction/write/commit failure and uncertainty at admitted operation boundaries; discard the UI future and test reconciliation and normal shutdown. Oracle: precomputed complete old/new states and independent ledger, never receipt presence alone. Evidence: failure kind/checkpoint, actual returned acknowledgment/outcome and reopened fields.",
+      "expected": "Known rejection leaves its complete prior state plus unrelated earlier commits. Uncertain outcome remains blocked until reconciled; it is not inferred rollback from an I/O error. A later acknowledged restore/deletion may correctly supersede prior data, and loss of the UI future does not cancel owned commit.",
+      "check_ids": [
+        "RECOVERY",
+        "C-PENDING"
+      ]
+    },
+    {
+      "id": "Q-PRESERVE-STORAGE",
+      "requirements": [
+        "NFR-DATA-003"
+      ],
+      "kind": "failure",
+      "description": "Fixture: existing valid store/marker/sidecars and disposable copies with read-only access, missing permissions, invalid/corrupt bytes, unsupported future format and partial initialization evidence. Stimulus: launch, retry and attempted mutation. Oracle: pre-run byte digest/length/identity manifest of every existing evidence file. Evidence: denied operations, actionable UI retry/exit and unchanged artifact manifest.",
+      "expected": "Normal modification stops; existing bytes are retained without deletion, empty replacement or downgrade. Startup distinguishes genuine absence from inaccessible/partial-existing evidence. Retry does not authorize repair; restoring access to the valid fixture allows correct loading.",
+      "check_ids": [
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "Q-VERSION-ONE",
+      "requirements": [
+        "NFR-DATA-004"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: frozen storage-format-1 and backup-format-1 task fixtures, future-version copies and a valid clock-correction record. Stimulus: round-trip current versions and open/restore future versions. Oracle: canonical complete field/identity values and version tags. Evidence: versioned fixture digests and future-version rejections.",
+      "expected": "Initial released formats preserve all field meanings/identities and reject unsupported future versions without modification. Prior-release migration execution is inapplicable only for release one; later formats require prior-fixture upgrade/interruption/failure and retained recovery evidence through a new specification run.",
+      "check_ids": [
+        "RECOVERY",
+        "C-CONTRACTS"
+      ]
+    },
+    {
+      "id": "Q-CAPACITY-MAX",
+      "requirements": [
+        "NFR-PERF-001"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: 9,999/10,000/10,001-task fixtures with 200-scalar titles and 10,000-scalar notes, including four-byte scalars, combining sequences, status/date combinations and valid clock correction. Stimulus: restore/create at boundaries, inspect every page (at most 200 summaries per page) and selected full task through GetTask, edit/status change, delete then create, restart and export/restore. Oracle: independent fixture fields and total ordered identity sets; compare all paged summaries and fetched full records. Evidence: exact field/count comparisons and unchanged-state proof for rejected operations.",
+      "expected": "All 10,000 tasks and maximum-length fields remain correct and keyboard-reachable without truncation. Create/restore beyond capacity rejects with useful capacity error and preserves existing data/source file; deletion permits creation. Correctness fixtures do not inherit D1 latency guarantees.",
+      "check_ids": [
+        "C-CAPACITY",
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "Q-P1-LAUNCH",
+      "requirements": [
+        "NFR-PERF-002"
+      ],
+      "kind": "benchmark",
+      "description": "Fixture: frozen D1 and delivered release .app on REF-MAC-M3MAX meeting every benchmark precondition. Stimulus: five unmeasured warm-up launches and thirty measured launches, fully exiting each time without cache clearing. Native external observer timestamps before spawn, conservatively including creation overhead, then correct visible default Open/Any/empty/newest view plus accepted input. Oracle: frozen D1 filtered count/order/page and external state, not a first-frame callback. Evidence: all raw upper-bound samples, timestamps/spawn bracket, p50/p95/max and environment.",
+      "expected": "Every launch is correct and launch_ms nearest-rank p95 (rank29 of30) is at most2000ms using the conservative bound. No cold/first-install guarantee is claimed. The initial recorded free-space observation fails20GiB, so runs are unverified until the precondition is actually met.",
+      "check_ids": [
+        "C-PERF-LAUNCH"
+      ]
+    },
+    {
+      "id": "Q-P2-MUTATIONS",
+      "requirements": [
+        "NFR-PERF-003"
+      ],
+      "kind": "benchmark",
+      "description": "Fixture: D1-derived release-package profiles reset outside timing; create starts at9,999, edit changes stored content, complete targets Open, reopen Completed and delete an existing task after confirmation. Stimulus: each class has ten warm-ups then one hundred measured UI operations independently. External monotonic/AX observer measures input action through persistence acknowledgment and correct visible result. Oracle: independent changed task/count/identity expectations verified outside timing. Evidence: create_ms/edit_ms/complete_ms/reopen_ms/delete_ms raw series and per-class p50/p95/max.",
+      "expected": "Each of five separate hundred-sample classes has zero errors and nearest-rank p95 (rank95) at most200ms. Submission-only, optimistic rendering, no-op edits, pooled classes and fixture-reset time are invalid substitutes.",
+      "check_ids": [
+        "C-PERF-INTERACTIONS"
+      ]
+    },
+    {
+      "id": "Q-P2-QUERIES",
+      "requirements": [
+        "NFR-PERF-003"
+      ],
+      "kind": "benchmark",
+      "description": "Fixture: D1, frozen zero/unique/many/case/canonical/literal queries, three status views, four date filters and three orders; actual nativeToday is recorded and independent date predicates are evaluated against unchanged fixed fixture dates. Stimulus: search/status-filter/date-filter/ordering classes each have ten warm-ups and one hundred measured changes, cycling their defined alternatives with resets outside timing. External observer measures action through correct settled count/ordered page; search includes debounce. Evidence: search_ms/status_filter_ms/date_filter_ms/ordering_ms raw series, stimulus/oracle records and per-class statistics.",
+      "expected": "Each of four independent hundred-sample classes has zero incorrect/obsolete results and nearest-rank p95 at most250ms. Counts and exact ordered identities match the independent full predicate and page oracle; all remaining results are accessible through paging. No clock-control API is added to release.",
+      "check_ids": [
+        "C-PERF-INTERACTIONS"
+      ]
+    },
+    {
+      "id": "Q-P3-BACKUP",
+      "requirements": [
+        "NFR-PERF-004"
+      ],
+      "kind": "benchmark",
+      "description": "Fixture: distinct frozen D1/D2 on the local SSD in the delivered package. Stimulus: three export and three restore warm-ups then thirty measured exports and thirty measured restores independently, alternating distinct replacement datasets. Export starts after chooser/overwrite confirmation and ends with persistent safe publication; restore starts at selected-file validation, pauses only for user replacement confirmation, and ends after persistent commit and correct default rendered view. Oracle: independent fixture all-fields/identities comparison and unchanged source digest. Evidence: export_ms/restore_ms raw series, confirmation pause intervals and semantic round-trip for every sample.",
+      "expected": "Export and restore each have zero correctness errors and nearest-rank p95 (rank29) at most5000ms. Validation/serialization/publication/commit/rendering are included; fresh-profile restore is independent of source database and cannot be a no-op.",
+      "check_ids": [
+        "C-PERF-BACKUP"
+      ]
+    },
+    {
+      "id": "Q-DELAYED-PENDING",
+      "requirements": [
+        "NFR-PERF-005"
+      ],
+      "kind": "failure",
+      "description": "Fixture: same-revision instrumented package with one actual storage operation held for 2 seconds at a deterministic approved boundary and an existing view/draft. Stimulus: initiate operation, navigate read-only views, tab focus, move/resize the window, attempt conflicting mutations and request normal close; externally timestamp action/AX feedback/response. Oracle: visible and assistive busy state plus independent complete old/new collection. Evidence: feedback/focus/window timings, AX status/VoiceOver observation and admission/close traces.",
+      "expected": "Accessible busy state appears by 500 ms; viewing, focus and window interactions respond within 250 ms. Conflicting mutations are blocked; close waits visibly for owned work. Instrumented delay is responsiveness evidence only and never a benchmark sample.",
+      "check_ids": [
+        "C-PENDING",
+        "C-A11Y-VOICEOVER"
+      ]
+    },
+    {
+      "id": "Q-UNTRUSTED-INPUT",
+      "requirements": [
+        "NFR-SEC-001"
+      ],
+      "kind": "security",
+      "description": "Fixture: malformed/protobufs with semantically over-limit task/control fields, excluding merely large valid raw Query/Mutation, missing required oneofs, unknown enums, invalid identity/date/timestamp/status, scalar-limit and capacity violations, malformed/duplicate-key/unknown-version backup documents, SQL and markup-shaped text. Stimulus: invoke real native boundary without UI validation, restore through approved selected-file operation and render accepted text. Oracle: precomputed native rejection conditions/unchanged state and literal text values. Evidence: typed failure metadata, field/source digests, denied native effects and script-execution sentinel.",
+      "expected": "Native checks independently reject invalid inputs before effects; errors expose only safe metadata. Parameterized SQL remains intact and markup is inert text with no script/native-operation execution. Search punctuation remains literal. Invalid restore preserves existing collection and selected bytes.",
+      "check_ids": [
+        "C-SECURITY",
+        "C-CONTRACTS"
+      ]
+    },
+    {
+      "id": "Q-RELEASE-PRIVILEGES",
+      "requirements": [
+        "NFR-SEC-002",
+        "NFR-ARCH-002"
+      ],
+      "kind": "security",
+      "description": "Fixture: delivered .app resource/dependency/command/capability/CSP inventories and separate security test fixtures of the same revision. Stimulus: inspect custom-command AppManifest ACL enforcement and attempt unlisted commands, wrong windows/origins, remote executable content, arbitrary file reads, shell calls and unmanaged paths; compare delivered and instrumented command inventories. Oracle: exact frozen approved local commands/capabilities and bundled content origins. Evidence: production configuration/binary/resources and real denial results.",
+      "expected": "Only bundled executable UI and qualified WASM loading are allowed. Custom commands are explicitly scoped because Tauri default registration alone permits them across app windows/webviews. No shell, generic filesystem, remote content, local HTTP server, developer mocks/test servers or automation-only mutation commands ship.",
+      "check_ids": [
+        "C-SECURITY",
+        "C-ARCH",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "Q-KEYBOARD-JOURNEYS",
+      "requirements": [
+        "NFR-A11Y-001"
+      ],
+      "kind": "accessibility",
+      "description": "Fixture: delivered package at1280x720 with empty/D1/max-field profiles and keyboard-only input. Stimulus: all functional journeys including every paged result, editor optional fields, validation correction, dirty retain/discard, delete cancel/confirm, chooser/overwrite/restore cancel/confirm, pending/uncertainty/retry/close, help and text-size controls. Oracle: functional outcomes plus focus-order/dialog-focus-return checklist against selected WCAG2.2 criteria. Evidence: observer/session transcript and focus screenshots with no pointer actions.",
+      "expected": "Every operation is keyboard executable with visible logical unobscured focus; no trap or unreachable page/result/control occurs. Modal focus stays inside the active dialog and returns meaningfully on dismissal, including native file selectors.",
+      "check_ids": [
+        "C-A11Y-KEYBOARD"
+      ]
+    },
+    {
+      "id": "Q-VOICEOVER-JOURNEYS",
+      "requirements": [
+        "NFR-A11Y-002"
+      ],
+      "kind": "accessibility",
+      "description": "Fixture: delivered .app on REF-MAC-M3MAX with the OS-bundled VoiceOver; record VoiceOver build/settings and actual WebKit version. Stimulus: identify task title/status/due date and notes, edit/error-correct, inspect all pages, cancel/confirm deletion and restore, and understand normal success/failure; instrumented same-revision delayed fixture separately verifies busy/uncertain messages. Oracle: expected names/roles/values/states, field/error associations and spoken outcome, independent of color. Evidence: human tester transcript, selected AX records and actual spoken announcements.",
+      "expected": "Controls and changes expose meaningful semantics and feedback in the packaged WebView. Success/busy/failure are understood without unnecessary focus theft or color-only cues; offscreen/paged tasks are reachable. DOM/ARIA inspection and automated screenshots alone cannot pass VoiceOver acceptance.",
+      "check_ids": [
+        "C-A11Y-VOICEOVER"
+      ]
+    },
+    {
+      "id": "Q-VISUAL-READABILITY",
+      "requirements": [
+        "NFR-A11Y-003"
+      ],
+      "kind": "accessibility",
+      "description": "Fixture: delivered .app at1280x720 logical pixels, supported light/dark appearances and default/hover/focus/error/pending/selected/completed states. Stimulus: measure actual rendered foreground/background pairs; use shipped Rust View Text size100/150/200percent controls and shortcuts, then repeat functional journeys at200percent without browser devtools or assistive zoom. Oracle: stated contrast thresholds and independent reachable-content/control checklist with specific criterion exceptions recorded. Evidence: screenshots, measured colors/ratios/font-size definitions and resized journey transcript.",
+      "expected": "Normal text is at least 4.5:1, large text at least 3:1 and meaningful controls/state indicators at least 3:1, subject only to the criteria explicit exceptions. At200percent text size no essential content is clipped or action unreachable. Release starts at100percent each launch; no full-WCAG-conformance claim follows.",
+      "check_ids": [
+        "C-A11Y-VISUAL"
+      ]
+    },
+    {
+      "id": "Q-PRIVATE-DIAGNOSTICS",
+      "requirements": [
+        "NFR-OBS-001"
+      ],
+      "kind": "failure",
+      "description": "Fixture: distinct sensitive title/notes/search/path sentinels and rare valid due date9999-12-31; valid/failed startup/storage/export/restore/future-format cases. Stimulus: cause each event, overflow/rotate retention, force diagnostic create/write/rotation failure and inspect app-controlled logs/stdout/stderr/panic diagnostics. Oracle: schema allowlist and complete absence of sentinels, original task-state ledger and file-byte accounting. Evidence: redacted schema/scan/retention reports and operations under log failure.",
+      "expected": "Required local events include timestamp/severity/app-version/category/correlation-ID/safe-code only. No content/date/search/backup bytes/selected absolute path leaks. Five files each at most 2 MiB retain at most 10 MiB, including crash/rotation checkpoints; logging failure does not prevent valid operations or corrupt storage, and no upload occurs.",
+      "check_ids": [
+        "C-DIAGNOSTICS",
+        "C-PRIVACY",
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "Q-EXACT-REVISION-EVIDENCE",
+      "requirements": [
+        "NFR-QUAL-001"
+      ],
+      "kind": "manual",
+      "description": "Fixture: final delivered commit/source digest, requirements/spec/contract baselines, release .app digest and complete scenario/check inventory. Stimulus: independent final review of every requirement result, domain/native-boundary/actual-Turso integration/packaged/accessibility/recovery/capacity/benchmark records and phase/project evidence. Oracle: all53 Must IDs mapped to complete passing results at the delivered revision and only supported reference host. Evidence: source/package identities, raw-check links, observer identities, instrumented-vs-delivered classification and final validation report.",
+      "expected": "Every requirement is verified with its positive and applicable negative/boundary/recovery/performance obligations. Missing, stale, skipped, unexplained, mock-only or wrong-host evidence is not a pass; instrumentation cannot stand in for delivered installation/restrictions/normal journeys. Specification probes establish qualification only.",
+      "check_ids": [
+        "C-HANDOFF"
+      ]
+    },
+    {
+      "id": "Q-HANDOFF",
+      "requirements": [
+        "NFR-QUAL-002",
+        "NFR-TECH-004"
+      ],
+      "kind": "manual",
+      "description": "Fixture: clean checkout and release handoff documents, locks, format fixtures, dependency/source inventory and exact-revision validation/package report. Stimulus: another developer follows build and verification commands with documented prerequisites; inspect bundled user help/data/backup compatibility notes and raw result links. Oracle: reproducible command outcomes and complete delivered identity/mapping, with known limitations explicitly reported. Evidence: clean-build transcript and developer/observer identity.",
+      "expected": "Build/verification are reproducible and documentation covers local use, format compatibility and dependency purposes. Delivered commit/package digests and all benchmark/accessibility/recovery outputs are linked; no unresolved defect violating a Must requirement is accepted as complete.",
+      "check_ids": [
+        "C-HANDOFF",
+        "C-BUILD"
+      ]
+    },
+    {
+      "id": "QUERY-CANONICAL-EXPANSION",
+      "requirements": [
+        "FR-004",
+        "FR-012",
+        "NFR-PERF-001",
+        "NFR-SEC-001"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: a valid task with notes U+AC01 repeated 10000 times (10000 stored scalars). Through delivered UI/actual protobuf query transport, search for U+1100 U+1161 U+11A8 repeated10000 times (30000 input scalars,90000 UTF8bytes), plus outer Unicode whitespace. Repeat with a trailing different scalar. Oracle: hand-authored Hangul canonical composition identity; no product normalizer generates expected IDs. Capture full input byte length and native response.",
+      "expected": "Canonically equivalent expanded query returns exactly the fixture identity; changed trailing scalar yields none. No64KiB query transport cap, truncation, mutation of notes or silent empty result is allowed. Native normalization remains authoritative and errors retain the query.",
+      "check_ids": [
+        "QUERY",
+        "C-CAPACITY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "MUTATION-TRIM-EXPANSION",
+      "requirements": [
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "NFR-SEC-001"
+      ],
+      "kind": "boundary",
+      "description": "Fixture: raw title U+2003 repeated40000 times followed by X then U+2003 repeated40000 times, with valid empty notes/date. Submit create and edit through Rust UI and directly through generated native Mutation. Compare exact editor input while paused/rejected versus normalized persisted value. Oracle is independently stated title X, not product normalization helper.",
+      "expected": "Both boundaries accept the normalized one-scalar title without raw-byte64KiB rejection or truncation. UI may trim only for transport and retains exact draft/submitted input until resolved; native independently trims and validates. Empty-all-whitespace sibling input rejects title without changing committed state.",
+      "check_ids": [
+        "FUNCTIONAL",
+        "C-SECURITY",
+        "C-PACKAGE"
+      ]
+    },
+    {
+      "id": "LIFECYCLE-INSTANCE-LEASE",
+      "requirements": [
+        "FR-024",
+        "NFR-PRIV-001",
+        "NFR-PRIV-002",
+        "NFR-ARCH-002"
+      ],
+      "kind": "failure",
+      "description": "Fixture: native app/account data directory0700, lock0600; existing unsaved editor; sequential and simultaneous launches (including8concurrent processes), delayed primary startup, primary Closing, activation callback failure, and ownerSIGKILL. Repeat native directory-key tests on two distinct data locations; actual account-isolation evidence uses separate OSaccount. Observe each process lease/database-open trace independently and inspect nonce request/ACK sequence.",
+      "expected": "At most one process holds the canonical directory lease and opens Turso. Secondary cannot open storage on lock failure, timeout or focus error; it exits after matching post-activation ACK. Existing draft survives. Owner crash permits one new owner only after lease acquisition. Closing retains lease until DB closure/processend. Different account/data directories do not collide; no activation network connection occurs.",
+      "check_ids": [
+        "LIFECYCLE",
+        "C-PACKAGE",
+        "C-PRIVACY"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

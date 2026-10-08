@@ -1,0 +1,23 @@
+{
+  "seed": "TODO-REQ-r2-D1-20261008",
+  "today": "2026-10-08",
+  "unicode_version": "16.0.0",
+  "files": {
+    "contracts/fixtures/D1.json": {
+      "sha256": "644184562bc49dfabde7a4e0f034155db471e16ddec437cefcc564566b36b25c",
+      "bytes": 5572047
+    },
+    "contracts/fixtures/D1-oracle.json": {
+      "sha256": "f5d773655f77e0bd56b6d3020332c21c53d8913e5b63cf56ff4ca91b4f51d62a",
+      "bytes": 2380230
+    },
+    "contracts/fixtures/D2.json": {
+      "sha256": "06aba050fc9465946073e83feada53c259ac2935bbb0d891feaaa3a619bbc325",
+      "bytes": 5572047
+    },
+    "contracts/fixtures/D2-oracle.json": {
+      "sha256": "2e35f069e60eb6568c4ea096a77b8c99d3f0c533593c73d5efe4efe21687efba",
+      "bytes": 2380230
+    }
+  }
+}
