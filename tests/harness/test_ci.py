@@ -135,6 +135,7 @@ class CiTests(unittest.TestCase):
 
     def init_git(self, root):
         self.command(root, "init", "-b", "main")
+        self.command(root, "config", "core.autocrlf", "false")
         self.command(root, "config", "user.name", "RDD Test")
         self.command(root, "config", "user.email", "rdd-test@example.invalid")
 
@@ -143,7 +144,9 @@ class CiTests(unittest.TestCase):
         self.command(root, "commit", "-m", message)
 
     def clone(self):
-        result = run_argv(["git", "clone", "--no-hardlinks", str(self.base), str(self.candidate)], self.home)
+        # Preserve the exact bytes recorded by the fixture's frozen artifacts.
+        result = run_argv(["git", "clone", "-c", "core.autocrlf=false", "--no-hardlinks",
+                           str(self.base), str(self.candidate)], self.home)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.command(self.candidate, "config", "user.name", "RDD Test")
         self.command(self.candidate, "config", "user.email", "rdd-test@example.invalid")
