@@ -25,6 +25,7 @@ _FIXED_PREFIXES = ("tools/rdd/", "tests/harness/", ".rdd/schemas/", ".codex/", "
 _MUTABLE_PREFIXES = (".rdd/runtime/", ".rdd/evidence/", ".rdd/plan/anchors/")
 _MUTABLE_FILES = {".rdd/run.json"}
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 def _host_platform() -> str:
@@ -144,9 +145,13 @@ def _read_prepared(root: Path, spec_lock: dict, plan_lock: dict) -> dict:
     return prepared
 
 
+def _selected_branch(root: Path, branch: str | None) -> str:
+    return (branch or os.environ.get("GITHUB_HEAD_REF") or
+            git(root, "symbolic-ref", "--quiet", "--short", "HEAD", check=False)).strip()
+
+
 def _selected_phase(root: Path, branch: str | None, plan: dict, run_id: str) -> tuple[str | None, str]:
-    selected_branch = branch or os.environ.get("GITHUB_HEAD_REF") or git(root, "symbolic-ref", "--quiet", "--short", "HEAD", check=False)
-    selected_branch = selected_branch.strip()
+    selected_branch = _selected_branch(root, branch)
     match = re.fullmatch(r"rdd/([A-Za-z0-9][A-Za-z0-9._-]{0,63})/p([0-9]{2,4})", selected_branch)
     if match:
         if match.group(1) != run_id:
@@ -208,24 +213,68 @@ def _run_url() -> str:
     return ""
 
 
-def verify(root: Path, policy_root: Path | None = None, branch: str | None = None) -> dict:
+def _release_identity(root: Path, policy_root: Path, branch: str | None,
+                      policy_sha: str | None, source_sha: str | None) -> None:
+    if not all(isinstance(value, str) and _SHA.fullmatch(value)
+               for value in (policy_sha, source_sha)):
+        raise RddError("Release policy and source pins must be paired full lowercase commit SHAs", "policy")
+    if not isinstance(branch, str) or not re.fullmatch(r"codex/rdd-release/[A-Za-z0-9][A-Za-z0-9._-]{0,63}", branch):
+        raise RddError("Release verification requires a canonical release branch", "policy")
+    if policy_root == root:
+        raise RddError("Release verification requires a separate prepared policy checkout", "policy")
+    for checkout, pin, label in ((policy_root, policy_sha, "policy"), (root, source_sha, "source")):
+        if Path(git(checkout, "rev-parse", "--show-toplevel")).resolve() != checkout:
+            raise RddError(f"Release {label} must identify a repository checkout root", "policy")
+        clean(checkout)
+        if head(checkout) != pin:
+            raise RddError(f"Release {label} pin does not match its checkout HEAD", "policy")
+    if git(root, "merge-base", policy_sha, source_sha, check=False) != policy_sha:
+        raise RddError("Release prepared policy commit must be an ancestor of the source pin", "policy")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        if os.environ.get("GITHUB_EVENT_NAME") != "pull_request":
+            raise RddError("Release pins are permitted only for a pull_request event", "policy")
+        event = read_json(Path(os.environ.get("GITHUB_EVENT_PATH", "")))
+        pr = event.get("pull_request", {}) if isinstance(event, dict) else {}
+        repository = os.environ.get("GITHUB_REPOSITORY")
+        if not isinstance(pr, dict):
+            raise RddError("Release event has no pull request identity", "policy")
+        source, base = pr.get("head"), pr.get("base")
+        if (not isinstance(source, dict) or not isinstance(base, dict)
+                or not isinstance(source.get("repo"), dict) or not isinstance(base.get("repo"), dict)
+                or not repository or source["repo"].get("full_name") != repository
+                or base["repo"].get("full_name") != repository
+                or base.get("ref") != "main" or source.get("ref") != branch
+                or source.get("sha") != source_sha):
+            raise RddError("Release verification requires the exact same-repository release PR head targeting main", "policy")
+
+
+def verify(root: Path, policy_root: Path | None = None, branch: str | None = None,
+           release_policy: str | None = None, release_source: str | None = None) -> dict:
     """Verify one candidate without SQLite state; persist success or failure receipt.
 
-    A separate policy_root is the PR base checkout. With no frozen plan on either
-    side the result is explicitly harness_only. Nonphase branches select check
-    coverage from a whole-phase marker projection, without certifying completion.
+    Ordinary policy comes from the PR base. Explicit paired release pins select
+    an independently approved prepared policy checkout and exact candidate HEAD.
+    Neither mode certifies task history or application completion.
     """
     root = root.resolve()
     policy_root = policy_root.resolve() if policy_root else root
+    release = release_policy is not None or release_source is not None
     report: dict[str, Any] = {
         "schema_version": 1, "status": "failed", "scope": "unverified",
         "application_complete": False, "task_history_verified": False,
-        "policy_source": "separate_base" if policy_root != root else "same_checkout",
+        "policy_source": "pinned_prepared_baseline" if release else
+                         "separate_base" if policy_root != root else "same_checkout",
         "started_at": now(), "phase": None, "branch": branch, "checks": [],
         "observed_through_phase": None,
         "pending_external": [], "not_applicable_on_platform": [], "errors": [],
     }
     try:
+        branch = _selected_branch(root, branch)
+        if branch.startswith("codex/rdd-release/") and not release:
+            raise RddError("Release branches require explicit paired policy and source pins", "policy")
+        if release:
+            _release_identity(root, policy_root, branch, release_policy, release_source)
+            report.update({"release_policy": release_policy, "release_source": release_source})
         config = read_json(safe_path(policy_root, ".rdd/config.json", allow_missing=False))
         if not isinstance(config, dict):
             raise RddError("Trusted harness configuration must be an object", "policy")
@@ -235,9 +284,12 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
         report.update({"protected_digest": digest(protected), "source_commit": head(root),
                        "source_digest": source_digest(root), "policy_commit": head(policy_root),
                        "platform": _host_platform(), "run_url": _run_url()})
+        policy_digest = source_digest(policy_root)
         trusted_locks = [safe_path(policy_root, path).is_file() for path in _LOCKS]
         candidate_locks = [safe_path(root, path).is_file() for path in _LOCKS]
         if not any(trusted_locks) and not any(candidate_locks):
+            if release:
+                raise RddError("Release verification requires a frozen prepared policy baseline", "policy")
             report.update({"status": "harness_only", "scope": "bootstrap",
                            "note": "No frozen implementation plan exists; only harness policy was verified. Trusted base selftests are a separate required CI step."})
             return report
@@ -258,6 +310,25 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
         if spec_lock.get("requirements_digest") != reqs["digest"]:
             raise RddError("Requirements differ from their specification freeze", "specification")
         artifacts.spec_validate(root, spec, reqs, config)
+        if release:
+            # A final source checkout is not an approved prepared baseline, even
+            # when its immutable freezes and preparation receipt are identical.
+            trusted_spec_lock = _read_lock(policy_root, ".rdd/spec.lock.json", ".rdd/spec.json")
+            trusted_plan_lock = _read_lock(policy_root, ".rdd/plan/plan.lock.json", ".rdd/plan/plan.json")
+            trusted_prepared = _read_prepared(policy_root, trusted_spec_lock, trusted_plan_lock)
+            trusted_spec = read_json(safe_path(policy_root, ".rdd/spec.json", allow_missing=False))
+            trusted_plan = read_json(safe_path(policy_root, ".rdd/plan/plan.json", allow_missing=False))
+            trusted_reqs = artifacts.requirements(policy_root, config["requirements"])
+            artifacts.spec_validate(policy_root, trusted_spec, trusted_reqs, config)
+            artifacts.plan_validate(policy_root, trusted_plan, trusted_spec, trusted_spec_lock, config)
+            artifacts.anchors_verify(policy_root, trusted_plan, {
+                "tasks": {task["id"]: {"status": "pending"} for task in trusted_plan["tasks"]}
+            })
+            for path, expected in trusted_prepared["shell_hashes"].items():
+                if file_hash(safe_path(policy_root, path, allow_missing=False)) != expected:
+                    raise RddError(f"Release policy preparation shell changed: {path}", "policy")
+            if branch != f"codex/rdd-release/{prepared['run_id']}":
+                raise RddError("Release branch must name the pinned prepared run", "policy")
         # Preparation already validated immutable dependency cuts. Repeating its
         # file-existence checks here would reject legitimate completed deletions.
         # The local run locator is intentionally ignored by Git. The frozen
@@ -281,11 +352,16 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
                         "Candidate marker projection reduces CI coverage below the trusted base",
                         "verification",
                     )
+        if release and (phase is not None or boundary != len(phases) - 1
+                        or report["anchors"]["remaining"] != 0):
+            raise RddError("Release source requires the completed full phase prefix with no remaining anchors", "verification")
         report["observed_through_phase"] = phases[boundary] if boundary >= 0 else None
 
         ordered_ids = list(spec["contract_check_ids"])
         for record in plan["phases"][:boundary + 1]:
             ordered_ids.extend(record["checks"])
+        if boundary == len(phases) - 1:
+            ordered_ids.extend(spec["project_check_ids"])
         checks = artifacts.unique(spec["checks"], "check")
         selected_ids = list(dict.fromkeys(ordered_ids))
         artifacts.subset(selected_ids, checks, "CI cumulative checks")
@@ -318,11 +394,16 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
                 raise RddError(f"CI check evidence is stale or mismatched: {check['id']}", "verification")
         if head(root) != report["source_commit"] or source_digest(root) != report["source_digest"]:
             raise RddError("Candidate source changed while checks ran; rerun against a stable commit", "verification")
+        if release:
+            clean(root)
+            clean(policy_root)
+            if head(policy_root) != release_policy or source_digest(policy_root) != policy_digest:
+                raise RddError("Pinned prepared policy changed while checks ran", "policy")
         # Detect policy changes even if a check tried to hide them behind ignores.
         after_policy = _assert_trusted_policy(root, policy_root, config)
         if after_policy != protected:
             raise RddError("Trusted policy changed while checks ran", "policy")
-        scope = ("phase_cumulative" if phase else
+        scope = ("release_source" if release else "phase_cumulative" if phase else
                  "source_cumulative" if boundary >= 0 else "prepared_baseline")
         report.update({"status": "passed" if boundary >= 0 else "harness_only",
                        "scope": scope,

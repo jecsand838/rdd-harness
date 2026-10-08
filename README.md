@@ -81,6 +81,7 @@ Clone your repository or fork using its actual URL, then initialize local state:
 ```sh
 git clone YOUR_GITHUB_REPOSITORY_URL rdd-harness
 cd rdd-harness
+git switch -c codex/todo-baseline origin/main
 ./rdd init
 ./rdd status
 ./rdd --help
@@ -100,7 +101,7 @@ Run `init` before `status` on a fresh clone: Git does not carry the ignored loca
 
 On Windows, replace `./rdd` with `python tools/rdd/cli.py`, `rdd.cmd` in Command Prompt, or `./rdd.ps1` in PowerShell, keeping the same arguments. On Unix, `python3 tools/rdd/cli.py` also works if a file extractor did not preserve executable permissions.
 
-If starting from an archive rather than a clone, extract it into its own directory and run `init` there. After configuring your Git identity, make the initial source commit and connect a writable `origin` remote if one does not already exist. Clones already have history and a remote; they do not need an extra initialization commit.
+If starting from an archive rather than a clone, extract it into its own directory, initialize Git on a named authoring branch with `git init -b codex/todo-baseline`, and run `./rdd init` there. After configuring your Git identity, make the initial source commit and connect a writable `origin` remote if one does not already exist. Clones already have history and a remote; they do not need an extra initialization commit.
 
 To inspect the specification launch prompt without opening Codex or starting a run:
 
@@ -112,7 +113,7 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
 
 ### Start development deliberately
 
-Begin with a clean checkout on the named branch that will hold your accepted specification and preparation baseline. In the examples below, replace `YOUR_BASELINE_BRANCH` with that branch's actual name. The shipped CI runs for PRs targeting `main` or `rdd/**`, so `main` is the default baseline choice. To use another baseline branch outside those patterns, update the trusted workflow's branch filters before specification freeze so the first phase PR can receive its required `verify` check. Complete each workflow and commit its accepted output before continuing; these are separate interactive sessions, not a batch script.
+`main` is the merge-only release branch. Begin on a clean, dedicated baseline such as `codex/todo-baseline`; use that branch for all specification and preparation commits. In the examples below, replace `YOUR_BASELINE_BRANCH` with its actual name. The shipped CI verifies pushes to `codex/*-baseline` and phase PRs targeting those branches or `rdd/**`. Other naming patterns require a reviewed CI filter change before specification freeze. The controller rejects source authoring on `main`, detached HEAD, or a branch other than the recorded baseline/phase. Complete each workflow and commit its accepted output before continuing; these are separate interactive sessions, not a batch script.
 
 1. **Specify the solution.** For a first full solution, start a regenerate run:
 
@@ -130,11 +131,13 @@ Begin with a clean checkout on the named branch that will hold your accepted spe
 
    The workflow reviews and freezes the task graph, then materializes the approved shells, markers, and matrix. Commit the prepared baseline. Unresolved design questions return to specification.
 
-3. **Push the accepted baseline.** The first phase PR and its trusted CI policy need this remote base:
+3. **Push the accepted baseline.** The first phase PR and its trusted CI policy need this remote base. Keep it outside `main`:
 
    ```sh
    git push origin YOUR_BASELINE_BRANCH
    ```
+
+   Verify that exact baseline push in CI, then require `verify` on the baseline. Later phase bases need the same required check only after they are sealed; do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for the setup commands.
 
 4. **Open implementation and activate native Goal mode.** Obtain the objective, then launch the implementation session:
 
@@ -153,7 +156,7 @@ Use `./rdd status` for the current run, active phase, tasks, blockers, and exact
 ./rdd export-run .rdd/evidence/run-checkpoint.json
 ```
 
-After resolving an interruption, resume local controller state with:
+After resolving an interruption, return to the run's recorded baseline or phase branch and resume local controller state with:
 
 ```sh
 ./rdd resume
@@ -168,6 +171,8 @@ To restore on another machine, transfer the Git repository at the checkpoint's e
 ```
 
 Runtime state and evidence are ignored by Git, so pushing source alone does not transfer them. The checkpoint carries run state and raw check logs; imports verify source/lock identity and log hashes. See [recovery procedures](docs/harness/workflow-guide.md#repairs-and-interruptions) and the [evidence guide](docs/harness/evidence-guide.md) for the full process.
+
+An older run whose baseline was recorded as `main` remains inspectable/exportable. Preserve its source and checkpoint, then start a fresh run on a dedicated baseline; do not edit recorded branch identities to move it. Branch refusals preserve dirty work and do not automatically switch, stash, reset, or rewrite artifacts.
 
 For a bounded change to requirements or a sealed design/implementation defect, use `./rdd workflow specification --mode amend` from the selected baseline, then repeat preparation and implementation. Commit any authorized requirements edits first. The amendment must record impact and preserve unaffected work and history. Use `--mode regenerate` for a fresh full solution: it archives prior active artifacts, but replacement of existing application code remains explicit planned work. A repair within an open phase can use existing scoped tasks; a sealed phase cannot be reopened. See [amendment and regeneration](docs/harness/workflow-guide.md#amendment-and-regeneration).
 
@@ -187,13 +192,17 @@ Only `./rdd gate project` returning **`status: passed` and `application_complete
 
 A paused Goal, a worker's prose, or passing harness tests cannot establish project acceptance. PR merging and release publishing are separate developer actions after validation.
 
+### Release into main
+
+After project acceptance, archive the reports/checkpoint and keep the phase stack intact. Create one `codex/rdd-release/<run-id>` branch at the accepted application commit and open a PR into `main`. The operator sets `RDD_RELEASE_POLICY_SHA` to the first phase's recorded prepared-base commit and `RDD_RELEASE_SOURCE_SHA` to the project-accepted head through repository Actions variables. Release CI requires both exact pins, uses the verifier from `main` with the separately pinned prepared policy, and rejects incomplete or changed source. Only merge after successful checks and normal review. No specification/preparation-only PR is needed on `main`. The [manual demo runbook](docs/harness/blog-demo.md#8-verify-and-merge-one-complete-release-pr-into-main) contains the full pin, publish, merge and launch commands.
+
 ### What CI proves
 
-CI runs on Linux, macOS, and Windows, with the aggregate check named **`verify`**. A PR uses the trusted base controller and policy to validate the candidate. The initial frozen specification/preparation baseline must be deliberately committed to that trusted base; an implementation PR cannot replace its own frozen policy to grant itself permission.
+CI runs on Linux, macOS, and Windows, with the aggregate check named **`verify`**. A phase PR uses the trusted base controller and policy to validate the candidate. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy to grant itself permission. The explicit release route uses operator-pinned policy while retaining the controller from the PR's `main` base.
 
 Before a frozen application plan exists, CI reports `harness_only` with `application_complete=false`. An intact prepared baseline verifies contracts and pending markers. A phase PR runs cumulative ordinary checks for the applicable native platform. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
 
-On nonphase branches, CI accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; a same-revision push check cannot detect rollback against an earlier revision. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
+On nonphase branches, CI accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; a same-revision push check cannot detect rollback against an earlier revision. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
 
 Protect the verification workflow and policy through repository rules and review. The harness trusts its local controller and evidence observers; it is not a sandbox against someone who can rewrite the verifier or state. See the [security model](docs/harness/security-model.md) for the trust boundary and the [runtime guide](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence) for CI and native evidence requirements.
 
@@ -215,6 +224,7 @@ Protect the verification workflow and policy through repository rules and review
 For deeper work, use the existing guides:
 
 - [Workflow guide](docs/harness/workflow-guide.md): stage procedures, task integration, review, repair, and recovery.
+- [Manual blog demo](docs/harness/blog-demo.md): complete generation, progress, verification, release PR and packaged-app walkthrough.
 - [Artifact guide](docs/harness/artifact-guide.md): manifests, schemas, frozen identities, and authoring boundaries.
 - [Evidence guide](docs/harness/evidence-guide.md): real check receipts, native/manual imports, metrics, and provenance.
 - [Codex runtime guide](docs/harness/codex-runtime.md): client setup, Goals, adapters, PR policy, and CI.

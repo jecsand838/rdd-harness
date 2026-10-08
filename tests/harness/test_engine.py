@@ -90,6 +90,7 @@ class EngineTests(Fixture):
         self.g("config", "user.name", "RDD Engine Fixture")
         self.g("config", "user.email", "fixture@example.invalid")
         self.commit("Initial controller fixture")
+        self.g("switch", "-c", "codex/test-baseline")
         self.c.start("regenerate", "fixture-run")
         self.c.spec_init()
         self.spec["id"] = "fixture-run"
@@ -178,7 +179,7 @@ class EngineTests(Fixture):
         gate = self.c.gate_phase("P01")
         self.assertEqual(gate["status"], "passed")
         self.c.stack_publish("P01")
-        self.assertEqual(self.hub.published[0]["base"], "main")
+        self.assertEqual(self.hub.published[0]["base"], "codex/test-baseline")
         self.assertTrue(self.c.stack_verify()["ready"])
         self.assertEqual(self.c.phase_seal("P01")["status"], "sealed")
         report = self.c.gate_project()

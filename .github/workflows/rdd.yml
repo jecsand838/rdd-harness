@@ -2,9 +2,9 @@ name: rdd
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/*-baseline']
   pull_request:
-    branches: [main, 'rdd/**']
+    branches: [main, 'rdd/**', 'codex/*-baseline']
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
@@ -30,6 +30,9 @@ jobs:
       RDD_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       RDD_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
       RDD_HEAD_BRANCH: ${{ github.head_ref || github.ref_name }}
+      RDD_BASE_BRANCH: ${{ github.base_ref }}
+      RDD_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+      RDD_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - name: Check out candidate revision
@@ -55,17 +58,40 @@ jobs:
 
       - name: Select trusted base or initial-import verifier
         id: verifier
+        env:
+          RDD_RELEASE_POLICY_SHA: ${{ vars.RDD_RELEASE_POLICY_SHA }}
+          RDD_RELEASE_SOURCE_SHA: ${{ vars.RDD_RELEASE_SOURCE_SHA }}
         run: |
           python - <<'RDD_SELECT_VERIFIER'
           import os
           from pathlib import Path
+          import re
           baseline = Path("baseline")
           candidate = Path("candidate")
           required = (".rdd/config.json", "tools/rdd/cli.py")
           frozen = (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json")
+          release = os.environ["RDD_HEAD_BRANCH"].startswith("codex/rdd-release/")
+          release_policy = release_source = ""
+          if release:
+              if (os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
+                      or os.environ.get("RDD_BASE_BRANCH") != "main"
+                      or not os.environ.get("GITHUB_REPOSITORY")
+                      or os.environ.get("RDD_HEAD_REPOSITORY") != os.environ["GITHUB_REPOSITORY"]
+                      or os.environ.get("RDD_BASE_REPOSITORY") != os.environ["GITHUB_REPOSITORY"]):
+                  raise SystemExit("Release requires a same-repository pull request targeting main")
+              if not re.fullmatch(r"codex/rdd-release/[A-Za-z0-9][A-Za-z0-9._-]{0,63}", os.environ["RDD_HEAD_BRANCH"]):
+                  raise SystemExit("Release branch is not canonical")
+              release_policy = os.environ.get("RDD_RELEASE_POLICY_SHA", "")
+              release_source = os.environ.get("RDD_RELEASE_SOURCE_SHA", "")
+              if not all(re.fullmatch(r"[0-9a-f]{40}", value) for value in (release_policy, release_source)):
+                  raise SystemExit("Release requires paired full policy and source SHA repository variables")
+              if release_source != os.environ.get("RDD_HEAD_SHA"):
+                  raise SystemExit("Release source repository variable does not match the exact PR head")
           if all((baseline / path).is_file() for path in required):
               selected = "baseline"
           else:
+              if release:
+                  raise SystemExit("Release requires a complete trusted base verifier; bootstrap is forbidden")
               if any((baseline / path).exists() or (baseline / path).is_symlink()
                      for path in (".rdd", "tools/rdd")):
                   raise SystemExit("Trusted base contains a partial harness; bootstrap is forbidden")
@@ -76,17 +102,32 @@ jobs:
               if os.environ["RDD_HEAD_BRANCH"].startswith("rdd/"):
                   raise SystemExit("Initial import cannot use an RDD phase branch")
               selected = "candidate"
+          policy_root = "prepared-policy" if release else selected
+          policy_sha = release_policy if release else os.environ.get("RDD_POLICY_SHA", "")
+          prepared = release or all((Path(policy_root) / path).is_file() for path in frozen)
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"root={selected}\n")
+              output.write(f"policy_root={policy_root}\npolicy_sha={policy_sha}\n")
+              output.write(f"release_policy={release_policy}\nrelease_source={release_source}\n")
+              output.write(f"prepared={'true' if prepared else 'false'}\n")
           RDD_SELECT_VERIFIER
+
+      - name: Check out approved prepared release policy
+        if: steps.verifier.outputs.release_policy != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.verifier.outputs.release_policy }}
+          path: prepared-policy
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Test selected harness
         working-directory: ${{ steps.verifier.outputs.root }}
         run: python tools/rdd/cli.py selftest
 
       - name: Install the trusted Rust toolchain for a prepared application
-        if: hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
-        working-directory: baseline
+        if: steps.verifier.outputs.prepared == 'true'
+        working-directory: ${{ steps.verifier.outputs.policy_root }}
         run: |
           python - <<'PY'
           import os
@@ -113,7 +154,7 @@ jobs:
           PY
 
       - name: Install pinned Buf without schema publishing or PR comments
-        if: hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
+        if: steps.verifier.outputs.prepared == 'true'
         uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
           version: '1.73.0'
@@ -123,7 +164,7 @@ jobs:
           archive: 'false'
 
       - name: Install Tauri Linux build prerequisites
-        if: runner.os == 'Linux' && hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
+        if: runner.os == 'Linux' && steps.verifier.outputs.prepared == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
@@ -131,8 +172,10 @@ jobs:
             libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config
 
       - name: Record installed verification tools
-        if: hashFiles('baseline/.rdd/plan/plan.lock.json') != ''
-        working-directory: baseline
+        if: steps.verifier.outputs.prepared == 'true'
+        working-directory: ${{ steps.verifier.outputs.policy_root }}
+        env:
+          RDD_SELECTED_POLICY_SHA: ${{ steps.verifier.outputs.policy_sha }}
         run: |
           python - <<'PY'
           import json
@@ -144,7 +187,7 @@ jobs:
           commands = {"rustc": ["rustc", "--version", "--verbose"], "cargo": ["cargo", "--version"], "buf": ["buf", "--version"]}
           versions = {name: subprocess.run(argv, text=True, capture_output=True, check=True, timeout=30).stdout.strip() for name, argv in commands.items()}
           receipt = {"schema_version": 1, "scope": "installed_ci_tools", "application_complete": False,
-                     "source_commit": os.environ["RDD_HEAD_SHA"], "policy_commit": os.environ["RDD_POLICY_SHA"],
+                     "source_commit": os.environ["RDD_HEAD_SHA"], "policy_commit": os.environ["RDD_SELECTED_POLICY_SHA"],
                      "python": sys.version, "platform": platform.platform(), "tools": versions}
           destination = Path(os.environ["GITHUB_WORKSPACE"]) / "candidate/.rdd/evidence/toolchain.json"
           destination.parent.mkdir(parents=True, exist_ok=True)
@@ -156,11 +199,17 @@ jobs:
         working-directory: candidate
         env:
           RDD_VERIFIER_ROOT: ${{ steps.verifier.outputs.root }}
-        run: >-
-          python "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT/tools/rdd/cli.py"
-          --root "$GITHUB_WORKSPACE/candidate"
-          ci --policy-root "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT"
-          --branch "$RDD_HEAD_BRANCH"
+          RDD_POLICY_ROOT: ${{ steps.verifier.outputs.policy_root }}
+          RDD_SELECTED_RELEASE_POLICY: ${{ steps.verifier.outputs.release_policy }}
+          RDD_SELECTED_RELEASE_SOURCE: ${{ steps.verifier.outputs.release_source }}
+        run: |
+          arguments=(--root "$GITHUB_WORKSPACE/candidate" ci
+            --policy-root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --branch "$RDD_HEAD_BRANCH")
+          if [[ -n "$RDD_SELECTED_RELEASE_POLICY" ]]; then
+            arguments+=(--release-policy "$RDD_SELECTED_RELEASE_POLICY"
+              --release-source "$RDD_SELECTED_RELEASE_SOURCE")
+          fi
+          python "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT/tools/rdd/cli.py" "${arguments[@]}"
 
       - name: Preserve CI evidence
         if: always()

@@ -7,6 +7,7 @@ mocked into a passing integration result by this suite.
 
 import importlib.util
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -19,6 +20,69 @@ SPEC.loader.exec_module(MODULE)
 
 
 class OrchestrationSafety(unittest.TestCase):
+    def test_no_run_generation_rejects_each_frozen_artifact_before_tools(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", "-b", "codex/test-baseline", str(root)], check=True)
+            output = root / "gen/rust/binding.rs"
+            output.parent.mkdir(parents=True)
+            output.write_text("preserve generated output\n", encoding="utf-8")
+            locator = root / ".rdd/run.json"
+            for rel in (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json"):
+                frozen = root / rel
+                frozen.parent.mkdir(parents=True, exist_ok=True)
+                frozen.write_text("{}\n", encoding="utf-8")
+                for no_run_locator in (False, True):
+                    if no_run_locator:
+                        locator.write_text('{"run_id": null}\n', encoding="utf-8")
+                    before = {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*")
+                              if p.is_file() and ".git" not in p.relative_to(root).parts}
+                    with self.subTest(frozen=rel, no_run_locator=no_run_locator), patch.object(MODULE.shutil, "which") as tool_lookup:
+                        with self.assertRaisesRegex(MODULE.ContractCheckError, "frozen artifacts") as caught:
+                            MODULE.run_contracts(root, write=True, bootstrap_lock=True)
+                        self.assertTrue(caught.exception.blocked)
+                        tool_lookup.assert_not_called()
+                        self.assertEqual({p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*")
+                                          if p.is_file() and ".git" not in p.relative_to(root).parts}, before)
+                        self.assertFalse((root / ".rdd/runtime").exists())
+                    with patch.object(MODULE.shutil, "which", return_value=None):
+                        with self.assertRaisesRegex(MODULE.ContractCheckError, "missing contract prerequisites"):
+                            MODULE.run_contracts(root)
+                frozen.unlink()
+                locator.unlink(missing_ok=True)
+
+    def test_non_main_qualification_without_run_checks_prerequisites(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", "-b", "codex/test-baseline", str(root)], check=True)
+            with patch.object(MODULE.shutil, "which", return_value=None):
+                with self.assertRaises(MODULE.ContractCheckError) as caught:
+                    MODULE.run_contracts(root, write=True, bootstrap_lock=True)
+            self.assertTrue(caught.exception.blocked)
+            self.assertIn("missing contract prerequisites", str(caught.exception))
+            self.assertFalse((root / ".rdd").exists())
+
+    def test_direct_write_rejects_main_and_detached_before_tools_or_runtime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q", "-b", "main", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "config", "user.name", "Generator Fixture"], check=True)
+            subprocess.run(["git", "-C", str(root), "config", "user.email", "fixture@example.invalid"], check=True)
+            (root / "user.txt").write_text("preserve committed input\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "user.txt"], check=True)
+            subprocess.run(["git", "-C", str(root), "commit", "-q", "-m", "Initial fixture"], check=True)
+            (root / "user.txt").write_text("preserve dirty input\n", encoding="utf-8")
+            for detached in (False, True):
+                if detached:
+                    subprocess.run(["git", "-C", str(root), "switch", "-q", "--detach", "HEAD"], check=True)
+                with self.subTest(detached=detached), patch.object(MODULE.shutil, "which") as tool_lookup:
+                    with self.assertRaises(MODULE.ContractCheckError) as caught:
+                        MODULE.run_contracts(root, write=True, bootstrap_lock=True)
+                    self.assertTrue(caught.exception.blocked)
+                    tool_lookup.assert_not_called()
+                    self.assertEqual((root / "user.txt").read_text(), "preserve dirty input\n")
+                    self.assertFalse((root / ".rdd").exists())
+
     def test_missing_compilers_is_blocked_not_passed(self):
         with patch.object(MODULE.shutil, "which", return_value=None):
             with self.assertRaises(MODULE.ContractCheckError) as caught:
