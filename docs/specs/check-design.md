@@ -2,6 +2,8 @@
 
 The `.rdd/spec.json` check array fixes command names, platforms, budgets and metric keys. This document defines their interpretation. No future product check is claimed to pass during specification.
 
+The complete execution classification is in [ci-host-amendment.md](ci-host-amendment.md). Application/runtime/package/full-evidence checks execute on the qualified reference Mac; ordinary hosted proofs retain their complete source/contract/static scope. Hosted `pending_external` results do not discharge any reference obligation.
+
 ## Specification proofs
 
 `C-CONTRACTS` runs the controller-supplied Buf/Prost pipeline with the pinned tools: lint/build, exact generated-source comparison, native and WASM compilation, valid service-provider proof and deliberately wrong-signature E0050 rejection. `C-CONSUMER` additionally compiles an actual generated-service caller on native/WASM and executes wire tests for optional presence, Unicode, nanosecond/negative timestamps, u64 precision, malformed protobuf and preserved unknown enums. Neither establishes domain validity.
@@ -22,4 +24,4 @@ The Rust acceptance harness has a single `tests/acceptance/Cargo.toml` entry man
 
 Performance commands `tests/desktop/benchmark.py P1|P2|P3` orchestrate the pinned native Accessibility/CoreGraphics observer described in `quality.md`. The controller metric names end in `_ms`, with separate arrays and limits for launch; create/edit/complete/reopen/delete; search/status_filter/date_filter/ordering; export/restore. Payloads must provide raw samples, units, integer errors and environment metadata in the supported evaluator format. Warmups and invalidation reasons are retained separately; errors fail regardless of timing. Cumulative phase and project gates select these existing definitions through later planning, without changing acceptance meaning.
 
-The currently recorded free-space shortfall is a future benchmark precondition failure, not a substitution of host or a skipped pass. Actual application benchmarks/accessibility/privacy are not specification-stage exit claims. The current stage exits only when real dependency/contract qualification and independent review are complete and `./rdd spec freeze` accepts the exact artifacts.
+The specification-time free-space shortfall is a historical observation; benchmark preconditions must be remeasured at execution, without substituting a host or accepting a skipped pass. Actual application benchmarks/accessibility/privacy are not specification-stage exit claims. The current stage exits only when real dependency/contract qualification and independent review are complete and `./rdd spec freeze` accepts the exact artifacts.

@@ -261,8 +261,8 @@ def run_contracts(
             "descriptor_sha256": hashlib.sha256(descriptor.read_bytes()).hexdigest(),
             "files": _files(candidate),
         }
-        (candidate / ".rdd-generated.json").write_text(
-            json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        (candidate / ".rdd-generated.json").write_bytes(
+            (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode("utf-8")
         )
         expected, actual = _files(candidate), _files(output)
         changed = sorted(name for name in expected.keys() | actual.keys() if expected.get(name) != actual.get(name))

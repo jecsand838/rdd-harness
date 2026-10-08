@@ -6,6 +6,8 @@ mocked into a passing integration result by this suite.
 """
 
 import importlib.util
+import hashlib
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -20,6 +22,54 @@ SPEC.loader.exec_module(MODULE)
 
 
 class OrchestrationSafety(unittest.TestCase):
+    def test_metadata_is_canonical_under_windows_text_translation(self):
+        """Exercise byte comparison; fake tools do not claim compiler qualification."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            files = {"Cargo.toml": b"[workspace]\n", "Cargo.lock": b"version = 4\n"}
+            for relative in ("tools/proto-codegen/Cargo.toml", "tools/proto-codegen/Cargo.lock", "buf.yaml", "contracts/test.proto"):
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"fixture\n")
+            output = root / "gen/rust"
+            output.mkdir(parents=True)
+            for name, data in files.items():
+                (output / name).write_bytes(data)
+            metadata = {
+                "generator": "rdd-proto-codegen/0.1.0", "prost_version": "0.14.4",
+                "descriptor_sha256": hashlib.sha256(b"descriptor").hexdigest(),
+                "files": {name: hashlib.sha256(data).hexdigest() for name, data in files.items()},
+            }
+            canonical = (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode("utf-8")
+            (output / ".rdd-generated.json").write_bytes(canonical)
+            original = Path.write_text
+
+            def windows_text(path, data, encoding=None, errors=None, newline=None):
+                return original(path, data, encoding=encoding, errors=errors,
+                                newline="\r\n" if newline is None else newline)
+
+            def command(argv, **kwargs):
+                if "--as-file-descriptor-set" in argv:
+                    Path(argv[argv.index("--output") + 1]).write_bytes(b"descriptor")
+                if "run" in argv:
+                    destination = Path(argv[argv.index("--") + 2])
+                    destination.mkdir(parents=True)
+                    for name, data in files.items():
+                        (destination / name).write_bytes(data)
+                invalid = "check" in argv and "invalid-proof" in str(argv)
+                return MODULE.CommandResult(tuple(argv), 1 if invalid else 0,
+                                            stderr="E0050" if invalid else "")
+
+            with patch.object(MODULE.shutil, "which", side_effect=lambda name: name), \
+                    patch.object(MODULE, "run_argv", command), patch.object(Path, "write_text", windows_text):
+                result = MODULE.run_contracts(root)
+                self.assertEqual(result["changed_files"], [])
+                self.assertEqual((output / ".rdd-generated.json").read_bytes(), canonical)
+                # A normalized comparison would wrongly accept this actual byte drift.
+                (output / ".rdd-generated.json").write_bytes(canonical.replace(b"\n", b"\r\n"))
+                with self.assertRaisesRegex(MODULE.ContractCheckError, "generated Rust drift: .rdd-generated.json"):
+                    MODULE.run_contracts(root)
+
     def test_no_run_generation_rejects_each_frozen_artifact_before_tools(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -1,0 +1,57 @@
+--- a/tools/rdd/artifacts.py
++++ b/tools/rdd/artifacts.py
+@@ -217,7 +217,10 @@
+                 raise RddError(f"Task {t['id']} writes a frozen/policy path {rel}", "planning")
+             if rel not in target:
+                 raise RddError(f"Task {t['id']} writes a file absent from target inventory: {rel}")
+-            if not (root / rel).is_file() and rel not in shells:
++            # A task sidecar reserves its exact write set without creating bogus
++            # manifests, lockfiles or binaries. Inline tasks still need safe shells.
++            if (not (root / rel).is_file() and rel not in shells
++                    and t["anchor"]["mode"] != "sidecar"):
+                 raise RddError(f"Missing file {rel} needs an explicit preparation shell")
+         if t["anchor"]["path"] not in t["writes"]:
+             raise RddError(f"Task {t['id']} anchor must identify one of its declared write files")
+--- a/tests/harness/test_artifacts.py
++++ b/tests/harness/test_artifacts.py
+@@ -282,6 +282,40 @@
+         with self.assertRaisesRegex(RddError, "explicit preparation shell"):
+             self.vp()
+ 
++    def test_sidecar_covers_absent_writes_without_placeholder_shells(self):
++        paths = ["app/Cargo.toml", "app/capabilities.json", "app/icon.png", "app/Cargo.lock"]
++        target = self.plan["tasks"][2]
++        target.update(writes=paths, anchor=dict(path=paths[0], mode="sidecar"))
++        self.plan["target_paths"].remove("modules/new.rs")
++        self.plan["target_paths"].extend(paths)
++        self.plan["shells"] = [s for s in self.plan["shells"] if s["path"] != "modules/new.rs"]
++        self.plan["phases"][0]["deliverables"] = paths
++        self.vp()
++        created = materialize(self.root, self.plan, self.state)
++        self.assertEqual(set(created), {"tests/behavior.py", "docs/usage.md"})
++        for path in paths:
++            self.assertFalse((self.root / path).exists(), path)
++        self.assertTrue((self.root / anchor_path(target)).is_file())
++        self.assertEqual(anchors_verify(self.root, self.plan, self.state)["remaining"], 4)
++        self.assertEqual(materialize(self.root, self.plan, self.state), [])
++        self.assertEqual(anchors_verify(self.root, self.plan, self.state)["remaining"], 4)
++        for path in paths:
++            self.assertFalse((self.root / path).exists(), path)
++
++    def test_sidecar_cannot_reserve_missing_protected_writes(self):
++        original = copy.deepcopy(self.plan)
++        paths = ["contracts/fixture/v1/fixture.proto", "gen/fixture.rs", "tools/rdd/uncreated.py"]
++        for path in paths:
++            with self.subTest(path=path):
++                self.plan = copy.deepcopy(original)
++                (self.root / path).unlink(missing_ok=True)
++                target = self.plan["tasks"][2]
++                target.update(writes=[path], anchor=dict(path=path, mode="sidecar"))
++                self.plan["target_paths"].append(path)
++                self.plan["shells"] = [s for s in self.plan["shells"] if s["path"] != "modules/new.rs"]
++                with self.assertRaisesRegex(RddError, "frozen/policy path"):
++                    self.vp()
++
+     def test_json_requires_sidecar(self):
+         self.plan["shells"] = [s for s in self.plan["shells"] if s["path"] != "docs/usage.md"]
+         path = "app/capabilities.json"

@@ -1,0 +1,457 @@
+{
+  "schema_version": 1,
+  "semantics": "Source-authoring prerequisite graph; runtime/compilation join is separately listed. Task dependencies and categories in plan.json are authoritative.",
+  "baseline": {
+    "B-CONTRACTS": {
+      "paths": [
+        "contracts/fixtures/D1-oracle.json",
+        "contracts/fixtures/D1.json",
+        "contracts/fixtures/D2-oracle.json",
+        "contracts/fixtures/D2.json",
+        "contracts/qualification-inputs.json",
+        "contracts/rdd/v1/harness.proto",
+        "contracts/todo/v1/application.proto",
+        "contracts/todo/v1/backup.proto",
+        "contracts/todo/v1/collection.proto",
+        "contracts/todo/v1/model.proto",
+        "contracts/todo/v1/storage.proto",
+        "gen/rust/.rdd-generated.json",
+        "gen/rust/Cargo.lock",
+        "gen/rust/Cargo.toml",
+        "gen/rust/src/generated/rdd.v1.rs",
+        "gen/rust/src/generated/todo.v1.rs",
+        "gen/rust/src/lib.rs"
+      ],
+      "evidence": [
+        "C-CONTRACTS",
+        "C-CONSUMER"
+      ],
+      "capability": "Compiled generated messages/service signatures only, never product behavior."
+    },
+    "B-TOOLS": {
+      "paths": [
+        "rust-toolchain.toml",
+        "docs/specs/dependencies.md"
+      ],
+      "evidence": [
+        "./rdd doctor",
+        "C-QUALIFICATION"
+      ],
+      "capability": "Qualified exact tool/dependency choices and native/WASM packaging/invoke feasibility."
+    },
+    "B-SOLUTION": {
+      "paths": [
+        "docs/specs/solution.md",
+        "docs/specs/functional-analysis.md",
+        "docs/specs/fixture-inventory.json",
+        "docs/specs/reference-host.json",
+        "docs/specs/filesystem-qualification.md",
+        "docs/specs/quality.md",
+        "docs/specs/check-design.md",
+        "docs/specs/dependencies.md",
+        "docs/specs/instance-qualification.md",
+        "docs/specs/independent-review.md",
+        "docs/specs/preparation-policy-amendment.md",
+        "docs/specs/preparation-policy-review.md",
+        "docs/decisions/ADR-001-boundaries-and-runtime.md",
+        "docs/decisions/ADR-002-backups-and-distribution.md"
+      ],
+      "evidence": [
+        ".rdd/spec.lock.json"
+      ],
+      "capability": "Frozen semantics, protocols and ownership; no application implementation."
+    },
+    "B-FIXTURES": {
+      "paths": [
+        "docs/specs/functional-analysis.md",
+        "docs/specs/fixture-inventory.json",
+        "contracts/fixtures/D1-oracle.json",
+        "contracts/fixtures/D1.json",
+        "contracts/fixtures/D2-oracle.json",
+        "contracts/fixtures/D2.json"
+      ],
+      "evidence": [
+        "C-SPEC-INPUTS"
+      ],
+      "capability": "Frozen independent Q1/D1/D2 input/oracle data; maximum-field variants must be test-authored."
+    },
+    "B-FILESYSTEM": {
+      "paths": [
+        "experiments/spec-filesystem/probe.rs",
+        "docs/specs/filesystem-qualification.md"
+      ],
+      "evidence": [
+        "C-FILESYSTEM"
+      ],
+      "capability": "Qualified native publication primitives only."
+    },
+    "B-INSTANCE": {
+      "paths": [
+        "experiments/spec-instance/probe.rs",
+        "docs/specs/instance-qualification.md"
+      ],
+      "evidence": [
+        "C-INSTANCE"
+      ],
+      "capability": "Qualified lease/mailbox primitives only."
+    },
+    "B-TURSO": {
+      "paths": [
+        "experiments/spec-dependencies/native/src/main.rs",
+        "experiments/spec-dependencies/native/src/commit_gate.rs",
+        "docs/specs/dependencies.md"
+      ],
+      "evidence": [
+        "C-QUALIFICATION"
+      ],
+      "capability": "Qualified local engine transactions/IO checkpoint only, no Todo schema/adapter."
+    },
+    "B-HOST": {
+      "paths": [
+        "docs/specs/reference-host.json",
+        "docs/specs/quality.md"
+      ],
+      "evidence": [
+        "frozen host identity only; fresh conditions required for each run"
+      ],
+      "capability": "Named reference environment and protocol. Benchmark free-space precondition is currently unverified; no observation permission or app benchmark claimed."
+    },
+    "B-POLICY": {
+      "paths": [
+        "tools/rdd/artifacts.py",
+        "tests/harness/test_artifacts.py",
+        "docs/specs/preparation-policy-amendment.md"
+      ],
+      "evidence": [
+        "C-POLICY-SIDECARS"
+      ],
+      "capability": "Qualified safe task-sidecar representation for absent implementation paths; no product capability."
+    }
+  },
+  "tasks": {
+    "T001": {
+      "requires": [
+        "B-CONTRACTS",
+        "B-TOOLS",
+        "B-SOLUTION",
+        "B-POLICY"
+      ],
+      "produces": [
+        "TEST-ENTRY",
+        "TEST-FUNCTIONAL",
+        "TEST-BUILD",
+        "TEST-ARCH"
+      ]
+    },
+    "T002": {
+      "requires": [
+        "TEST-ENTRY",
+        "B-FIXTURES"
+      ],
+      "produces": [
+        "TEST-QUERY"
+      ]
+    },
+    "T003": {
+      "requires": [
+        "TEST-ENTRY",
+        "B-FIXTURES",
+        "B-FILESYSTEM"
+      ],
+      "produces": [
+        "TEST-BACKUP"
+      ]
+    },
+    "T004": {
+      "requires": [
+        "TEST-ENTRY",
+        "B-TURSO",
+        "B-FIXTURES"
+      ],
+      "produces": [
+        "TEST-RECOVERY"
+      ]
+    },
+    "T005": {
+      "requires": [
+        "TEST-ENTRY",
+        "B-INSTANCE",
+        "B-SOLUTION"
+      ],
+      "produces": [
+        "TEST-LIFECYCLE",
+        "TEST-MANUAL"
+      ]
+    },
+    "T006": {
+      "requires": [
+        "TEST-ENTRY",
+        "B-FIXTURES",
+        "B-HOST"
+      ],
+      "produces": [
+        "TEST-CAPACITY",
+        "TEST-PERFORMANCE",
+        "TEST-OBSERVER"
+      ]
+    },
+    "T007": {
+      "requires": [
+        "TEST-ENTRY",
+        "TEST-OBSERVER",
+        "B-HOST"
+      ],
+      "produces": [
+        "TEST-PENDING",
+        "TEST-A11Y"
+      ]
+    },
+    "T008": {
+      "requires": [
+        "TEST-ENTRY",
+        "B-SOLUTION"
+      ],
+      "produces": [
+        "TEST-DIAGNOSTICS"
+      ]
+    },
+    "T009": {
+      "requires": [
+        "TEST-ENTRY",
+        "TEST-FUNCTIONAL",
+        "B-SOLUTION"
+      ],
+      "produces": [
+        "TEST-SECURITY",
+        "TEST-HANDOFF"
+      ]
+    },
+    "T010": {
+      "requires": [
+        "TEST-ENTRY",
+        "B-CONTRACTS",
+        "B-SOLUTION"
+      ],
+      "produces": [
+        "SOURCE-WIRING"
+      ]
+    },
+    "T011": {
+      "requires": [
+        "SOURCE-WIRING",
+        "B-CONTRACTS",
+        "TEST-FUNCTIONAL",
+        "TEST-QUERY",
+        "TEST-CAPACITY"
+      ],
+      "produces": [
+        "COLLECTION"
+      ]
+    },
+    "T012": {
+      "requires": [
+        "COLLECTION",
+        "B-TURSO",
+        "TEST-RECOVERY"
+      ],
+      "produces": [
+        "STORAGE"
+      ]
+    },
+    "T013": {
+      "requires": [
+        "COLLECTION",
+        "B-FILESYSTEM",
+        "TEST-BACKUP"
+      ],
+      "produces": [
+        "BACKUP"
+      ]
+    },
+    "T014": {
+      "requires": [
+        "STORAGE",
+        "BACKUP",
+        "COLLECTION",
+        "TEST-RECOVERY",
+        "TEST-PENDING"
+      ],
+      "produces": [
+        "APPLICATION"
+      ]
+    },
+    "T015": {
+      "requires": [
+        "SOURCE-WIRING",
+        "TEST-DIAGNOSTICS"
+      ],
+      "produces": [
+        "DIAGNOSTICS"
+      ]
+    },
+    "T016": {
+      "requires": [
+        "SOURCE-WIRING",
+        "B-INSTANCE",
+        "TEST-LIFECYCLE"
+      ],
+      "produces": [
+        "INSTANCE"
+      ]
+    },
+    "T017": {
+      "requires": [
+        "APPLICATION",
+        "DIAGNOSTICS",
+        "INSTANCE",
+        "TEST-SECURITY"
+      ],
+      "produces": [
+        "DESKTOP"
+      ]
+    },
+    "T018": {
+      "requires": [
+        "APPLICATION",
+        "B-CONTRACTS",
+        "TEST-FUNCTIONAL",
+        "TEST-QUERY",
+        "TEST-PENDING"
+      ],
+      "produces": [
+        "UI-STATE"
+      ]
+    },
+    "T019": {
+      "requires": [
+        "DESKTOP",
+        "UI-STATE",
+        "TEST-A11Y",
+        "TEST-PERFORMANCE"
+      ],
+      "produces": [
+        "UI-VIEWS"
+      ]
+    },
+    "T020": {
+      "requires": [
+        "UI-VIEWS",
+        "APPLICATION",
+        "BACKUP"
+      ],
+      "produces": [
+        "USER-DOCS"
+      ]
+    },
+    "T021": {
+      "requires": [
+        "USER-DOCS",
+        "TEST-HANDOFF",
+        "TEST-BUILD",
+        "TEST-MANUAL"
+      ],
+      "produces": [
+        "HANDOFF"
+      ]
+    }
+  },
+  "acceptance_join": {
+    "phase": "P01",
+    "requires_tasks": [
+      "T001",
+      "T002",
+      "T003",
+      "T004",
+      "T005",
+      "T006",
+      "T007",
+      "T008",
+      "T009",
+      "T010",
+      "T011",
+      "T012",
+      "T013",
+      "T014",
+      "T015",
+      "T016",
+      "T017",
+      "T018",
+      "T019",
+      "T020",
+      "T021"
+    ],
+    "checks": [
+      "C-CONTRACTS",
+      "C-SPEC-INPUTS",
+      "C-CONSUMER",
+      "C-FILESYSTEM",
+      "C-INSTANCE",
+      "C-QUALIFICATION",
+      "FUNCTIONAL",
+      "QUERY",
+      "BACKUP",
+      "RECOVERY",
+      "LIFECYCLE",
+      "C-CAPACITY",
+      "C-PENDING",
+      "C-DIAGNOSTICS",
+      "C-ARCH",
+      "C-BUILD",
+      "C-SECURITY",
+      "C-HANDOFF",
+      "C-PACKAGE",
+      "C-OFFLINE",
+      "C-PRIVACY",
+      "C-A11Y-KEYBOARD",
+      "C-A11Y-VOICEOVER",
+      "C-A11Y-VISUAL",
+      "C-PERF-LAUNCH",
+      "C-PERF-INTERACTIONS",
+      "C-PERF-BACKUP",
+      "C-POLICY-SIDECARS"
+    ],
+    "compilation_inputs": {
+      "core": [
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014"
+      ],
+      "desktop": [
+        "T010",
+        "T014",
+        "T015",
+        "T016",
+        "T017"
+      ],
+      "ui": [
+        "T010",
+        "T018",
+        "T019",
+        "T020"
+      ],
+      "release": [
+        "T001",
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014",
+        "T015",
+        "T016",
+        "T017",
+        "T018",
+        "T019",
+        "T020",
+        "T021"
+      ],
+      "handoff": [
+        "T009",
+        "T021",
+        "all current upstream automated/manual/benchmark records"
+      ]
+    },
+    "rule": "The T010 module wiring and T019 include of future T020 help consume source paths from the frozen target tree at authoring, not working implementations/content. Their later compile-time inputs are an acceptance join, not deleted prerequisite edges. No production task claims whole-application GREEN before this join."
+  }
+}

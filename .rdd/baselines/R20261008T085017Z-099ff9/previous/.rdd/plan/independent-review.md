@@ -1,0 +1,17 @@
+# Independent preparation review — hosted verification closure
+
+Decision: **changes requested**. Retained graph coherence passes, but preparation is not approved until the specification resolves the following hosted verification obligations.
+
+Reviewer: independent `rdd_reviewer`, `gpt-6.1-sol`, xhigh; actual agent `/root/goal_launch_review`. Run `R20261008T082014Z-913ee5`; source `be7cf4c130c6d60fe3c097571533e79cd52bc8dd`; frozen specification `271089c2a7960561069989afc826d3a9c50644c51a7a6815dc7e8af2d1935d55`. Reviewed candidate plan SHA-256: `515caf58797e5b6529a670d26a9a06a08d959b1e0c04612336878f5308b6c8a4`.
+
+## Retained graph
+
+The 21 tasks, seven verticals, 103 targets and 60 shells exactly match the archived parent. P01 differs only in supplementary evidence/provenance and still closes all 53 requirements with all 28 checks. Independent DAG/category checks found no reversed category edge, protected task writes or missing addition reuse rationale. Shared writes are ordered: T001→T009 for functional.rs and T001→T010 for 15 bootstrap paths. Supplementary hashes are current; source roots contain no product behavior. `./rdd plan validate`, `./rdd spec validate` and `git diff --check` passed in their mechanical scopes.
+
+## Unresolved specification findings
+
+- **PREP-CI-QUALIFICATION-001 (high; NFR-TECH-004, NFR-QUAL-002):** Hosted macOS executes C-QUALIFICATION. Its frozen runner requires exact cargo-tauri 2.12.1 and wasm-bindgen 0.2.129, then performs real native packaging, signing and launch. The trusted workflow provisions neither CLI nor RDD_QUAL_TOOL_BIN. Local cached-tool success is not hosted capability, and a particular hosted missing-tool failure has not yet been observed. Resolve provisioning/runtime prerequisites or correct qualified-host applicability upstream while retaining exact versions and actual qualification. Sources: experiments/spec-dependencies/recheck.py:19–63 and .github/workflows/rdd.yml.
+- **PREP-CI-BUILD-SCOPE-001 (blocking; NFR-TECH-004, NFR-PLAT-001, NFR-QUAL-002):** C-BUILD applies to any host while its frozen meaning requires complete native/WASM/package build and ad-hoc signing for the Mac-only application. No per-host subset is defined. Silently omitting packaging on Linux/Windows cannot pass this full check. Resolve applicability or an explicitly complete verification design in specification while preserving mandatory Mac package evidence. Sources: .rdd/spec.json C-BUILD, docs/specs/check-design.md:17 and plan T001.
+- **PREP-CI-HANDOFF-001 (blocking; NFR-QUAL-001, NFR-QUAL-002):** C-HANDOFF runs as an ordinary hosted test but requires the complete ignored pre-gate report and exact-revision native/manual/benchmark evidence. CI defers those external checks and has no receipt/report intake; its upload step does not produce the missing inputs. Define genuine transfer or qualified/external execution upstream. Preserve full 53-Must report validation and rejection of missing evidence. Sources: .rdd/spec.json C-HANDOFF, plan T009, planning-notes.md handoff ordering, tools/rdd/ci.py:369–384.
+
+No product acceptance, phase opening or task completion is claimed. The reviewer did not edit files or controller state. The coordinator must preserve this report and candidate, record the specification blocker, and obtain a new frozen solution/plan before implementation. Current graph correctness does not waive these evidence-production and applicability conflicts.

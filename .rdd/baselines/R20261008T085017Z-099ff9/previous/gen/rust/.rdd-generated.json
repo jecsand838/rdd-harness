@@ -1,0 +1,12 @@
+{
+  "descriptor_sha256": "96032ad83756fa790c5d8842d6910ec52dbdea590ad2324e7107520e19da1993",
+  "files": {
+    "Cargo.lock": "ad045b3e74f80bee63e69a93b474a76b7453ea399b8087557196523df91e4d53",
+    "Cargo.toml": "f760f99abe1e5ef96384034c3876e7cb84d20a59a6569e31fb05c77e30f7fdd8",
+    "src/generated/rdd.v1.rs": "7acb445140d814ea88d9af0adf528357e66fa6a6a0045e68630de03766a69e94",
+    "src/generated/todo.v1.rs": "36551f0a9c76ef9be6cd0c2c2d9eef933e63cf7c89c07e2f1f4dec44f0f488a7",
+    "src/lib.rs": "5082caa8ccc097fdcc54941dc85b65017d9f63cb2af1d5125067e0bd27b8e6df"
+  },
+  "generator": "rdd-proto-codegen/0.1.0",
+  "prost_version": "0.14.4"
+}

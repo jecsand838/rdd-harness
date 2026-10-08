@@ -1,0 +1,25 @@
+syntax = "proto3";
+package todo.v1;
+
+import "todo/v1/model.proto";
+import "todo/v1/collection.proto";
+
+// Sole database provider. No caller controls the database path or SQL.
+service StorageService {
+  rpc Open(OpenRequest) returns (OpenResponse);
+  rpc ReadSnapshot(ReadSnapshotRequest) returns (ReadSnapshotResponse);
+  rpc Commit(CommitRequest) returns (CommitResponse);
+  rpc InspectOutcome(InspectOutcomeRequest) returns (InspectOutcomeResponse);
+  rpc Close(CloseRequest) returns (CloseResponse);
+}
+message OpenRequest {}
+message OpenResponse { oneof result { Snapshot value = 1; Failure failure = 2; } }
+message ReadSnapshotRequest {}
+message ReadSnapshotResponse { oneof result { Snapshot value = 1; Failure failure = 2; } }
+message Replacement { Snapshot snapshot = 1; uint64 expected_generation = 2; }
+message CommitRequest { string operation_id = 1; oneof action { Change change = 2; Replacement replacement = 3; } }
+message CommitResponse { Outcome outcome = 1; }
+message InspectOutcomeRequest { string operation_id = 1; }
+message InspectOutcomeResponse { Outcome outcome = 1; }
+message CloseRequest {}
+message CloseResponse { Failure failure = 1; }
