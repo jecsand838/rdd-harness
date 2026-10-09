@@ -15,6 +15,64 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  harness:
+    name: harness (${{ matrix.os }})
+    if: github.event_name == 'pull_request' && github.base_ref == 'main' || github.ref == 'refs/heads/main'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11.9'
+      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
+        with:
+          version: '1.73.0'
+          setup_only: 'true'
+          pr_comment: 'false'
+          push: 'false'
+          archive: 'false'
+      - name: Test candidate harness
+        run: python tools/rdd/cli.py selftest
+      - name: Install pinned compiler and WASM target
+        run: |
+          python - <<'PYTHON'
+          from pathlib import Path
+          import re
+          import subprocess
+          import tomllib
+          channel = tomllib.loads(Path('rust-toolchain.toml').read_text(encoding='utf-8'))['toolchain']['channel']
+          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', channel):
+              raise SystemExit('Harness qualification requires an exact stable compiler')
+          subprocess.run(['rustup', 'toolchain', 'install', channel, '--profile', 'minimal', '--target', 'wasm32-unknown-unknown'], check=True, timeout=1200)
+          PYTHON
+      - name: Qualify real providers and consumers across modules and targets
+        run: python tools/proto-codegen/tests/test_generation.py
+      - name: Preserve actual compiler proof logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: harness-contracts-${{ matrix.os }}
+          path: .rdd/evidence/harness-contracts/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30
+
   controller:
     name: controller (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -34,6 +92,8 @@ jobs:
       RDD_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
       RDD_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
       PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: utf-8
     steps:
       - name: Check out candidate revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,43 +185,40 @@ jobs:
         working-directory: ${{ steps.verifier.outputs.root }}
         run: python tools/rdd/cli.py selftest
 
-      - name: Install the trusted Rust toolchain for a prepared application
+      - name: Read tool pins from trusted prepared policy
         if: steps.verifier.outputs.prepared == 'true'
-        working-directory: ${{ steps.verifier.outputs.policy_root }}
-        run: |
-          python - <<'PY'
-          import os
-          from pathlib import Path
-          import re
-          import subprocess
-          import tomllib
-          toolchain = tomllib.loads(Path("rust-toolchain.toml").read_text(encoding="utf-8"))["toolchain"]
-          channel = toolchain["channel"]
-          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", channel):
-              raise SystemExit("A prepared application requires an exact stable Rust version")
-          argv = ["rustup", "toolchain", "install", channel, "--profile", "minimal"]
-          for component in toolchain.get("components", []):
-              if component not in {"rustfmt", "clippy", "rust-src"}:
-                  raise SystemExit("Unexpected trusted Rust component")
-              argv.extend(["--component", component])
-          for target in toolchain.get("targets", []):
-              if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]+", target):
-                  raise SystemExit("Invalid trusted Rust target")
-              argv.extend(["--target", target])
-          subprocess.run(argv, check=True, timeout=1200)
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
-              environment.write(f"RUSTUP_TOOLCHAIN={channel}\n")
-          PY
+        id: tools
+        env:
+          RDD_POLICY_ROOT: ${{ steps.verifier.outputs.policy_root }}
+        run: >-
+          python "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT/tools/rdd/ci_tools.py" describe
+          --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --github-output "$GITHUB_OUTPUT"
+
+      - name: Select qualified Python
+        if: steps.verifier.outputs.prepared == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.tools.outputs.python }}
 
       - name: Install pinned Buf without schema publishing or PR comments
         if: steps.verifier.outputs.prepared == 'true'
         uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
-          version: '1.73.0'
+          version: ${{ steps.tools.outputs.buf }}
           setup_only: 'true'
           pr_comment: 'false'
           push: 'false'
           archive: 'false'
+
+      - name: Provision and measure declared Rust and frontend tools
+        if: steps.verifier.outputs.prepared == 'true'
+        env:
+          RDD_POLICY_ROOT: ${{ steps.verifier.outputs.policy_root }}
+        run: >-
+          python "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT/tools/rdd/ci_tools.py" provision
+          --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT"
+          --evidence "$GITHUB_WORKSPACE/candidate/.rdd/evidence/provisioning"
+          --candidate-root "$GITHUB_WORKSPACE/candidate"
 
       - name: Install Tauri Linux build prerequisites
         if: runner.os == 'Linux' && steps.verifier.outputs.prepared == 'true'
@@ -170,30 +227,6 @@ jobs:
           sudo apt-get install --no-install-recommends -y \
             libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev \
             libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config
-
-      - name: Record installed verification tools
-        if: steps.verifier.outputs.prepared == 'true'
-        working-directory: ${{ steps.verifier.outputs.policy_root }}
-        env:
-          RDD_SELECTED_POLICY_SHA: ${{ steps.verifier.outputs.policy_sha }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-          import platform
-          import subprocess
-          import sys
-          commands = {"rustc": ["rustc", "--version", "--verbose"], "cargo": ["cargo", "--version"], "buf": ["buf", "--version"]}
-          versions = {name: subprocess.run(argv, text=True, capture_output=True, check=True, timeout=30).stdout.strip() for name, argv in commands.items()}
-          receipt = {"schema_version": 1, "scope": "installed_ci_tools", "application_complete": False,
-                     "source_commit": os.environ["RDD_HEAD_SHA"], "policy_commit": os.environ["RDD_SELECTED_POLICY_SHA"],
-                     "python": sys.version, "platform": platform.platform(), "tools": versions}
-          destination = Path(os.environ["GITHUB_WORKSPACE"]) / "candidate/.rdd/evidence/toolchain.json"
-          destination.parent.mkdir(parents=True, exist_ok=True)
-          destination.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
-          print(json.dumps(receipt, indent=2))
-          PY
 
       - name: Validate candidate with the selected controller and frozen check policy
         working-directory: candidate
@@ -218,7 +251,7 @@ jobs:
           name: rdd-ci-${{ matrix.os }}-${{ env.RDD_HEAD_SHA }}
           path: |
             candidate/.rdd/evidence/ci.json
-            candidate/.rdd/evidence/toolchain.json
+            candidate/.rdd/evidence/provisioning/
             candidate/.rdd/evidence/checks/
           include-hidden-files: true
           if-no-files-found: error

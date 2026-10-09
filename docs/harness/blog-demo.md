@@ -161,10 +161,10 @@ Do not advance past an unresolved or partially frozen design.
 
 The session must independently review the target tree, task DAG, ordered
 verticals, phases, exact writes, and the handoff commands specified above. It
-must freeze the plan, run `prepare`, and commit the prepared baseline. Initial
+must fully groom every task and work site, obtain both independent review perspectives, freeze the plan, run `prepare`, and commit the materialized baseline. This is `preparing`, not yet an accepted handoff. Initial
 test tasks need executable behavioral RED; compiler errors are not RED.
 
-After the session completes:
+Inspect the materialized output before final preparation acceptance:
 
 ```sh
 ./rdd plan validate
@@ -221,8 +221,7 @@ rdd_wait_push_ci codex/todo-demo-baseline "$rdd_prepared_sha"
 test "$rdd_prepared_sha" = "$(git ls-remote origin refs/heads/codex/todo-demo-baseline | cut -f1)"
 ```
 
-Prepared-baseline CI must pass before implementation. Its checks verify the
-reviewed prepared source; they do not establish application completion. Do not
+Prepared-baseline CI must pass before implementation. Obtain its preparation-readiness receipts from the trusted pinned harness route, then run `./rdd readiness preparation`, record the semantic and execution reviewers for that exact committed materialization, and run `./rdd gate preparation`. The workflow is complete only when this gate reports `prepared`. These checks verify the reviewed handoff; they do not establish application completion. Do not
 push intermediate, partially frozen specification/preparation commits as a
 completed baseline. Keep the published baseline and sealed phase branches fixed.
 
@@ -366,7 +365,7 @@ PY
 ```
 
 Only `status=passed` and `application_complete=true` establish completion.
-Require all tasks complete, all anchors removed, every phase sealed, the stack
+Require all tasks complete, every primary/secondary packet removed, every golden scenario explicitly executed and passing, every phase sealed, the stack
 verified ready, and required ordinary/manual/reference evidence passing.
 
 Preserve the reports, complete runtime/check logs and Git objects before merging:

@@ -127,6 +127,13 @@
       },
       "minItems": 0,
       "uniqueItems": false
+    },
+    "kind": {
+      "const": "final"
+    },
+    "review_cursor": {
+      "type": "integer",
+      "minimum": 1
     }
   },
   "required": [
@@ -140,7 +147,9 @@
     "decision",
     "summary",
     "checks_reviewed",
-    "findings"
+    "findings",
+    "kind",
+    "review_cursor"
   ],
   "additionalProperties": false
 }

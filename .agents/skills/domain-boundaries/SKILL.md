@@ -16,7 +16,7 @@ Read the complete functional requirements, shared vocabulary, data rules, and re
 5. Specify every boundary operation: owner, authorized callers, requirements, input/output, errors, side effects, atomicity, concurrency, cancellation, retry semantics, versioning, availability, and required scenarios. Define what may be retried safely and how uncertainty is surfaced.
 6. Express public and module boundary shapes in canonical Protobuf. Select explicit presence where absence is meaningful, reserved deleted tags/names, stable packages, meaningful enum zero values, and typed error/status shapes. Keep business invariants in semantic specification and validate them at the owning boundary.
 7. Enforce interfaces in the generated language. Ensure generated message types are used at the boundary and generated traits/adapters expose the approved method signatures. Test registration and reachability of each operation as well as its behavior. Protobuf messages alone cannot forbid an unreviewed direct database call.
-8. Plan architecture verification: dependency/import allowlists, restricted visibility, generated-interface implementations, transport registration inventory, and integration tests. Choose enforceable checks for the selected Rust workspace. Do not claim documentation establishes isolation.
+8. Separate disposable specification qualification from real implementation conformance: dependency/import allowlists, restricted visibility, generated-interface implementations, registration and bypass tests. `pub(crate)` does not isolate sibling domains. Use narrower organization or justified crate boundaries and test actual forbidden access. Preserve four distinct enforcement layers: generated shape, real boundary use, behavioral semantics and operational evidence.
 
 ## Keep abstractions small
 
@@ -26,7 +26,9 @@ Do not serialize the entire internal object graph just to reuse it as an API. Th
 
 ## Required artifact
 
-For each module record purpose, requirement IDs, owned invariants/data, provided operations, consumed contracts, forbidden dependencies, and verification. Explain the smallest viable module layout and alternatives rejected. Freeze these decisions in specification; preparation chooses task order, not different domain semantics.
+Draft the complete target folder system during specification, including application owners and build/test/fixture/evaluator/packaging/documentation homes. Identify functional subdomains from the requirements and inventory every positive and failure behavior. Each functional requirement has an owner and golden scenarios; every positive operation has its own golden coverage. Keep exact behavior/scenario links reciprocal. A subdomain does not automatically require another crate.
+
+For each architectural module record its functional subdomain covering all allocated FRs, owned paths/invariants/data, provided fully qualified Protobuf services, consumed operations, allowed dependencies, source/generated identities, and separate qualification/conformance checks. Map every boundary solution operation to a descriptor-derived method. Reject unowned, unexplained or extra public surface; private implementation helpers need no artificial contracts. Explain the smallest viable module layout and alternatives rejected. Freeze these decisions in specification; preparation chooses task order, not different domain semantics.
 
 ## Primary references
 

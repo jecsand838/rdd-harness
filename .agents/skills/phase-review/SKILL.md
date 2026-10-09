@@ -1,25 +1,36 @@
 ---
 name: phase-review
-description: Independently review live RDD implementation progress and phase-completion evidence, identify correctness and bloat issues, bind findings to exact revisions, and validate final project claims without creating task-level approval gates.
+description: Continuously review all three RDD workflows, steer corrections, and independently review exact-candidate stage and phase acceptance. Bind findings to exact candidates, verify corrections, and validate project claims without task-level approval gates.
 ---
 
 # Phase review
 
-Act independently of the implementor. Read the requirements, frozen solution, phase scope, task graph, contracts, raw diff, relevant tests, benchmark protocols, and controller receipts. Read [the review example](references/review-example.md) for a false-positive success claim and a correct outcome.
+Use the read-only `rdd_reviewer` profile independently of candidate authors. Read the requirements, frozen solution, phase scope, task graph, contracts, raw diff, relevant tests, benchmark protocols, and controller receipts. Read [the review example](references/review-example.md) for a false-positive success claim and a correct outcome.
+
+## Specification and preparation reviews
+
+Two distinct reviewer sessions provide `semantic` and `execution` perspectives. Neither reviewer may be a registered author of the artifacts it approves or later reused to author that candidate. The live reviewer may supply semantic approval; a distinct execution session uses a released author slot. Use actual runtime session observations and the candidate identity returned by the controller; profile/model/effort declarations are requested configuration and cannot attest an unobserved backend. A report label is not independent execution. Record findings and evidence using the stage-review schema accepted by `review record`.
+
+- **Semantic:** Walk every requirement and observable behavior through its subdomain, owner, contract, scenario and oracle. Require reciprocal FR/golden and behavior/scenario coverage. Inspect target-folder ownership, resolved state/error/atomicity decisions, dependency research and applicable NFR protocols. During preparation, verify complete phase-by-phase implementation/test ownership and every task's bounded instructions and acceptance. Reject unjustified work and duplicate abstractions.
+- **Execution:** Walk every task and check through its complete runner, tools/pins, input producers, timing, host facilities and evidence transport. Check RED bootstrap feasibility without implementing product behavior early. Inspect all exact write sites, placement and full primary/linked secondary packets. Confirm qualification uses the actual intended runtime rather than an undeclared cached tool or a partial oracle on another host.
+
+Read the actual outputs and raw receipts. For final `preparation` review, inspect the committed materialization and readiness/CI evidence, not only the draft plan. Preserve earlier findings and independently verify their closure. Both perspectives must approve the same candidate with zero unresolved findings. Changed inputs invalidate affected approvals; a passed schema or another worker's assurance is not a substitute. Re-review corrected candidates until the exit criteria hold, or leave the workflow incomplete with a concrete blocker.
+
+A frozen specification defect exposed in preparation, or a specification/planning defect exposed in implementation, is a critical harness regression. Record origin/detection stage and evidence immediately, stop affected execution, and require a reproducing regression before accepting the preventive-control repair. Distinguish an execution design defect from an external outage or denied permission.
 
 ## Live review
 
-Observe a coherent diff or checkpoint and send focused findings to the orchestrator. State the affected requirement/scenario, file or operation, observed issue, expected result, severity, and a concrete reproduction or reasoning. Check task ordering, approved scope, interface boundaries, duplicate logic, weak assertions, and unsafe async/persistence behavior.
+Remain active throughout authoring: compare specification progress with requirements, preparation with frozen specifications/contracts, and implementation with frozen plans/contracts. Inspect snapshots at node handoffs, contract generation, task integration and significant checks. Record live findings through the controller with exact candidate identity, affected obligations and correction destination; partial drafts are legitimate live-review subjects, never final approvals. Changed inputs require a fresh review cursor. Blocking findings stop affected work until independently verified resolution. Observe a coherent diff or checkpoint and send focused findings to the orchestrator. State the affected requirement/scenario, file or operation, observed issue, expected result, severity, and a concrete reproduction or reasoning. Check task ordering, approved scope, interface boundaries, duplicate logic, weak assertions, and unsafe async/persistence behavior.
 
-Do not mutate implementor workspaces or silently take over their tasks. Do not demand a formal review after each task. Advisory feedback supports course correction; the formal gate is phase completion.
+Do not mutate implementor workspaces or silently take over their tasks. Do not demand a formal review after each task. Live feedback steers corrections without approving individual implementation tasks. Final stage/phase gates require current independent review. The continuous reviewer may provide final semantic approval if it authored no candidate artifacts; execution approval needs a distinct session.
 
 ## Phase acceptance review
 
 Review the exact candidate HEAD and source digest. Re-read the phase's promised outcome without assuming later work will make it true.
 
-1. Check all planned tasks are complete and their evidence is relevant. Verify markers through the controller; absence of text alone proves nothing.
+1. Check all planned tasks are complete and their evidence is relevant. Verify every primary and secondary work-site packet through the controller; absence of text alone proves nothing.
 2. Check each required operation is reachable and executes the specified behavior. Registration, generated types, and success-shaped mock outputs are insufficient.
-3. Check golden paths and negative/boundary/recovery/concurrency cases appropriate to the phase. Inspect assertions and real boundary coverage. Look for ignored tests, fixed return values, swallowed errors, or a fake database replacing the only persistence acceptance path.
+3. Check explicit executed scenario IDs and results for every golden path; an aggregate pass with omitted, filtered or skipped scenarios is insufficient. Check negative/boundary/recovery/concurrency cases appropriate to the phase. Inspect assertions and real boundary coverage. Look for ignored tests, fixed return values, swallowed errors, or a fake database replacing the only persistence acceptance path.
 4. Check TDD receipts distinguish expected behavioral RED from infrastructure failure and link to the introduced assertions.
 5. Check requirement/spec/contract/plan digests and reproducible generated output. Confirm architecture checks detect forbidden direct calls, not just well-formed schemas.
 6. Check cumulative regressions and previously accepted guarantees. If a sealed guarantee was never true, record closure failure and route to specification amendment.

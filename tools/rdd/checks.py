@@ -98,6 +98,23 @@ def command_argv(check: dict) -> list[str]:
     return [sys.executable if arg == "{python}" else arg for arg in check["argv"]]
 
 
+def evaluate_scenarios(check: dict, payload: object) -> list[str]:
+    expected = set(check.get("scenario_ids", []))
+    if not expected:
+        return []
+    if not isinstance(payload, dict) or not isinstance(payload.get("scenarios"), list):
+        raise RddError("Check omitted actual scenario execution results")
+    rows = payload["scenarios"]
+    if any(not isinstance(r, dict) or set(r) != {"id", "outcome"} for r in rows):
+        raise RddError("Scenario results require exact id/outcome records")
+    ids = [r["id"] for r in rows]
+    if any(not isinstance(i, str) for i in ids) or len(ids) != len(set(ids)) or set(ids) != expected:
+        raise RddError("Scenario execution inventory is missing, duplicated or unknown")
+    if any(r["outcome"] != "pass" for r in rows):
+        raise RddError("Every declared scenario must actually pass; skips are incomplete")
+    return sorted(ids)
+
+
 def evaluate_metrics(check: dict, payload: dict) -> dict[str, float]:
     if not check.get("metrics"):
         raise RddError("A benchmark requires at least one frozen metric limit")
@@ -147,6 +164,15 @@ def execute_check(root: Path, check: dict, *, phase: str | None, task_id: str | 
                   origin: str = "local", actor: str = "controller", run_url: str = "") -> dict:
     if expectation not in {"pass", "fail"}:
         raise RddError("Check expectation must be pass or fail")
+    manifest = root / ".rdd/spec.json"
+    if manifest.is_file():
+        spec = read_json(manifest)
+        if spec.get("schema_version") == 2:
+            resources = {r["id"]: r for r in spec["resources"]}
+            for rid in check.get("requires", []):
+                resource = resources[rid]
+                if resource["kind"] in {"repository", "external"}:
+                    safe_path(root, resource["path"], allow_missing=False)
     platform = platform_name()
     if "any" not in check["platforms"] and platform not in check["platforms"]:
         raise RddError(f"{check['id']} must run on {check['platforms']}; current host is {platform}", "environment")
@@ -162,6 +188,11 @@ def execute_check(root: Path, check: dict, *, phase: str | None, task_id: str | 
         host = read_json(host_path)
         _qualified_host(host, check["host_profile"], platform, kind="environment")
     commit, before = head(root), source_digest(root)
+    results_path = check.get("results_path")
+    if results_path:
+        if not results_path.startswith(".rdd/evidence/results/"):
+            raise RddError("Scenario results must use the declared ignored evidence/results path")
+        safe_path(root, results_path).unlink(missing_ok=True)
     eid = "E" + uuid.uuid4().hex
     rel = f".rdd/evidence/checks/{eid}.log"
     stdout_path = safe_path(root, f".rdd/runtime/checks/{eid}.stdout")
@@ -206,8 +237,21 @@ def execute_check(root: Path, check: dict, *, phase: str | None, task_id: str | 
             outcome = "pass"
     else:
         detail = f"Command returned {result.returncode}."
+    scenarios = None
+    if outcome == "pass" and check.get("scenario_ids"):
+        try:
+            with safe_path(root, results_path, allow_missing=False).open("rb") as stream:
+                raw = stream.read(MAX_CAPTURE_BYTES + 1)
+            if len(raw) > MAX_CAPTURE_BYTES:
+                raise RddError("Scenario results exceed the evidence capture bound")
+            scenarios = _strict_json(raw.decode("utf-8"))
+            evaluate_scenarios(check, scenarios)
+        except (RddError, TypeError, ValueError, OSError) as exc:
+            outcome, detail = "fail", str(exc)
     log = {"schema_version": 1, "argv": check["argv"], "stdout": stdout,
            "stderr": stderr, "evaluation": detail, "host": host}
+    if scenarios is not None:
+        log["scenario_results"] = scenarios
     log_path = safe_path(root, rel)
     atomic_write(log_path, canonical(log) + b"\n")
     evidence = {"schema_version": 1, "id": eid, "check_id": check["id"], "phase": phase,
@@ -245,6 +289,8 @@ def verify_receipt(root: Path, evidence: dict, check: dict, *, commit: str,
         raise RddError("Evidence logs must be staged inside .rdd/evidence/")
     log_path = safe_path(root, evidence["log_path"], allow_missing=False)
     log = _receipt_log(log_path, evidence["log_digest"])
+    if require_pass:
+        evaluate_scenarios(check, log.get("scenario_results"))
     if evidence["origin"] == "ci" and not evidence["provenance"]["run_url"].startswith("https://github.com/"):
         raise RddError("CI evidence needs its actual GitHub Actions run URL")
     if check["kind"] == "manual":

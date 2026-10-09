@@ -1,4 +1,4 @@
-name = "rdd_small"
+name = "rdd_light_implementor"
 description = "Implement a small, unambiguous RDD target such as one test, focused adapter edit, safe deletion, or documentation change."
 model = "gpt-6-luna"
 model_reasoning_effort = "xhigh"

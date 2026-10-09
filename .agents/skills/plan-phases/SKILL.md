@@ -26,7 +26,7 @@ An independent phase's acceptance depends only on the accepted baseline, sealed 
 7. Define recovery and rollback where the phase changes persistent data or deployment behavior. Distinguish a source rollback from database compatibility; they may have different constraints.
 8. Assign one branch/PR per phase and the preceding phase as its base. Record how rebases invalidate revision-bound evidence. Do not seal before all local and remote evidence is current.
 9. Review every phase by asking: “If all future tasks were cancelled, would this phase's stated outcome and acceptance still be true?” If not, refine the boundary or narrow the claim transparently before freeze.
-10. Check the final union: every requirement and operation is fulfilled by the completed plan, and no quality work is indefinitely deferred to a generic cleanup phase.
+10. Check the final union: every requirement, solution element and scenario has explicit implementation and verification ownership (or verified baseline evidence), and no quality work is deferred to a generic cleanup phase. Every task must already have complete instructions, producers, exact work sites and acceptance before preparation can finish.
 
 ## No reopening
 

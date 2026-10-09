@@ -16,5 +16,8 @@ message ProbeRequest {
 
 // ProbeResponse carries the corresponding qualification payload.
 message ProbeResponse {
-  bytes payload = 1;
+  oneof outcome {
+    bytes payload = 1;
+    string error = 2;
+  }
 }

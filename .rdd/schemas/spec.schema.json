@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:rdd:schema:spec:v1",
-  "title": "RDD spec v1",
+  "$id": "urn:rdd:schema:spec:v2",
+  "title": "RDD spec v2",
   "type": "object",
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "id": {
       "type": "string",
@@ -143,6 +143,172 @@
             },
             "minItems": 0,
             "uniqueItems": true
+          },
+          "provided_services": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "consumed_operations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "generated_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "adapter_error_specs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "qualification_checks": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "consumer": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "negative_signature": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "dependency_direction": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "compatibility": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "provider",
+              "consumer",
+              "negative_signature",
+              "dependency_direction",
+              "compatibility"
+            ],
+            "additionalProperties": false
+          },
+          "implementation_checks": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "consumer": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "dependency_direction": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "compatibility": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "semantics": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "provider",
+              "consumer",
+              "dependency_direction",
+              "compatibility",
+              "semantics"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -150,7 +316,13 @@
           "requirements",
           "contract_paths",
           "owns_paths",
-          "depends_on"
+          "depends_on",
+          "provided_services",
+          "consumed_operations",
+          "generated_paths",
+          "adapter_error_specs",
+          "qualification_checks",
+          "implementation_checks"
         ],
         "additionalProperties": false
       },
@@ -210,6 +382,36 @@
             },
             "minItems": 1,
             "uniqueItems": true
+          },
+          "solution_elements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "preconditions": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "fixture": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "stimulus": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "verification_method": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
           }
         },
         "required": [
@@ -218,7 +420,12 @@
           "kind",
           "description",
           "expected",
-          "check_ids"
+          "check_ids",
+          "solution_elements",
+          "preconditions",
+          "fixture",
+          "stimulus",
+          "verification_method"
         ],
         "additionalProperties": false
       },
@@ -245,7 +452,8 @@
               "lint",
               "build",
               "security",
-              "manual"
+              "manual",
+              "readiness"
             ]
           },
           "argv": {
@@ -346,6 +554,41 @@
               "string",
               "null"
             ]
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "scenario_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "uniqueItems": true
+          },
+          "results_path": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -357,7 +600,11 @@
           "platforms",
           "red_pattern",
           "metrics",
-          "host_profile"
+          "host_profile",
+          "environments",
+          "requires",
+          "scenario_ids",
+          "results_path"
         ],
         "additionalProperties": false
       },
@@ -440,6 +687,297 @@
         "rationale"
       ],
       "additionalProperties": false
+    },
+    "author_sessions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "solution_elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "subdomain",
+              "operation",
+              "invariant",
+              "enabling"
+            ]
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "specifications": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "module": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "behavior": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative",
+              "support"
+            ]
+          },
+          "contract_operations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "requirements",
+          "scenarios",
+          "specifications",
+          "module",
+          "behavior"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "target_tree": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "retain",
+              "add",
+              "modify",
+              "delete",
+              "generated"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "owner",
+          "purpose",
+          "disposition"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "tool",
+              "repository",
+              "host",
+              "external"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "probe_check_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "baseline",
+              "implementation",
+              "external"
+            ]
+          },
+          "required_at": {
+            "type": "string",
+            "enum": [
+              "specification",
+              "preparation",
+              "implementation"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "path",
+          "version",
+          "probe_check_ids",
+          "environments",
+          "availability",
+          "required_at"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "environments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "linux",
+              "macos",
+              "windows"
+            ]
+          },
+          "host_profile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "host_profile"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "contract_index_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "shared_generated_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "path",
+          "purpose"
+        ],
+        "additionalProperties": false
+      },
+      "uniqueItems": true
     }
   },
   "required": [
@@ -459,7 +997,14 @@
     "scenarios",
     "checks",
     "requirement_map",
-    "amendment"
+    "amendment",
+    "author_sessions",
+    "solution_elements",
+    "target_tree",
+    "resources",
+    "environments",
+    "contract_index_path",
+    "shared_generated_files"
   ],
   "additionalProperties": false
 }

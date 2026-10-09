@@ -54,7 +54,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertFalse(any((self.root / ".rdd/evidence").rglob("*")))
 
     def submission(self):
-        claim = self.f.c.task_claim("T001", "rdd_large", session_id="recovery-worker")
+        claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="recovery-worker")
         worker = self.root / claim["lease"]["worktree"]
         path = worker / "tests/behavior.py"
         path.write_text(engine_fixture.BEHAVIOR_TEST + "\n" + path.read_text())
@@ -110,6 +110,30 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(head(self.root), original_head)
         self.assertEqual(self.f.c.anchors_verify()["remaining"], 0)
 
+    def test_claimed_and_released_task_cannot_drop_or_forge_runtime_identity(self):
+        self.f.opened()
+        c = self.f.c
+        untouched = read_json(self.export())
+        c.validate_checkpoint_state(untouched["state"], untouched)
+        c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="actual-fixture-worker")
+        for release in (False, True):
+            if release:
+                c.task_release("T001", "Preserve the attempted work")
+            original = read_json(self.export())
+            c.validate_checkpoint_state(original["state"], original)
+            for field, value in (("worker", None), ("worker", "rdd_large"), ("requested_runtime", None),
+                                 ("requested_runtime", {"role": "rdd_complex_implementor", "verified": True})):
+                changed = copy.deepcopy(original)
+                changed["state"]["tasks"]["T001"][field] = value
+                with self.subTest(released=release, field=field, value=value), self.assertRaisesRegex(RddError, "requested runtime"):
+                    c.validate_checkpoint_state(changed["state"], changed)
+            changed = copy.deepcopy(original)
+            task = changed["state"]["tasks"]["T001"]
+            task.pop("worker")
+            task.pop("requested_runtime")
+            with self.assertRaisesRegex(RddError, "requested runtime"):
+                c.validate_checkpoint_state(changed["state"], changed)
+
     def test_export_rejects_changed_raw_log_without_creating_checkpoint(self):
         self.f.prepared()
         receipt = next(iter(self.f.c.state()["checks"].values()))
@@ -129,7 +153,7 @@ class RecoveryTests(unittest.TestCase):
         checkpoint["evidence"][".rdd/evidence/must-not-be-written.txt"] = "sentinel"
         write_json(path, checkpoint)
         self.empty_runtime_store()
-        with self.assertRaisesRegex(RddError, "digest mismatch"):
+        with self.assertRaisesRegex(RddError, "digest mismatch|hash mismatch"):
             self.f.c.resume(path)
         self.assert_no_import()
 
@@ -157,7 +181,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_expired_lease_preserves_dirty_work_and_claims_a_distinct_attempt(self):
         self.f.opened()
-        claim = self.f.c.task_claim("T001", "rdd_large", session_id="expired-worker")
+        claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="expired-worker")
         worker = self.root / claim["lease"]["worktree"]
         draft = worker / "tests/behavior.py"
         content = "# Valuable unfinished test work\n" + draft.read_text()
@@ -170,11 +194,97 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.f.c.state()["tasks"]["T001"]["status"], "todo")
         self.assertEqual(draft.read_text(), content)
         self.assertEqual(head(self.root), before)
-        next_claim = self.f.c.task_claim("T001", "rdd_large", session_id="fresh-worker")
+        next_claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fresh-worker")
         self.assertEqual(next_claim["lease"]["attempts"], 2)
         self.assertNotEqual(next_claim["lease"]["worktree"], claim["lease"]["worktree"])
         self.assertEqual(draft.read_text(), content)
         self.assertTrue(self.f.g("status", "--porcelain", root=worker))
+
+    def test_released_and_expired_attempts_can_enroll_without_losing_work(self):
+        self.f.opened()
+        c = self.f.c
+        for expired in (False, True):
+            claim = c.task_claim("T001", "rdd_complex_implementor", session_id=f"repair-author-{expired}")
+            worker = self.root / claim["lease"]["worktree"]
+            path = worker / "tests/behavior.py"
+            path.write_text("# Uncommitted valuable correction\n" + path.read_text(encoding="utf-8"), encoding="utf-8")
+            content = path.read_bytes()
+            self.f.live_review(findings=[self.f.finding(f"F-{expired}")])
+            if expired:
+                state = c.state()
+                state["tasks"]["T001"]["lease_expires"] = 0
+                c.save(state)
+                c.resume()
+            else:
+                c.task_release("T001", "Preserve the interrupted attempt")
+            result = c.task_reopen("T001", "Enroll the attempted task for a scoped correction")
+            self.assertIn(f"F-{expired}", result["finding_ids"])
+            self.assertEqual(c.state()["tasks"]["T001"]["attempts"], claim["lease"]["attempts"])
+            self.assertEqual(path.read_bytes(), content)
+            self.assertTrue(self.f.g("status", "--porcelain", root=worker))
+        final = c.task_claim("T001", "rdd_complex_implementor", session_id="final-repair-author")
+        self.assertEqual(final["lease"]["attempts"], 3)
+        self.assertNotEqual(final["lease"]["worktree"], claim["lease"]["worktree"])
+
+    def test_repair_authorization_checkpoint_roundtrip_and_tampering(self):
+        self.f.opened()
+        c = self.f.c
+        c.task_claim("T001", "rdd_complex_implementor", session_id="repair-author")
+        self.f.live_review(findings=[self.f.finding(), self.f.finding("OTHER", ("T003",)),
+                                     self.f.finding("GLOBAL", (), "low")])
+        c.task_reopen("T001", "Enroll the exact reviewed assertion")
+        path = self.export()
+        checkpoint = read_json(path)
+        self.empty_runtime_store()
+        c = self.f.c
+        c.resume(path)
+        self.assertEqual(c.state()["tasks"]["T001"]["repair_findings"], ["F1"])
+        # Later reviews do not invalidate the old prefix or expand its permission.
+        self.f.live_review(findings=[self.f.finding("NEW")])
+        self.f.live_review(resolutions=[dict(finding_id="F1", evidence="Verified the correction in the current fixture.")])
+        current = read_json(self.export())
+        c.validate_checkpoint_state(current["state"], current)
+        for case in ("invented", "missing-event", "missing-list", "mismatch", "unscoped", "other-task",
+                     "future-finding", "wrong-cursor", "already-resolved"):
+            changed = copy.deepcopy(current)
+            state = changed["state"]
+            record = state["tasks"]["T001"]
+            repair = next(e for e in reversed(state["events"]) if e["action"] == "open_phase_repair")
+            if case == "missing-event":
+                state["events"].remove(repair)
+            elif case == "missing-list":
+                record.pop("repair_findings")
+            elif case == "mismatch":
+                record["repair_findings"] = []
+            elif case == "wrong-cursor":
+                repair["review_cursor"] = True
+            elif case == "already-resolved":
+                state["events"].remove(repair)
+                state["events"].append(repair)
+                repair["review_cursor"] = len(state["live_reviews"])
+            else:
+                fid = {"invented": "INVENTED", "unscoped": "GLOBAL", "other-task": "OTHER",
+                       "future-finding": "NEW"}[case]
+                record["repair_findings"] = repair["finding_ids"] = [fid]
+            with self.subTest(case=case), self.assertRaisesRegex(RddError, "repair authorization"):
+                c.validate_checkpoint_state(state, changed)
+        # Reject import before writing either state or exported evidence.
+        write_json(path, changed)
+        self.empty_runtime_store()
+        with self.assertRaisesRegex(RddError, "repair authorization"):
+            self.f.c.resume(path)
+        self.assert_no_import()
+
+    def test_unattempted_task_and_invented_live_repair_cannot_gain_exemptions(self):
+        self.f.opened()
+        c = self.f.c
+        self.f.live_review(findings=[self.f.finding()])
+        self.f.assert_transition_rejected(lambda: c.task_reopen("T001", "Not an attempted repair"), "prior attempt")
+        state = c.state()
+        state["tasks"]["T001"]["repair_findings"] = ["F1"]
+        c.save(state)  # Deliberately corrupt the mutable list, with no repair event.
+        self.f.assert_transition_rejected(
+            lambda: c.task_claim("T001", "rdd_complex_implementor", session_id="invented-repair"), "repair authorization")
 
     def regenerate_fixture(self):
         """Re-prepare the same isolated tasks under a new run identity."""
@@ -189,7 +299,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_new_run_preserves_prior_worktree_and_packet(self):
         self.f.opened()
-        first = self.f.c.task_claim("T001", "rdd_large")
+        first = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         worker = self.root / first["lease"]["worktree"]
         draft = worker / "tests/behavior.py"
         content = "# Preserve this unfinished work\n" + draft.read_text()
@@ -197,7 +307,7 @@ class RecoveryTests(unittest.TestCase):
         packet = (self.root / first["packet"]).read_bytes()
         self.f.c.task_release("T001", "Preserve work before regeneration")
         self.regenerate_fixture()
-        second = self.f.c.task_claim("T001", "rdd_large")
+        second = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         self.assertEqual(second["lease"]["attempts"], 1)
         self.assertNotEqual(first["lease"]["worktree"], second["lease"]["worktree"])
         self.assertNotEqual(first["packet"], second["packet"])
@@ -208,11 +318,11 @@ class RecoveryTests(unittest.TestCase):
 
     def test_new_run_preserves_packets_without_worktrees(self):
         self.f.opened()
-        first = self.f.c.task_claim("T001", "rdd_large", worktree=False)
+        first = self.f.c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="fixture-worker")
         packet = (self.root / first["packet"]).read_bytes()
         self.f.c.task_release("T001", "Preserve packet before regeneration")
         self.regenerate_fixture()
-        second = self.f.c.task_claim("T001", "rdd_large", worktree=False)
+        second = self.f.c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="fixture-worker")
         self.assertEqual(second["lease"]["attempts"], 1)
         self.assertIsNone(second["lease"]["worktree"])
         self.assertNotEqual(first["packet"], second["packet"])
@@ -220,7 +330,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_checkpoint_accepts_historical_worktree_path(self):
         self.f.opened()
-        claim = self.f.c.task_claim("T001", "rdd_large")
+        claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         legacy = ".rdd/runtime/worktrees/T001-a1"
         if claim["lease"]["worktree"] != legacy:
             self.f.g("worktree", "move", claim["lease"]["worktree"], legacy)
@@ -290,12 +400,14 @@ class RecoveryTests(unittest.TestCase):
                     self.f.c.spec_freeze()
                 self.assertFalse((self.root / ".rdd/spec.lock.json").exists())
         write_json(self.root / ".rdd/spec.json", original)
+        self.f.stage_ready("specification")
         result = self.f.c.spec_freeze()
         self.assertEqual(result["status"], "specified")
         self.assertNotEqual(result["spec_digest"], parent)
 
     def test_amendment_plan_cannot_expand_outside_frozen_impact_paths(self):
         self.amend(paths=["modules/value.py"])
+        self.f.stage_ready("specification")
         frozen = self.f.c.spec_freeze()
         self.f.c.plan_init()
         plan = copy.deepcopy(self.f.plan)

@@ -213,6 +213,80 @@ def _run_url() -> str:
     return ""
 
 
+def verify_preparation(root: Path, policy_root: Path, harness_source: str) -> dict:
+    """Run preimplementation proofs with an independently pinned harness checkout.
+
+    The caller supplies the operator pin; repository workflows take it from a
+    repository variable, never from candidate manifests or workflow inputs.
+    """
+    from .engine import POLICY_PREFIXES, POLICY_FILES
+    from .readiness import (required_probe_ids, validate_resources, validate_producers,
+                            canonical_contract_check, verify_canonical_contract_receipts)
+    root, policy_root = root.resolve(), policy_root.resolve()
+    if root == policy_root or not _SHA.fullmatch(harness_source) or head(policy_root) != harness_source:
+        raise RddError("Preparation CI needs a separate checkout of the exact trusted harness pin", "policy")
+    if git(root, "merge-base", harness_source, "HEAD", check=False) != harness_source:
+        raise RddError("Preparation candidate must descend from the trusted harness pin", "policy")
+    clean(root)
+    clean(policy_root)
+    def harness_files(path):
+        config = {"protected_prefixes": list(POLICY_PREFIXES), "protected_files": list(POLICY_FILES)}
+        return {p: h for p, h in _policy_inventory(path, config).items()
+                if p.startswith(POLICY_PREFIXES) or p in POLICY_FILES}
+    trusted = harness_files(policy_root)
+    if harness_files(root) != trusted:
+        raise RddError("Preparation candidate changed the independently pinned harness", "policy")
+    config = read_json(policy_root / ".rdd/config.json")
+    spec, plan = read_json(root / ".rdd/spec.json"), read_json(root / ".rdd/plan/plan.json")
+    if spec.get("schema_version") != 2 or plan.get("schema_version") != 2:
+        raise RddError("Preparation CI requires a fresh v2 baseline", "policy")
+    spec_lock = _read_lock(root, ".rdd/spec.lock.json", ".rdd/spec.json")
+    plan_lock = _read_lock(root, ".rdd/plan/plan.lock.json", ".rdd/plan/plan.json")
+    prepared = _read_prepared(root, spec_lock, plan_lock)
+    artifacts.spec_validate(root, spec, artifacts.requirements(root, config["requirements"]), config)
+    artifacts.plan_validate(root, plan, spec, spec_lock, config)
+    validate_resources(root, spec)
+    validate_producers(root, spec, plan)
+    canonical = canonical_contract_check(spec)
+    anchors = artifacts.anchors_verify(root, plan, {"tasks": {t["id"]: {"status": "pending"} for t in plan["tasks"]}})
+    for path, expected in prepared["shell_hashes"].items():
+        if file_hash(safe_path(root, path, allow_missing=False)) != expected:
+            raise RddError(f"Prepared shell/projection changed: {path}", "policy")
+    commit, sources = head(root), source_digest(root)
+    platform = _host_platform()
+    checks = artifacts.unique(spec["checks"], "check")
+    selected = sorted(set(spec["contract_check_ids"] + required_probe_ids(spec, plan)))
+    report = {"schema_version": 2, "scope": "preparation", "status": "failed", "application_complete": False,
+              "source_commit": commit, "source_digest": sources, "harness_source": harness_source,
+              "platform": platform, "run_url": _run_url(), "checks": [], "pending_external": [], "anchors": anchors}
+    try:
+        for cid in selected:
+            check = checks[cid]
+            envs = {e["id"]: e for e in spec["environments"]}
+            if platform not in {envs[e]["platform"] for e in check["environments"]}:
+                continue
+            if check["host_profile"] or check["kind"] == "manual":
+                report["pending_external"].append(cid)
+                continue
+            receipt = _execute(root, check, phase=None, task_id=None, expectation="pass",
+                spec_digest=spec_lock["digest"], plan_digest=plan_lock["digest"], origin="ci",
+                actor="github-actions" if os.environ.get("GITHUB_ACTIONS") == "true" else "ci-controller", run_url=_run_url())
+            report["checks"].append(receipt)
+            if receipt["outcome"] != "pass":
+                raise RddError(f"Preparation qualification failed: {cid}", "environment")
+        if not report["checks"]:
+            raise RddError("No required portable preparation checks ran on this platform", "environment")
+        if any(r["check_id"] == canonical["id"] for r in report["checks"]):
+            verify_canonical_contract_receipts(root, spec, report["checks"])
+        if head(root) != commit or source_digest(root) != sources or harness_files(root) != trusted:
+            raise RddError("Preparation candidate changed while CI ran", "policy")
+        report["status"] = "passed"
+        return report
+    finally:
+        write_json(root / ".rdd/evidence/preparation-ci.json", report)
+        write_json(root / f".rdd/evidence/preparation-ci/{platform}.json", report)
+
+
 def _release_identity(root: Path, policy_root: Path, branch: str | None,
                       policy_sha: str | None, source_sha: str | None) -> None:
     if not all(isinstance(value, str) and _SHA.fullmatch(value)
@@ -301,6 +375,8 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
         prepared = _read_prepared(root, spec_lock, plan_lock)
         spec = read_json(safe_path(root, ".rdd/spec.json", allow_missing=False))
         plan = read_json(safe_path(root, ".rdd/plan/plan.json", allow_missing=False))
+        if spec.get("schema_version") != 2 or plan.get("schema_version") != 2:
+            raise RddError("Legacy baselines are read/export only; create a fresh reviewed v2 baseline", "policy")
         validate_artifact(root, "spec", spec)
         validate_artifact(root, "plan", plan)
         if (plan["spec_digest"] != spec_lock["digest"]
@@ -357,7 +433,9 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
             raise RddError("Release source requires the completed full phase prefix with no remaining anchors", "verification")
         report["observed_through_phase"] = phases[boundary] if boundary >= 0 else None
 
-        ordered_ids = list(spec["contract_check_ids"])
+        from .readiness import required_probe_ids, canonical_contract_check, verify_canonical_contract_receipts
+        canonical = canonical_contract_check(spec)
+        ordered_ids = list(spec["contract_check_ids"]) + required_probe_ids(spec, plan)
         for record in plan["phases"][:boundary + 1]:
             ordered_ids.extend(record["checks"])
         if boundary == len(phases) - 1:
@@ -392,6 +470,8 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
                     or evidence.get("source_digest") != report["source_digest"]
                     or evidence.get("check_id") != check["id"]):
                 raise RddError(f"CI check evidence is stale or mismatched: {check['id']}", "verification")
+        if any(r["check_id"] == canonical["id"] for r in report["checks"]):
+            verify_canonical_contract_receipts(root, spec, report["checks"])
         if head(root) != report["source_commit"] or source_digest(root) != report["source_digest"]:
             raise RddError("Candidate source changed while checks ran; rerun against a stable commit", "verification")
         if release:

@@ -12,7 +12,7 @@ RDD keeps product obligations connected to design decisions, implementation work
 
 The traceability chain is:
 
-**Requirement → scenario/check → scoped task → phase review and PR → project validation**
+**Requirement ↔ subdomain/behavior ↔ scenario/check ↔ groomed task/work sites ↔ phase evidence and PR ↔ project validation**
 
 A scenario describes the behavior or constraint to prove; a check supplies its executable test or evidence protocol. Tasks identify the exact work and allowed files. Phase review establishes whether that work satisfies the obligations being accepted. Final project validation combines the results across the whole application. A completed checklist or a model's success message cannot replace this evidence.
 
@@ -24,14 +24,14 @@ A scenario describes the behavior or constraint to prove; a check supplies its e
 
 The diagram is conceptual; the controller and frozen artifacts define the operational rules. Its labels are outlined graphics, so the walkthrough below also describes the flow in text.
 
-1. **Specification** derives domain boundaries from functional requirements and measurable acceptance criteria from quality constraints. Research and real contract, native runtime, database, and UI qualification checks establish a viable solution before it is frozen. This stage defines scenarios and check protocols without implementing application behavior.
-2. **Preparation** turns that solution into concrete target paths, scoped tasks, dependencies, verticals, and phases. It creates approved empty or comment-only shells, task markers, and an implementation matrix. It verifies the frozen contracts; it does not implement the product.
+1. **Specification** derives every functional subdomain and behavior, the complete target folder system, contracts, golden scenarios and quality protocols. Research and real qualification establish execution feasibility. Two independent perspectives—semantic coverage and execution readiness—must approve the same candidate with zero unresolved findings before freeze.
+2. **Preparation** fully grooms every task, producer/input dependency, phase, category, vertical and work site within the frozen solution. It creates safe comment-only shells, full primary task packets, linked local packets and the matrix. Materialization enters `preparing`; actual readiness/CI evidence and final two-perspective review must pass `gate preparation` before implementation.
 3. **Implementation** works through the phased backlog. Tests and benchmarks are implemented according to the scoped phase tasks, followed by production changes, independent review, and acceptance checks. Each accepted phase gets a PR and seal; the project gate evaluates the final result.
 
 | Stage | Input | Accepted output |
 | --- | --- | --- |
-| Specification | Canonical requirements and relevant existing code | Frozen solution documents, decisions, requirement coverage, scenarios/check definitions, qualified Protobuf contracts and generated interfaces |
-| Preparation | Frozen solution and contracts | Frozen task dependency graph, verticals, dependency-closed phases, exact write scopes, prepared shells/markers, and implementation matrix |
+| Specification | Canonical requirements and relevant existing code | Frozen solution and target-folder design, complete behavior/golden coverage, qualified contracts, execution prerequisites and two independent reviews |
+| Preparation | Frozen solution and contracts | Fully hydrated backlog, producer closure, exact co-located work sites, phase/category/vertical projections, matrix and exact-source preparation gate |
 | Implementation | Committed and pushed prepared baseline | Tested application changes, revision-bound evidence and independent reviews, one verified PR per phase, phase seals, and project validation |
 
 **Frozen artifacts** are approved files whose exact identities are recorded by the controller. Downstream work must preserve that authority; changing a contract or acceptance meaning requires a new specification run. Generated Rust messages and local unary service traits enforce interface shapes, while application checks must also prove that real providers and consumers use those boundaries. The seed contract in this boilerplate qualifies the generator; it is not the Todo domain model or a requirement to add a network server.
@@ -42,7 +42,7 @@ A **vertical** is an ordered chain of dependent tasks toward a capability. A **p
 
 Agents interpret requirements, research dependencies, author specifications and code, and review whether the result fulfills the intended behavior. The deterministic Python controller validates artifact structure, traceability, dependency order, task ownership, source identity, evidence, and state transitions. Structural validation supports semantic review; it cannot establish correctness by itself.
 
-The coordinator uses `gpt-6-astra` at `ultra`. Large implementors and the independent reviewer use `gpt-6.1-sol` at `xhigh`; small implementors use `gpt-6-luna` at `xhigh`. At most **two implementors** run concurrently, leaving room for the reviewer to observe progress and send corrections. The final independent review is bound to the exact phase revision.
+Named specialists own domain analysis, verification design, contract architecture, qualification and task planning. The [runtime roster](docs/harness/codex-runtime.md#runtime-contract) defines their assignments and models. `rdd_complex_implementor` handles large or small tasks; `rdd_light_implementor` handles small, unambiguous tasks. At most **two authors** run concurrently alongside a read-only live reviewer. Final independent review binds the exact candidate.
 
 Workers receive bounded task packets and isolated Git worktrees with disjoint write scopes. The controller integrates committed work only from the leased base and declared files. Requirements, frozen artifacts, generated contracts, controller policy, skills, and CI cannot be rewritten by implementation tasks to weaken their own acceptance rules.
 
@@ -52,7 +52,7 @@ Within each phase, tasks follow this order:
 
 Tests must first reach an actual failing behavioral assertion (RED). Missing tools, compiler errors, and skipped tests are not RED. Test-only scaffolding may make the assertion executable, but cannot supply product behavior. Additions need a frozen reuse analysis explaining why existing code cannot reasonably provide the capability.
 
-Task markers such as `// RDD:P01:T001 [tests] ...` and sidecars for noncommentable files project the plan into source. The plan and transactional state remain authoritative. Use controller commands to complete tasks and reconcile markers; never edit SQLite state, locks, receipts, or unfinished markers to force progress. Review gates occur at phase completion, rather than after each task.
+Task markers such as `RDD:P01:tests:V01+V03:T001:A01` encode phase, classification, sorted verticals, task and work site. A full packet is co-located at the primary work site; secondary sites have local instructions and a primary reference. Noncommentable and deletion targets use adjacent sidecars. The plan and transactional state remain authoritative. Use controller commands to complete tasks and reconcile markers; never edit SQLite state, locks, receipts, or unfinished markers to force progress. Implementation review gates occur at phase completion, rather than after each task. Specification and preparation have their own two-perspective exit reviews. Frozen specification/planning defects discovered downstream are critical harness regressions: preserve evidence, repair the missing prevention and add a regression before a fresh trial.
 
 ## Prerequisites
 
@@ -129,15 +129,17 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
    ./rdd workflow preparation
    ```
 
-   The workflow reviews and freezes the task graph, then materializes the approved shells, markers, and matrix. Commit the prepared baseline. Unresolved design questions return to specification.
+   The workflow reviews and freezes the task graph, then materializes the approved shells, task packets, and matrix. This enters `preparing`; commit the materialized handoff before final review. A frozen specification defect stops affected work and is recorded as a critical harness regression.
 
-3. **Push the accepted baseline.** The first phase PR and its trusted CI policy need this remote base. Keep it outside `main`:
+3. **Publish and accept preparation.** Push the committed materialization outside `main`:
 
    ```sh
    git push origin YOUR_BASELINE_BRANCH
    ```
 
-   Verify that exact baseline push in CI, then require `verify` on the baseline. Later phase bases need the same required check only after they are sealed; do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for the setup commands.
+   Obtain successful preparation CI for that exact commit using the pinned `RDD_PREPARATION_HARNESS_SHA`, import any required external evidence, and run `./rdd readiness preparation`. Both independent final reviewers must inspect the committed handoff and current evidence; record their reports, then run `./rdd gate preparation`. Only a passing gate grants `prepared` and permits P01. See the [preparation protocol](docs/harness/workflow-guide.md#stage-two-preparation) for the exact sequence.
+
+   The first phase PR uses this accepted remote baseline. Require `verify` on it; later phase bases need the same required check only after they are sealed. Do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for setup commands.
 
 4. **Open implementation and activate native Goal mode.** Obtain the objective, then launch the implementation session:
 
@@ -200,6 +202,8 @@ After project acceptance, archive the reports/checkpoint and keep the phase stac
 
 CI runs on Linux, macOS, and Windows, with the aggregate check named **`verify`**. A phase PR uses the trusted base controller and policy to validate the candidate. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy to grant itself permission. The explicit release route uses operator-pinned policy while retaining the controller from the PR's `main` base.
 
+Preparation has its own CI route while the run is `preparing`: pin the trusted harness commit in the repository variable `RDD_PREPARATION_HARNESS_SHA`, then push the exact materialized `codex/*-baseline` commit. Import its raw evidence before `gate preparation`; hosted success cannot replace qualified-host/manual proof. See the [workflow guide](docs/harness/workflow-guide.md#stage-two-preparation). Harness maintenance PRs also run the candidate selftests and actual native/WASM contract compiler proofs on the supported OS matrix.
+
 Before a frozen application plan exists, CI reports `harness_only` with `application_complete=false`. An intact prepared baseline verifies contracts and pending markers. A phase PR runs cumulative ordinary checks for the applicable native platform. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
 
 On nonphase branches, CI accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; a same-revision push check cannot detect rollback against an earlier revision. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
@@ -219,7 +223,7 @@ Protect the verification workflow and policy through repository rules and review
 | `.rdd/baselines/` | Historical baseline artifact copies |
 | [.agents/skills/](.agents/skills/README.md), [.codex/agents/](.codex/agents/) | Workflow/supporting skills and Codex roles |
 | [tools/rdd/](tools/rdd/), [tools/proto-codegen/](tools/proto-codegen/) | Python controller and Rust contract generator |
-| [.rdd/config.json](.rdd/config.json), [AGENTS.md](AGENTS.md) | Controller policy, model allocation, and repository authority rules |
+| [.rdd/config.json](.rdd/config.json), [AGENTS.md](AGENTS.md) | Controller policy and repository authority rules |
 
 For deeper work, use the existing guides:
 
@@ -230,6 +234,5 @@ For deeper work, use the existing guides:
 - [Codex runtime guide](docs/harness/codex-runtime.md): client setup, Goals, adapters, PR policy, and CI.
 - [Security model](docs/harness/security-model.md): trusted components and limits of verification.
 - [Skill guide](.agents/skills/README.md): the three primary workflows and supporting skills.
-- [Historical validation record](docs/harness/validation.md): checks performed when the original boilerplate was assembled, not a claim that the Todo application is complete.
 
 Adjust protected harness policy, tools, models, or skills through deliberate review before specification freeze, and run `./rdd selftest` after harness changes. During implementation, those frozen rules remain part of the acceptance authority.

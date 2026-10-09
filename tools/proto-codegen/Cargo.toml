@@ -11,3 +11,4 @@ publish = false
 prost = "=0.14.4"
 prost-build = "=0.14.4"
 prost-types = "=0.14.4"
+serde_json = "=1.0.149"

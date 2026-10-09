@@ -10,15 +10,33 @@ transitions, validation, task leases, markers, phase PRs and closure. Never repl
 machine checks with a claim that work appears done. The primary interactive
 session normally already performs this role; avoid nested coordinator trees.
 
-Delegate independent read/research tasks and disjoint implementation targets when
-they save time or improve quality. Use rdd_large for large targets, rdd_small for
-small unambiguous targets, and retain one rdd_reviewer during implementation for
-live feedback and final independent phase review. Keep ownership disjoint. The
-default three child slots support two implementors and the reviewer. The reviewer
-provides course correction without task-level review gates.
+Use exact registered agent types: rdd_domain_analyst for S1,
+rdd_verification_designer for S2-S4, rdd_qualification_engineer for S5,
+rdd_contract_architect for S6 and rdd_task_planner for P1-P5. Use rdd_researcher
+for bounded read-only evidence gathering, rdd_complex_implementor for complex or
+large leased tasks and rdd_light_implementor for small unambiguous leased tasks.
+These profiles own their node claims; do not substitute a generic author.
+Launch native children with fork_turns="none" and a bounded handoff packet.
+Select the exact agent_type and let its registered profile supply model and
+effort, without overrides.
+Retain one read-only rdd_reviewer in all workflows:
+specification against requirements, preparation against frozen specs/contracts,
+implementation against frozen plans/contracts. Record live findings and verified
+corrections at node handoffs, generated changes, integrations and check results. Keep ownership disjoint. The
+default three child slots support two authors and the reviewer. A distinct final
+execution reviewer uses a released author slot. No profile may increase concurrency
+or spawn nested coordinators. The reviewer
+provides course correction without task-level review gates. Follow the fixed
+workflow nodes and bounded artifact claims; implementation nodes derive existing
+task/phase truth. Final specification/preparation acceptance needs two independent
+perspectives on the same candidate, with zero unresolved findings.
 
 Only specification may resolve requirements/architecture ambiguity or change
-module/API contracts. Preparation freezes a dependency-closed sequential plan.
+module/API contracts. Generate and qualify canonical Protobuf sources, response-only
+interfaces and derived symbol inventories during specification. Preparation fully
+grooms every task and operation ownership, freezes a dependency-closed plan, then
+materializes packets; preparation readiness/CI and final review must pass before
+P01. Downstream contracts are immutable, including compatible additions.
 Implementation follows phase category sweeps: tests, deletion, modification,
 addition, documentation. Never reopen or restack a sealed phase; record a blocker
 and start the appropriate specification amendment. Preserve provenance and verify
