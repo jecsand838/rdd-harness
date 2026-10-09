@@ -273,6 +273,7 @@ class WorkflowNodes:
         if (digest(self._node_input(state, node, records)) != claim["input_digest"]
                 or any(records[d]["status"] != "complete" for d in NODES[node]["depends_on"])):
             raise RddError("Workflow node inputs changed during execution")
+        self.live_review_guard(final=False, node=node)
         if set(record["outputs"]) != set(claim["writes"]):
             raise RddError("Node output inventory must exactly match its bounded claim")
         actual = inventory(self.root)
