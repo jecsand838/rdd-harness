@@ -5,7 +5,6 @@ import argparse
 import contextlib
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 
@@ -90,7 +89,7 @@ def parser() -> argparse.ArgumentParser:
     for field in ("requirement", "element", "task", "evidence"):
         block.add_argument("--" + field, action="append", default=[])
     commands.add_parser("goal", help="Print only the native /goal objective, guaranteed below 4,000 characters")
-    wf = commands.add_parser("workflow", help="Open an interactive Codex workflow, or print its launch packet")
+    wf = commands.add_parser("workflow", help="Run a workflow through verified acceptance, inspect nodes, or print its launch packet")
     wf.add_argument("stage", choices=("specification", "preparation", "implementation", "nodes", "next", "claim", "record", "release"))
     wf.add_argument("target", nargs="?")
     wf.add_argument("--session-id")
@@ -99,7 +98,7 @@ def parser() -> argparse.ArgumentParser:
     wf.add_argument("--reason")
     wf.add_argument("--finding", help="Unresolved live finding authorizing a scoped corrective retry")
     wf.add_argument("--mode", choices=("amend", "regenerate"))
-    wf.add_argument("--print", action="store_true", dest="print_only", help="Show the launch packet; does not start Codex (an explicit --mode starts the requested run)")
+    wf.add_argument("--print", action="store_true", dest="print_only", help="Read-only launch packet, including with --mode")
     contract = commands.add_parser("contracts")
     contract.add_argument("action", choices=("check", "generate"))
     contract.add_argument("--bootstrap-lock", action="store_true", help="First qualification only: resolve missing Cargo.lock files")
@@ -265,6 +264,17 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     controller = None
     try:
+        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"}:
+            controller = Controller(args.root)
+            if args.print_only:
+                result = controller.workflow(args.stage, args.mode, print_only=True)
+            else:
+                from rdd.workflow import WorkflowRunner
+                result = WorkflowRunner(controller).run(args.stage, args.mode)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            if result.get("interrupted"):
+                return 130
+            return 0 if args.print_only or result.get("status") == "passed" else (1 if result.get("status") == "failed" else 2)
         source_write = args.command in {"start", "prepare", "resume", "phase"} or (
             args.command in {"spec", "plan"} and args.action in {"init", "freeze"}) or (
             args.command == "contracts" and args.action == "generate") or (
@@ -276,12 +286,10 @@ def main(argv: list[str] | None = None) -> int:
             require_source_branch(args.root)
         controller = Controller(args.root)
         legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run", "selftest"} or (
-            args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage == "nodes"))
+            args.command == "workflow" and args.stage == "nodes")
         if not legacy_readonly:
             controller.guard_v2()
-        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"}:
-            controller.guard_workflow(args.stage, args.mode, print_only=args.print_only)
-        elif args.command == "resume":
+        if args.command == "resume":
             controller.guard_resume(args.file)
         elif args.command == "export-run":
             controller.guard_export(args.file)
@@ -289,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
             controller.guard_source_write(baseline=args.command in {"spec", "plan", "prepare", "contracts"})
         readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "selftest", "ci"} or (
             args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
-            args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage in {"nodes", "next"}))
+            args.command == "workflow" and args.stage in {"nodes", "next"})
         if args.command in {"start", "init"}:
             profile_policy_digest(controller.root)
             if args.command == "init":
@@ -302,14 +310,6 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "goal":
             print(result)
             return 0
-        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"} and not args.print_only:
-            if not shutil.which("codex"):
-                raise RddError("codex is not on PATH. Install/authenticate the Codex CLI; use workflow --print to inspect the launch packet.", "environment")
-            if not sys.stdin.isatty():
-                raise RddError("Interactive Codex needs a terminal; use workflow --print to inspect the prompt and invoke it in your terminal.", "environment")
-            if result["native_goal"]:
-                print("After Codex opens, activate native goal mode with /goal and the output of ./rdd goal.\n")
-            return subprocess.call(result["argv"], cwd=controller.root)
         displayed = workflow_display(result) if args.command == "status" or (
             args.command == "workflow" and args.stage in {"nodes", "claim"}) else result
         print(json.dumps(displayed, indent=2, ensure_ascii=False))
@@ -322,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
     except (RddError, RddAdapterError) as exc:
         kind = getattr(exc, "kind", getattr(exc, "code", "environment"))
         # Frozen authority/phase drift cannot be silently repaired by an implementation agent.
-        if controller and kind in {"specification", "planning", "closure"}:
+        if controller and kind in {"specification", "planning", "closure"} and args.command != "workflow":
             try:
                 state = controller.state(allow_blocked=True)
                 if state["status"] in {"specified", "planned", "preparing", "prepared", "implementation", "complete"} and (

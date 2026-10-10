@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "scope": "Observed Codex runtime capabilities, bounded execution interfaces, and harness qualification tools",
-  "checked_date": "2026-10-08",
+  "checked_date": "2026-10-09",
   "observed_codex_cli": "0.161.0",
   "model_catalog": {
     "source": "Installed CLI bundled catalog; canonical settings live in .codex/agents/*.toml",
@@ -28,7 +28,11 @@
     "ci_controller": "Real-Git trusted-policy/candidate fixtures and real check subprocesses; CI remains independent of candidate run locators.",
     "codex_smoke": "Installed CLI 0.161.0 version, flags, bundled model/effort catalog and authenticated session observed. Requested settings are not backend-model attestation.",
     "github_actions": "Hosted baseline 0f7e76f: Ubuntu, macOS and Windows candidate harness jobs passed; trusted-controller and aggregate verify jobs failed. Later candidate results belong in their exact-revision CI reports.",
-    "rust_and_buf_execution": "Actual multi-module native/WASM generator/compiler proof suite executed with Rust 1.99.0 and Buf 1.73.0. Raw results are retained under .rdd/evidence/harness-contracts/."
+    "rust_and_buf_execution": "Actual multi-module native/WASM generator/compiler proof suite executed with Rust 1.99.0 and Buf 1.73.0. Raw results are retained under .rdd/evidence/harness-contracts/.",
+    "app_server_transport": "Python stdlib UTF-8 stdio runner pinned to qualified codex-cli 0.161.0. Deterministic fake subprocess tests cover protocol correlation, ordered events, bounded queues/logs, failures and owned cleanup; external model execution is not part of those tests.",
+    "native_goal_and_specification_qa": "Independent disposable probes passed typed ordinary-turn Q&A, native automatic Goal continuation, same-thread reconnect/accounting and pause/interruption. Production transport/preflight and status-only reactivation were then observed: zero client continuation turns after reconnect, two native turns with real local checks, and bounded paused shutdown. See .rdd/evidence/runtime-qualification-20261009/production-smoke/FINAL_FINDINGS.json; prior native reviewer inheritance failure remains preserved.",
+    "readonly_resolution": "Separate independent disposable qualification passed canonical profile-applied explicitly read-only threads, actual EPERM write denial, persistent review snapshots/reconnect, distinct final reviewer, and coordinator-only experimental dynamic tool callback correlation/resume. Inherited approval policy/reviewer unchanged. See .rdd/evidence/runtime-qualification-20261009/reviewer-isolation/FINAL_FINDINGS.json.",
+    "public_workflow_acceptance": "Three-command runner behavior is covered by offline tests with simulated Codex/GitHub protocols. Native end-to-end execution/acceptance of the public workflow commands and Todo/product acceptance have not been demonstrated."
   },
   "sources": [
     {
@@ -46,6 +50,10 @@
     {
       "title": "Native Codex Goals",
       "url": "https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex"
+    },
+    {
+      "title": "Codex App Server experimental dynamic tools and native Goal transport",
+      "url": "https://learn.chatgpt.com/docs/app-server"
     },
     {
       "title": "GitHub CLI PR metadata",
@@ -83,5 +91,28 @@
       "title": "Agent evaluation best practices",
       "url": "https://developers.openai.com/api/docs/guides/evaluation-best-practices"
     }
-  ]
+  ],
+  "app_server_protocol": {
+    "qualified_codex_cli": "0.161.0",
+    "dynamic_tool": "rdd_readonly_agent",
+    "experimental_api": true,
+    "readonly_purposes": {
+      "live": "persistent reviewer",
+      "execution": "distinct final reviewer",
+      "research": "bounded researcher"
+    },
+    "profile_provenance": "Canonical TOML applied to separate explicit read-only App Server threads; not native agent_type dispatch or backend-model attestation.",
+    "approval_policy": "Inherited unchanged; no runner approval-policy/reviewer override.",
+    "native_reviewer_child_isolation": "Failed under inherited parent workspace-write; preserved rather than treated as a pass.",
+    "evidence": [
+      ".rdd/evidence/runtime-qualification-20261009/live/FINAL_FINDINGS.json",
+      ".rdd/evidence/runtime-qualification-20261009/reviewer-isolation/FINAL_FINDINGS.json",
+      ".rdd/evidence/runtime-qualification-20261009/production-smoke/FINAL_FINDINGS.json"
+    ],
+    "limits": [
+      "Researcher inference and execution/research dynamic purpose branches were not run.",
+      "Approval-requiring server requests, other hosts and backend attestation were not exercised by the live qualification.",
+      "Individual capability probes do not establish public workflow or application acceptance."
+    ]
+  }
 }

@@ -1,0 +1,613 @@
+"""Three workflow commands; model execution proposes, controller evidence accepts."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import tempfile
+import time
+import uuid
+
+from .common import (RddError, atomic_write, clean, digest, file_hash, git, head, operation_lock,
+                     read_json, safe_path, source_digest)
+from .profiles import load_profiles
+
+STAGES = ("specification", "preparation", "implementation")
+READONLY_PURPOSES = {"live": "rdd_reviewer", "execution": "rdd_reviewer", "research": "rdd_researcher"}
+GOAL_STATUSES = {"active", "paused", "blocked", "complete", "budgetLimited", "usageLimited"}
+TOOL = "rdd_readonly_agent"
+GUIDANCE = """The workflow runner owns execution and native Goal activation. Do not launch another
+coordinator or ask the user for an orchestration prompt. Use rdd_readonly_agent for
+ALL reviewer/researcher sessions: live is persistent, execution is a separate final
+reviewer, research is bounded advice. Do not spawn these two roles as native children:
+live parent permissions override their read-only defaults. Writable specialists use
+exact native agent_type and fork_turns=none, within two author slots. Return source-linked
+review records through the existing controller; the runner supplies actual session IDs.
+The read-only tool cannot record reviews itself. Keep reviewers independent of authors.
+Include relevant controller candidate/readiness/finding facts and source/evidence paths
+in each bounded review prompt; read-only sessions cannot run writing controller commands.
+Do not edit harness policy. Missing permissions, external evidence, user pauses or usage
+limits are recoverable stops, never success. Finish only with controller acceptance.
+"""
+ENVELOPE = {"type": "object", "additionalProperties": False, "required": ["kind", "message", "questions"],
+    "properties": {"kind": {"type": "string", "enum": ["questions", "progress", "stopped"]},
+                   "message": {"type": "string"}, "questions": {"type": "array", "maxItems": 3,
+                   "items": {"type": "string", "minLength": 1}}}}
+DYNAMIC_TOOL = {"type": "function", "name": TOOL, "description":
+    "Request a bounded, source-linked read-only review or research session. Trusted profiles fix all runtime permissions and settings.",
+    "inputSchema": {"type": "object", "additionalProperties": False, "required": ["purpose", "prompt"],
+                    "properties": {"purpose": {"type": "string", "enum": list(READONLY_PURPOSES)},
+                                   "prompt": {"type": "string", "minLength": 1}}}, "deferLoading": False}
+
+
+def launch_packet(controller, stage, mode=None):
+    locator = controller.root / ".rdd/run.json"
+    run_id = read_json(locator).get("run_id") if locator.is_file() else None
+    objective = controller.goal() if stage == "implementation" else (
+        "Complete preparation against the frozen specification and contracts through accepted gate preparation. "
+        "Follow $preparation-workflow, with independent continuous review, real readiness evidence and committed materialization. "
+        "Missing external evidence or permissions leaves this objective incomplete." if stage == "preparation" else None)
+    return {"stage": stage, "run_id": run_id, "mode": mode,
+            "requested_runtime": controller.profile_settings("rdd_coordinator"),
+            "skill": f".agents/skills/{stage}-workflow/SKILL.md", "objective": objective,
+            "prompt": f"Follow ${stage}-workflow and AGENTS.md using ./rdd. "
+                f"Stage={stage}; run={run_id or 'fresh'}; requirements={controller.config['requirements']}. "
+                "Complete this stage's artifacts, specialist handoffs, continuous and final independent reviews, "
+                "checks, commits and acceptance. Stop before the next workflow. "
+                "Controller workflow_result determines success; model prose does not. "
+                + ("Ask only necessary specification questions via the typed questions envelope. "
+                   "Otherwise keep working and return progress or stopped with an explicit reason. "
+                   "Persist actual answers in the canonical specification/decision artifacts."
+                   if stage == "specification" else "Execute headlessly; do not ask routine conversational questions.")}
+
+
+def validate_runtime(controller, state):
+    """Backend references are recovery hints, never evidence or portable sessions."""
+    runtime = state.get("workflow_runtime", {})
+    if not isinstance(runtime, dict) or set(runtime) - set(STAGES):
+        raise RddError("Invalid workflow runtime stages")
+    sessions = set()
+    for stage, row in runtime.items():
+        if not isinstance(row, dict) or set(row) - {"thread_id", "requested_runtime", "runtime", "last_turn", "goal", "connection", "readonly", "pending", "driver_paused"}:
+            raise RddError("Invalid workflow runtime metadata")
+        if row.get("requested_runtime") != controller.profile_settings("rdd_coordinator"):
+            raise RddError("Workflow runtime profile identity changed")
+        if row.get("connection") not in {"starting", "connected", "interrupted", "stopped", "accepted"}:
+            raise RddError("Invalid workflow connection state")
+        identity = row.get("runtime", {})
+        if (not isinstance(identity, dict) or set(identity) != {"version", "executable", "executable_sha256"}
+                or not all(isinstance(v, str) and v for v in identity.values())):
+            raise RddError("Invalid workflow executable identity")
+        entries = [(row, "rdd_coordinator")]
+        readonly = row.get("readonly", {})
+        if not isinstance(readonly, dict) or set(readonly) - set(READONLY_PURPOSES):
+            raise RddError("Invalid read-only session purposes")
+        for purpose, session in readonly.items():
+            if not isinstance(session, dict) or set(session) - {"thread_id", "requested_runtime", "last_turn", "packet_digest", "callback_id"}:
+                raise RddError("Invalid read-only session metadata")
+            callback = session.get("callback_id")
+            if callback is not None and (not isinstance(callback, str) or not 0 < len(callback) <= 200):
+                raise RddError("Invalid read-only callback identity")
+            if session.get("requested_runtime") != controller.profile_settings(READONLY_PURPOSES[purpose]):
+                raise RddError("Read-only session profile changed")
+            if session.get("packet_digest") is not None and (not isinstance(session["packet_digest"], str)
+                    or len(session["packet_digest"]) != 64 or any(c not in "0123456789abcdef" for c in session["packet_digest"])):
+                raise RddError("Invalid read-only packet identity")
+            entries.append((session, READONLY_PURPOSES[purpose]))
+        for session, _ in entries:
+            tid = session.get("thread_id")
+            if tid is not None:
+                if not isinstance(tid, str) or not tid or len(tid) > 200 or tid in sessions:
+                    raise RddError("Invalid or reused workflow thread identity")
+                sessions.add(tid)
+            turn = session.get("last_turn")
+            if turn is not None and (not isinstance(turn, str) or not turn or len(turn) > 200):
+                raise RddError("Invalid workflow turn identity")
+        if "driver_paused" in row and type(row["driver_paused"]) is not bool:
+            raise RddError("Invalid driver pause provenance")
+        goal = row.get("goal")
+        if goal is not None:
+            if (stage == "specification" or not isinstance(goal, dict)
+                    or goal.get("threadId") != row.get("thread_id")
+                    or goal.get("objective") != launch_packet(controller, stage)["objective"]
+                    or goal.get("status") not in GOAL_STATUSES
+                    or type(goal.get("createdAt")) is not int
+                    or (goal.get("tokenBudget") is not None and (type(goal["tokenBudget"]) is not int or goal["tokenBudget"] <= 0))
+                    or any(type(goal.get(k)) is not int or goal[k] < 0 for k in ("tokensUsed", "timeUsedSeconds"))):
+                raise RddError("Invalid recorded native Goal identity/accounting")
+        pending = row.get("pending")
+        if pending is not None and (not isinstance(pending, str) or len(pending) > 200):
+            raise RddError("Invalid pending runtime operation")
+
+
+class WorkflowRunner:
+    def __init__(self, controller, *, server_factory=None, ask=input, emit=print):
+        if server_factory is None:
+            from .app_server import AppServer
+            server_factory = AppServer
+        self.c, self.root = controller, controller.root
+        self.server_factory, self.ask, self.emit = server_factory, ask, emit
+        self.server = None
+        self.active = {}
+        self.completed = {}
+        self.messages = {}
+        self.loaded = set()
+        self.stage = None
+        self.thread_id = None
+        self.readonly_busy = False
+        self.diagnostics = None
+
+    def journal(self):
+        return self.c.state(allow_blocked=True).get("workflow_runtime", {}).get(self.stage, {})
+
+    def update(self, **changes):
+        with operation_lock(self.root):
+            state = self.c.state(allow_blocked=True)
+            self.c.guard_source_write(state)
+            with self.c.store.edit(state["id"]) as current:
+                self.c.guard_run_policy(current)
+                row = current.setdefault("workflow_runtime", {}).setdefault(self.stage, {})
+                row.update(changes)
+                validate_runtime(self.c, current)
+
+    def session_params(self, role, tid=None):
+        profile = load_profiles(self.root)[role]
+        params = {"cwd": str(self.root), "model": profile["model"],
+                  "config": {"model_reasoning_effort": profile["effort"]},
+                  "sandbox": profile["sandbox"], "developerInstructions": profile["developer_instructions"]}
+        if role == "rdd_coordinator":
+            params["developerInstructions"] += "\n" + GUIDANCE
+            if tid is None:
+                params["dynamicTools"] = [DYNAMIC_TOOL]
+        if tid:
+            params["threadId"] = tid
+        return params
+
+    def open_session(self, role, tid=None):
+        response = self.server.rpc("thread/resume" if tid else "thread/start", self.session_params(role, tid))
+        observed = response.get("thread", {}).get("id")
+        profile = load_profiles(self.root)[role]
+        expected_sandbox = "readOnly" if profile["sandbox"] == "read-only" else "workspaceWrite"
+        config = self.server.effective_config
+        # Defaults here are protocol defaults, not replacements passed to Codex.
+        if (not observed or (tid and observed != tid) or response.get("model") != profile["model"]
+                or response.get("reasoningEffort") != profile["effort"]
+                or response.get("sandbox", {}).get("type") != expected_sandbox
+                or response.get("approvalPolicy") != config.get("approval_policy", "on-request")
+                or response.get("approvalsReviewer") != (config.get("approvals_reviewer") or "user")):
+            raise RddError("App Server did not preserve requested profile/sandbox and effective approval policy", "environment")
+        self.loaded.add(observed)
+        return observed, response["thread"]
+
+    def result(self):
+        return self.c.workflow_result(self.stage)
+
+    def preflight(self):
+        """Read effective capabilities before creating a branch, run or thread."""
+        config = self.server.effective_config
+        if config.get("sandbox_mode") != "workspace-write":
+            raise RddError("Coordinator requires its configured workspace-write sandbox; effective policy was not changed", "environment")
+        profiles = load_profiles(self.root)
+        catalog, cursor, seen = {}, None, set()
+        for _ in range(20):
+            params = {"includeHidden": True, "limit": 100}
+            if cursor:
+                params["cursor"] = cursor
+            page = self.server.rpc("model/list", params)
+            catalog.update({row["model"]: {e["reasoningEffort"] for e in row["supportedReasoningEfforts"]} for row in page["data"]})
+            cursor = page.get("nextCursor")
+            if not cursor:
+                break
+            if cursor in seen:
+                raise RddError("Runtime model catalog pagination did not progress", "environment")
+            seen.add(cursor)
+        missing = [role for role, p in profiles.items() if p["effort"] not in catalog.get(p["model"], set())]
+        if cursor or missing:
+            raise RddError("Runtime does not advertise required model/effort profiles: " + ", ".join(missing), "environment")
+        account = self.server.rpc("account/read", {"refreshToken": False})
+        if account.get("requiresOpenaiAuth") and account.get("account") is None:
+            raise RddError("Codex authentication is required; authenticate locally and retry", "environment")
+        # Catalog support is not inference/backend attestation. No startup request
+        # can grant itself approval or cause bootstrap before the driver sees it.
+        for _ in range(1000):
+            message = self.server.next_event(timeout=0)
+            if message is None:
+                return
+            self.observe(message)
+        raise RddError("Runtime startup event stream did not quiesce", "environment")
+
+    def observe(self, message):
+        method, params = message.get("method"), message.get("params", {})
+        if "id" in message and method:
+            if (method != "item/tool/call" or params.get("tool") != TOOL
+                    or params.get("threadId") != self.thread_id or params.get("namespace") not in {None, ""}):
+                if self.diagnostics:
+                    raw = json.dumps(message, ensure_ascii=False)
+                    record = {"method": method, "request_id": message["id"],
+                              "thread_id": params.get("threadId"), "turn_id": params.get("turnId"),
+                              "request_digest": digest(message), "truncated": len(raw.encode("utf-8")) > 65536,
+                              "request": raw.encode("utf-8")[:65536].decode("utf-8", errors="ignore")}
+                    atomic_write(self.diagnostics / "pending-request.json", json.dumps(record).encode("utf-8"))
+                raise RddError(f"Runtime request {method} needs human approval or unsupported input; resume after resolving it", "environment")
+            self.readonly_call(message)
+            return
+        tid = params.get("threadId")
+        if method == "turn/started":
+            self.active[tid] = params["turn"]["id"]
+        elif method == "turn/completed":
+            turn = params["turn"]
+            self.completed[(tid, turn["id"])] = turn
+            self.active.pop(tid, None)
+        elif method == "item/completed" and params.get("item", {}).get("type") == "agentMessage":
+            self.messages.setdefault((tid, params.get("turnId")), []).append(params["item"])
+        if tid == self.thread_id and method in {"turn/started", "turn/completed"}:
+            self.update(last_turn=params["turn"]["id"])
+            self.emit(f"{self.stage}: {method} {params['turn']['id']}")
+
+    def pump(self, seconds=1):
+        message = self.server.next_event(timeout=seconds)
+        if message is not None:
+            self.observe(message)
+
+    def wait_turn(self, tid, turn, timeout=900):
+        until = time.monotonic() + timeout
+        while (tid, turn) not in self.completed:
+            if time.monotonic() >= until:
+                raise RddError("Runtime turn deadline exceeded; same-session recovery is required", "environment")
+            self.pump()
+        value = self.completed[(tid, turn)]
+        if value.get("status") != "completed":
+            raise RddError(f"Runtime turn ended {value.get('status')}; controller acceptance remains incomplete", "environment")
+        items = self.messages.get((tid, turn), value.get("items", []))
+        finals = [x["text"] for x in items if x.get("type") == "agentMessage" and x.get("phase") != "commentary"]
+        return finals[-1] if finals else ""
+
+    def start_turn(self, tid, prompt, schema=None):
+        params = {"threadId": tid, "input": [{"type": "text", "text": prompt}]}
+        if schema:
+            params["outputSchema"] = schema
+        response = self.server.rpc("turn/start", params)
+        turn = response["turn"]["id"]
+        self.active[tid] = turn
+        return turn
+
+    def readonly_call(self, message):
+        args = message["params"].get("arguments")
+        callback = message["params"].get("callId")
+        if (self.readonly_busy or not isinstance(args, dict) or set(args) != {"purpose", "prompt"}
+                or not isinstance(callback, str) or not 0 < len(callback) <= 200
+                or args.get("purpose") not in READONLY_PURPOSES or not isinstance(args.get("prompt"), str)
+                or not 0 < len(args["prompt"]) <= self.c.config["limits"]["max_packet_characters"]):
+            raise RddError("Invalid or recursive read-only agent request", "environment")
+        purpose, role = args["purpose"], READONLY_PURPOSES[args["purpose"]]
+        state = self.c.state(allow_blocked=True)
+        authors = sum(row.get("status") == "claimed" for row in state.get("workflow_nodes", {}).values())
+        authors += sum(row.get("status") == "claimed" for row in state["tasks"].values())
+        if authors > (2 if purpose == "live" else 1):
+            raise RddError("Release an author slot before requesting a second reviewer or researcher", "environment")
+        self.readonly_busy = True
+        try:
+            sessions = self.journal().get("readonly", {})
+            session = sessions.get(purpose)
+            if session is not None and not session.get("thread_id"):
+                raise RddError("Read-only session creation was interrupted; preserve diagnostics, do not replace its identity", "environment")
+            if session is None:
+                sessions[purpose] = {"requested_runtime": self.c.profile_settings(role)}
+                self.update(readonly=sessions)
+            tid = session.get("thread_id") if session else None
+            if tid not in self.loaded:
+                tid, _ = self.open_session(role, tid)
+                sessions[purpose]["thread_id"] = tid
+                self.update(readonly=sessions)
+            packet = {"run_id": state["id"], "stage": self.stage, "source_commit": head(self.root),
+                      "source_digest": source_digest(self.root), "review_cursor": len(state.get("live_reviews", [])),
+                      "controller_digest": digest({k: v for k, v in state.items() if k != "workflow_runtime"}),
+                      "evidence_digest": self.evidence_identity(state),
+                      "spec_digest": state.get("spec_digest"), "plan_digest": state.get("plan_digest"),
+                      "instruction": args["prompt"]}
+            prompt = ("Read-only RDD snapshot. Inspect referenced source and raw evidence independently. "
+                "Do not write files, run writing controller commands, spawn agents, request escalation or send external messages. "
+                "Return the requested review record as text, with actual session_id=" + tid + ". "
+                "The coordinator records it through the existing controller. Snapshot:\n" + json.dumps(packet))
+            if len(prompt) > self.c.config["limits"]["max_packet_characters"]:
+                raise RddError("Read-only snapshot exceeds bounded packet limit", "environment")
+            # Reconcile any previous callback before starting another review. A lost
+            # reply must not silently create a replacement reviewer or concurrent turn.
+            old = self.server.rpc("thread/read", {"threadId": tid, "includeTurns": True})["thread"].get("turns", [])
+            last = old[-1] if old else None
+            text = None
+            replay = (sessions[purpose].get("callback_id") == callback
+                      and sessions[purpose].get("packet_digest") == digest(packet)
+                      and last and sessions[purpose].get("last_turn") == last["id"])
+            if last and last.get("status") == "inProgress":
+                self.active[tid] = last["id"]
+                completed_text = self.wait_turn(tid, last["id"])
+                if replay:
+                    text = completed_text
+            elif last and last.get("status") == "completed" and replay:
+                text = "\n".join(i["text"] for i in last.get("items", []) if i.get("type") == "agentMessage" and i.get("phase") != "commentary")
+            if text is None:
+                sessions[purpose]["packet_digest"] = digest(packet)
+                sessions[purpose]["callback_id"] = callback
+                self.update(readonly=sessions)
+                turn = self.start_turn(tid, prompt)
+                sessions[purpose]["last_turn"] = turn
+                self.update(readonly=sessions)
+                text = self.wait_turn(tid, turn)
+            if len(text) > self.c.config["limits"]["max_packet_characters"]:
+                raise RddError("Read-only report exceeds bounded packet limit", "environment")
+            result = {"session_id": tid, "requested_runtime": self.c.profile_settings(role),
+                      "snapshot_digest": digest(packet), "report": text,
+                      "provenance": "Profile-applied read-only App Server session; no backend-model attestation."}
+            self.server.reply(message["id"], {"contentItems": [{"type": "inputText", "text": json.dumps(result)}], "success": True})
+        finally:
+            self.readonly_busy = False
+
+    def evidence_identity(self, state):
+        """Bind review snapshots to referenced raw evidence, including absent files."""
+        paths = set()
+        def collect(value):
+            if isinstance(value, dict):
+                for child in value.values():
+                    collect(child)
+            elif isinstance(value, list):
+                for child in value:
+                    collect(child)
+            elif isinstance(value, str) and value.startswith(".rdd/evidence/"):
+                paths.add(value)
+        collect({k: v for k, v in state.items() if k != "workflow_runtime"})
+        evidence = {}
+        for rel in sorted(paths):
+            path = safe_path(self.root, rel)
+            evidence[rel] = file_hash(path) if path.is_file() else None
+        return digest(evidence)
+
+    def recover(self):
+        with operation_lock(self.root):
+            state = self.c.state(allow_blocked=True)
+            if state["status"] == "blocked" or any(t.get("integration", {}).get("status") == "pending"
+                    or (t.get("status") == "claimed" and (t.get("lease_expires") or 0) < time.time()) for t in state["tasks"].values()):
+                self.c.resume()
+            for node, row in self.c.state().get("workflow_nodes", {}).items():
+                if row.get("status") == "claimed" and row["claim"]["expires"] < time.time():
+                    self.c.workflow_release(node, "Expired authoring lease recovered by workflow command; outputs and attempts preserved")
+
+    def specification(self, thread, packet):
+        row = self.journal()
+        turns = thread.get("turns", [])
+        last = turns[-1] if turns else None
+        if last and last.get("status") == "completed":
+            finals = [i.get("text", "") for i in last.get("items", []) if i.get("type") == "agentMessage" and i.get("phase") != "commentary"]
+            try:
+                if finals and json.loads(finals[-1]).get("kind") == "stopped":
+                    last = None  # An explicit new command retries the known stop in this same session.
+            except (ValueError, AttributeError):
+                pass
+        if last and last.get("status") == "inProgress":
+            self.active[self.thread_id] = last["id"]
+            self.update(last_turn=last["id"], pending=None)
+            text = self.wait_turn(self.thread_id, last["id"])
+            last = {"status": "completed", "items": [{"type": "agentMessage", "text": text}]}
+        prompt = packet["prompt"]
+        unchanged, previous = 0, None
+        while True:
+            if last and last.get("status") == "completed":
+                text = "\n".join(i["text"] for i in last.get("items", []) if i.get("type") == "agentMessage" and i.get("phase") != "commentary")
+                last = None
+            else:
+                self.update(pending="turn/start")
+                turn = self.start_turn(self.thread_id, prompt, ENVELOPE)
+                self.update(last_turn=turn, pending=None)
+                text = self.wait_turn(self.thread_id, turn)
+            result = self.result()
+            if result["status"] in {"passed", "failed", "blocked"}:
+                return result
+            identity = digest({"source": source_digest(self.root), "state": {k: v for k, v in self.c.state().items() if k != "workflow_runtime"}})
+            unchanged = unchanged + 1 if identity == previous else 0
+            previous = identity
+            try:
+                from .common import validate
+                envelope = json.loads(text)
+                validate(envelope, ENVELOPE)
+                if (envelope["kind"] == "questions") != bool(envelope["questions"]):
+                    raise ValueError("Questions must occur only in a questions envelope")
+            except (ValueError, RddError, TypeError):
+                unchanged += 1
+                envelope = {"kind": "progress", "message": "Return the required questions/progress/stopped envelope.", "questions": []}
+            if unchanged >= self.c.config["limits"]["max_attempts"]:
+                return {**result, "reason": "Repeated unchanged or malformed progress; same session preserved for diagnosis"}
+            if envelope["kind"] == "stopped":
+                return {**result, "reason": envelope["message"]}
+            if envelope["kind"] == "questions":
+                answers = []
+                for question in envelope["questions"]:
+                    self.emit(question)
+                    try:
+                        answer = self.ask("> ")
+                    except EOFError as exc:
+                        raise RddError("Specification needs an actual answer; rerun this command with input available", "environment") from exc
+                    if not answer.strip():
+                        raise RddError("An empty answer is not specification approval; rerun to answer", "environment")
+                    answers.append({"question": question, "answer": answer})
+                prompt = "Actual specification answers; record decisions and continue:\n" + json.dumps(answers)
+            else:
+                prompt = "Controller acceptance is incomplete. Continue the remaining workflow obligations. " + envelope["message"]
+
+    def observed_goal(self, *, allow_absent=False, timeout=60):
+        current = self.server.rpc("thread/goal/get", {"threadId": self.thread_id}, timeout=timeout).get("goal")
+        stored = self.journal().get("goal")
+        if current is None:
+            if allow_absent and stored is None:
+                return None
+            raise RddError("Recorded native Goal is unavailable; preserve accounting and session", "environment")
+        if (not isinstance(current, dict) or current.get("threadId") != self.thread_id
+                or current.get("objective") != launch_packet(self.c, self.stage)["objective"]
+                or current.get("status") not in GOAL_STATUSES
+                or type(current.get("createdAt")) is not int
+                or (current.get("tokenBudget") is not None and (type(current["tokenBudget"]) is not int or current["tokenBudget"] <= 0))
+                or any(type(current.get(k)) is not int or current[k] < 0 for k in ("tokensUsed", "timeUsedSeconds"))
+                or (stored and (current.get("createdAt") != stored.get("createdAt")
+                    or current.get("tokenBudget") != stored.get("tokenBudget")
+                    or any(current[k] < stored[k] for k in ("tokensUsed", "timeUsedSeconds"))))):
+            raise RddError("Native Goal identity/accounting changed or regressed; preserve last valid record", "environment")
+        return current
+
+    def goal(self, packet):
+        stored = self.journal().get("goal")
+        current = self.observed_goal(allow_absent=True)
+        if current:
+            if current.get("objective") != packet["objective"]:
+                raise RddError("Stored native Goal objective differs; do not replace or reset it", "environment")
+            if current.get("status") == "paused" and self.journal().get("driver_paused"):
+                # A new invocation authorizes retry of our interruption, never a user pause.
+                self.server.rpc("thread/goal/set", {"threadId": self.thread_id, "status": "active"})
+                current = self.observed_goal()
+            self.update(goal=current, pending=None, driver_paused=False)
+        elif stored:
+            raise RddError("Recorded native Goal is unavailable; accounting must not be reset", "environment")
+        elif self.journal().get("pending"):
+            raise RddError("Goal activation had an uncertain outcome; inspect this session rather than repeat its initial turn", "environment")
+        else:
+            # Write intent before either operation; uncertain acknowledgements require inspection.
+            self.update(pending="goal/start")
+            turn = self.start_turn(self.thread_id, packet["prompt"])
+            self.update(last_turn=turn)
+            self.server.rpc("thread/goal/set", {"threadId": self.thread_id, "objective": packet["objective"], "status": "active"})
+            current = self.observed_goal()
+            if current.get("objective") != packet["objective"] or current.get("status") != "active":
+                raise RddError("Native Goal activation was not observed", "environment")
+            self.update(goal=current, pending=None)
+        previous, unchanged, last_checked = None, 0, 0
+        last_activity = time.monotonic()
+        seen = set()
+        while True:
+            if time.monotonic() - last_checked >= 2:
+                result = self.result()
+                if result["status"] in {"passed", "failed", "blocked"}:
+                    if result["status"] == "passed" and current.get("status") == "active":
+                        self.server.rpc("thread/goal/set", {"threadId": self.thread_id, "status": "complete"})
+                        self.update(goal=self.observed_goal())
+                    return result
+                current = self.observed_goal()
+                self.update(goal=current)
+                last_checked = time.monotonic()
+            if current.get("status") != "active":
+                return {**result, "reason": "Native Goal is " + str(current.get("status")) + "; controller acceptance is incomplete"}
+            before = len(self.completed)
+            self.pump()
+            if self.active or len(self.completed) != before:
+                last_activity = time.monotonic()
+            if time.monotonic() - last_activity > 60:
+                return {**result, "reason": "Native Goal did not continue while idle; same-session diagnostic required"}
+            for key in list(self.completed):
+                if key[0] != self.thread_id or key in seen:
+                    continue
+                seen.add(key)
+                identity = digest({"source": source_digest(self.root), "state": {k: v for k, v in self.c.state().items() if k != "workflow_runtime"}})
+                unchanged = unchanged + 1 if identity == previous else 0
+                previous = identity
+                if unchanged >= self.c.config["limits"]["max_attempts"]:
+                    return {**result, "reason": "Native Goal repeated unchanged work; session preserved"}
+            # Never send a client continuation turn here: native Goals own continuation.
+
+    def shutdown(self):
+        if not self.server:
+            return
+        # Independent cleanup deadlines, including after the execution deadline expired.
+        if self.thread_id and self.stage != "specification":
+            try:
+                goal = self.observed_goal(allow_absent=True, timeout=5)
+                if goal and goal.get("status") == "active":
+                    self.server.rpc("thread/goal/set", {"threadId": self.thread_id, "status": "paused"}, timeout=5)
+                    paused = self.observed_goal(timeout=5)
+                    self.update(goal=paused, driver_paused=True)
+            except RddError:
+                pass
+        for tid, turn in list(self.active.items()):
+            try:
+                self.server.rpc("turn/interrupt", {"threadId": tid, "turnId": turn}, timeout=5)
+            except RddError:
+                pass
+        self.server.close()
+
+    def run(self, stage, mode=None):
+        self.stage = stage
+        self.c.guard_workflow(stage, mode, print_only=True)
+        result = self.result()
+        if mode and result["run_id"] and self.c.state(allow_blocked=True)["mode"] != mode:
+            raise RddError("Existing run mode differs; use explicit start for an intentional new run", "environment")
+        if result["status"] in {"passed", "failed"}:
+            return result
+        self.c.guard_workflow(stage, mode)
+        # Runtime preflight uses disposable diagnostics and must precede branch/run mutation.
+        directory = Path(tempfile.mkdtemp(prefix="rdd-workflow-diagnostics-"))
+        self.diagnostics = directory
+        server = self.server_factory(self.root, log_dir=directory)
+        self.server = server
+        try:
+            server.__enter__()
+            self.preflight()
+            with operation_lock(self.root, workflow=True):
+                try:
+                    self.c.guard_workflow(stage, mode)
+                    result = self.result()  # Another completed driver may have run during preflight.
+                    if result["status"] in {"passed", "failed"}:
+                        return result
+                    if result["run_id"] is None:
+                        with operation_lock(self.root):
+                            if git(self.root, "branch", "--show-current") == "main":
+                                git(self.root, "switch", "-c", "codex/" + uuid.uuid4().hex[:10] + "-baseline")
+                            self.c.init()
+                            self.c.start(mode or "regenerate")
+                    self.recover()
+                    self.c.guard_workflow(stage, mode)
+                    packet = launch_packet(self.c, stage, mode)
+                    row = self.journal()
+                    if row:
+                        validate_runtime(self.c, self.c.state())
+                        if not row.get("thread_id"):
+                            raise RddError("Session creation acknowledgement is missing; preserve diagnostics instead of replacing it", "environment")
+                        if row["runtime"] != server.runtime_identity:
+                            raise RddError("Recorded runtime differs; resume with the qualified executable", "environment")
+                    else:
+                        self.update(connection="starting", requested_runtime=packet["requested_runtime"],
+                                    runtime=server.runtime_identity, readonly={})
+                    self.thread_id, thread = self.open_session("rdd_coordinator", row.get("thread_id"))
+                    self.update(thread_id=self.thread_id, connection="connected")
+                    if row:
+                        thread = self.server.rpc("thread/read", {"threadId": self.thread_id, "includeTurns": True})["thread"]
+                        for turn in thread.get("turns", []):
+                            if turn.get("status") == "inProgress":
+                                self.active[self.thread_id] = turn["id"]
+                        if row.get("pending") and not thread.get("turns") and not row.get("goal"):
+                            raise RddError("Interrupted runtime request has uncertain outcome; inspect recorded session before retrying", "environment")
+                    result = self.specification(thread, packet) if stage == "specification" else self.goal(packet)
+                    self.update(connection="accepted" if result["status"] == "passed" else "stopped")
+                    return {**result, "diagnostics": str(directory), "logs_truncated": sorted(getattr(server, "log_truncated", []))}
+                except RddError:
+                    if self.thread_id:
+                        try:
+                            self.update(connection="stopped")
+                        except RddError:
+                            pass
+                    raise
+                except KeyboardInterrupt:
+                    if self.thread_id:
+                        self.update(connection="interrupted")
+                    return {"stage": stage, "status": "incomplete", "interrupted": True, "reason": "Interrupted; session preserved", "diagnostics": str(directory)}
+                finally:
+                    self.shutdown()
+                    if self.thread_id:
+                        try:
+                            clean(self.root)
+                            with operation_lock(self.root):
+                                self.c.export_run(self.root / f".rdd/evidence/workflow-{stage}-checkpoint.json")
+                        except (RddError, OSError):
+                            pass  # Uncommitted work remains in place; never manufacture a portable checkpoint.
+        except RddError as exc:
+            truncated = sorted(getattr(server, "log_truncated", []))
+            raise RddError(f"{exc}. Runtime diagnostics: {directory}; truncated logs: {truncated}", exc.kind) from exc
+        except KeyboardInterrupt:
+            return {"stage": stage, "status": "incomplete", "interrupted": True,
+                    "reason": "Interrupted during runtime preflight; run was not started", "diagnostics": str(directory)}
+        finally:
+            server.close()

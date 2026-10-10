@@ -17,7 +17,7 @@ from .reviews import ReviewStream
 from .nodes import WorkflowNodes, NODES
 from .profiles import IMPLEMENTOR_SCOPES, load_profiles, profile_policy_digest, profile_settings
 from .readiness import validate_resources, validate_producers, required_probe_ids
-from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError, codex_config_string
+from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
 from .checks import execute_check, platform_name, verify_receipt
 from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, Store, assert_inventory, atomic_write, clean, digest, event,
                      file_hash, git, head, inventory, now, read_json, safe_path,
@@ -145,8 +145,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
     def plan(self) -> dict:
         return read_json(self.root / ".rdd/plan/plan.json")
 
-    def frozen(self, *, planned: bool = True) -> tuple[dict, dict | None]:
-        state = self.state()
+    def frozen(self, *, planned: bool = True, allow_blocked: bool = False) -> tuple[dict, dict | None]:
+        state = self.state(allow_blocked=allow_blocked)
         self.guard_run_policy(state)
         spec_lock = verify_lock(self.root, ".rdd/spec.lock.json")
         if spec_lock["digest"] != state.get("spec_digest"):
@@ -1221,7 +1221,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 raise RddError("Cannot export a run with changed evidence logs")
             if log.stat().st_size > 16 * 1024 * 1024:
                 raise RddError("One evidence log exceeds the 16 MiB export budget", "budget")
-            evidence[receipt["log_path"]] = log.read_text(encoding="utf-8")
+            evidence[receipt["log_path"]] = log.read_bytes().decode("utf-8")
         reports = [".rdd/evidence/project-validation.json", ".rdd/evidence/project-validation.md"]
         reports.extend(row["path"] for row in state.get("preparation_gate", {}).get("ci_runs", {}).values())
         for rel in reports:
@@ -1378,23 +1378,10 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             if state["active_phase"] is not None and state["active_phase"] not in state["phases"]:
                 raise RddError("Checkpoint active phase is unknown")
         if state["status"] == "complete":
-            if (not state["tasks"] or not state["phases"] or state["active_phase"] is not None
-                    or any(t["status"] != "done" for t in state["tasks"].values())
-                    or any(p["status"] != "sealed" for p in state["phases"].values())):
-                raise RddError("Checkpoint claims completion with unfinished tasks or unsealed phases")
-            validation = state.get("project_validation", {})
-            path = validation.get("path")
-            if path != ".rdd/evidence/project-validation.json" or path not in checkpoint["evidence"]:
-                raise RddError("Completed checkpoint lacks its project validation report")
-            from .adapters import _strict_json
-            report = _strict_json(checkpoint["evidence"][path])
-            if (digest(report) != validation.get("digest") or report.get("status") != "passed"
-                    or report.get("application_complete") is not True or report.get("run_id") != state["id"]
-                    or report.get("source_commit") != checkpoint["source_commit"]
-                    or report.get("source_digest") != checkpoint["source_digest"]
-                    or report.get("spec_digest") != state.get("spec_digest")
-                    or report.get("plan_digest") != state.get("plan_digest")):
-                raise RddError("Completed checkpoint project validation identity mismatch")
+            self.validate_project_acceptance(state, checkpoint["evidence"].get,
+                checkpoint["source_commit"], checkpoint["source_digest"])
+        from .workflow import validate_runtime
+        validate_runtime(self, state)
         for eid, receipt in state["checks"].items():
             validate_artifact(self.root, "evidence", receipt)
             if eid != receipt["id"] or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", eid):
@@ -1413,51 +1400,169 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             raise RddError("Implementation goal must contain 1-3999 characters")
         return text
 
-    def guard_workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False) -> None:
-        """Preflight a workflow before the CLI takes its mutation lock."""
-        if print_only and not mode:
-            return
-        require_source_branch(self.root)
-        profile_policy_digest(self.root)
-        if stage == "specification":
-            locator = read_json(self.root / ".rdd/run.json")
-            state = Store.read(self.root, locator["run_id"]) if locator.get("run_id") else None
-            if state and (not mode or (state["status"] == "specification" and state["mode"] == mode)):
-                self.guard_source_write(state, baseline=True)
-        else:
-            self.guard_source_write(baseline=stage == "preparation")
-
-    def workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False) -> dict:
+    def workflow_result(self, stage: str) -> dict:
+        """Recognize accepted work without running checks, contacting GitHub or writing state."""
         if stage not in {"specification", "preparation", "implementation"}:
             raise RddError("Unknown workflow")
-        self.guard_workflow(stage, mode, print_only=print_only)
-        if stage == "specification" and mode:
-            locator = read_json(self.root / ".rdd/run.json")
-            state = Store.read(self.root, locator["run_id"]) if locator.get("run_id") else None
-            if not state or state["status"] != "specification" or state["mode"] != mode:
-                self.start(mode)
-        if stage == "preparation":
-            self.frozen(planned=False)
-        if stage == "implementation":
-            self.frozen()
-            if self.state()["status"] not in {"prepared", "implementation", "complete"}:
-                raise RddError("Implementation workflow requires completed preparation")
-        prompt = (f"Use ${stage}-workflow. Read AGENTS.md first. Work in this repository using ./rdd. "
-                  "Requirements are authoritative. Complete the workflow's real artifacts and verification; do not declare success from prose. ")
-        if stage == "specification":
-            prompt += (f"The requested run mode is {mode or 'regenerate if no prior frozen baseline; otherwise ask the user to choose amend or regenerate'}. "
-                       "Ask and resolve architectural or directional questions here. Do not implement the Todo application in this workflow.")
-        elif stage == "preparation":
-            prompt += "Produce frozen tasks, verticals, dependency-closed phases, matrix, shells and anchors; preserve all frozen contracts. Commit the prepared baseline."
+        result = {"stage": stage, "run_id": None, "status": "incomplete",
+                  "accepted_identity": None, "blockers": [], "application_complete": False}
+        locator = self.root / ".rdd/run.json"
+        if not locator.is_file() or not read_json(locator).get("run_id"):
+            return result
+        try:
+            state = self.state(allow_blocked=True)
+            result["run_id"] = state["id"]
+            self.guard_run_policy(state)
+            result["blockers"] = [b for b in state["blockers"] if not b["resolved"]]
+            effective = state.get("resume_status", state["status"]) if state["status"] == "blocked" else state["status"]
+            later_stage = (stage == "specification" and effective in {"planned", "preparing", "prepared", "implementation", "complete"}
+                           or stage == "preparation" and effective in {"implementation", "complete"})
+            if result["blockers"] and (not later_stage or any(b["kind"] not in {"environment", "review", "budget"}
+                                                            for b in result["blockers"])):
+                result["status"] = "blocked"
+                return result
+            field = {"specification": "spec_acceptance", "preparation": "preparation_gate",
+                     "implementation": "project_validation"}[stage]
+            if not state.get(field):
+                return result
+            self.frozen(planned=stage != "specification", allow_blocked=True)
+            self.validate_review_stream(state)
+            self.validate_workflow_checkpoint(state)
+            def evidence(path):
+                if not isinstance(path, str) or not path.startswith(".rdd/evidence/"):
+                    raise RddError("Acceptance references an unsafe evidence path")
+                return safe_path(self.root, path, allow_missing=False).read_bytes().decode("utf-8")
+            self.validate_stage_acceptances(state, evidence,
+                through="specification" if stage == "specification" else "preparation")
+            if stage == "specification" and state["status"] == "specified" and git(self.root, "status", "--porcelain"):
+                return {**result, "reason": "Commit the accepted specification handoff before returning success"}
+            if stage == "preparation":
+                prepared = read_json(self.root / ".rdd/prepared.json")
+                if (prepared.get("run_id") != state["id"] or prepared.get("spec_digest") != state["spec_digest"]
+                        or prepared.get("plan_digest") != state["plan_digest"]
+                        or state["preparation_gate"].get("status") != "passed"):
+                    raise RddError("Preparation acceptance differs from materialized baseline")
+                if state["status"] == "prepared":
+                    self.anchors_verify()
+                    clean(self.root)
+            if stage == "implementation":
+                self.validate_project_acceptance(state, evidence, head(self.root), source_digest(self.root))
+                self.anchors_verify()
+                clean(self.root)
+                result["application_complete"] = True
+            result.update(status="passed", accepted_identity=state[field].get("candidate", state[field]))
+        except (RddError, OSError, ValueError, KeyError, TypeError) as exc:
+            result.update(status="failed", error=str(exc))
+        return result
+
+    def validate_project_acceptance(self, state: dict, evidence, commit: str, sources: str) -> None:
+        if (state["status"] != "complete" or not state["tasks"] or not state["phases"]
+                or state["active_phase"] is not None
+                or any(t["status"] != "done" for t in state["tasks"].values())
+                or any(p["status"] != "sealed" or not p.get("gate") or not p.get("seal") or not p.get("pr")
+                       for p in state["phases"].values())):
+            raise RddError("Project acceptance has unfinished tasks or unsealed phases")
+        validation = state.get("project_validation", {})
+        if validation.get("path") != ".rdd/evidence/project-validation.json":
+            raise RddError("Completed run lacks its project validation report")
+        from .adapters import _strict_json
+        report = _strict_json(evidence(validation["path"]))
+        if (digest(report) != validation.get("digest") or report.get("status") != "passed"
+                or report.get("application_complete") is not True or report.get("run_id") != state["id"]
+                or report.get("source_commit") != commit or report.get("source_digest") != sources
+                or report.get("spec_digest") != state.get("spec_digest")
+                or report.get("plan_digest") != state.get("plan_digest")):
+            raise RddError("Completed run project validation identity mismatch")
+        spec, plan = self.spec(), self.plan()
+        if (report.get("phases") != state["phases"] or report.get("reviews") != state["reviews"]
+                or report.get("tasks_completed") != len(plan["tasks"]) or report.get("remaining_anchors") != 0
+                or report.get("prepared_digest") != state.get("prepared_digest")
+                or report.get("stack", {}).get("ready") is not True or report["stack"].get("pending_phases") != []):
+            raise RddError("Project report differs from accepted task/phase/PR obligations")
+        for phase, row in state["phases"].items():
+            gate, seal = row["gate"], row["seal"]
+            review = self.current_review(state, phase, row["head"], gate["source_digest"])
+            if (seal.get("gate_digest") != digest(gate) or gate.get("review_digest") != digest(review)
+                    or seal.get("source_commit") != row["head"] or gate.get("source_commit") != row["head"]
+                    or seal.get("pr", {}).get("ready") is not True
+                    or head_ref(self.root, row["branch"]) != row["head"]):
+                raise RddError("Sealed phase acceptance identity changed")
+            self.verify_accepted_checks(state, [state["checks"][eid] for eid in gate["evidence"]],
+                self.cumulative_checks(phase), row["head"], gate["source_digest"], evidence)
+        final = list(state["phases"])[-1]
+        self.verify_accepted_checks(state, report["evidence"], set(spec["project_check_ids"] + self.cumulative_checks(final)),
+            commit, sources, evidence)
+        golden = {s["id"] for s in spec["scenarios"] if s["kind"] == "golden"}
+        observed = {sid: r["id"] for r in report["evidence"] for sid in next(c for c in spec["checks"] if c["id"] == r["check_id"]).get("scenario_ids", [])}
+        if not golden <= observed.keys() or report.get("golden_results") != {sid: observed[sid] for sid in sorted(golden)}:
+            raise RddError("Project golden results omit or change required executed scenarios")
+
+
+    def verify_accepted_checks(self, state, receipts, required, commit, sources, evidence):
+        checks = artifacts.unique(self.spec()["checks"], "check")
+        environments = {e["id"]: e for e in self.spec()["environments"]}
+        for receipt in receipts:
+            if state["checks"].get(receipt["id"]) != receipt or receipt["check_id"] not in checks:
+                raise RddError("Accepted receipt differs from recorded evidence")
+            verify_receipt(self.root, receipt, checks[receipt["check_id"]], commit=commit, sources=sources,
+                spec_digest=state["spec_digest"], plan_digest=state["plan_digest"], log_loader=evidence)
+        for cid in required:
+            check = checks[cid]
+            platforms = {environments[e]["platform"] for e in check.get("environments", [])} or set(check["platforms"])
+            if not all(any(r["check_id"] == cid and (platform == "any" or r["platform"] == platform)
+                           for r in receipts) for platform in platforms):
+                raise RddError("Accepted evidence omits required check/platform: " + cid)
+
+    def guard_workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False) -> None:
+        """Read-only stage/branch preflight. Bootstrap is owned by the qualified runner."""
+        if stage not in {"specification", "preparation", "implementation"}:
+            raise RddError("Unknown workflow")
+        if mode is not None and (stage != "specification" or mode not in {"regenerate", "amend"}):
+            raise RddError("--mode belongs to specification")
+        if print_only:
+            return
+        profile_policy_digest(self.root)
+        locator = self.root / ".rdd/run.json"
+        state = self.state(allow_blocked=True) if locator.is_file() and read_json(locator).get("run_id") else None
+        if state:
+            self.guard_run_policy(state)
+            permanent = [b for b in state["blockers"] if not b["resolved"] and b["kind"] not in {"environment", "review"}]
+            if permanent:
+                raise RddError("Workflow cannot continue an upstream/closure/authorization/budget blocker; preserve this run", "environment")
+            if mode and state["mode"] != mode:
+                raise RddError("Existing run mode differs; use explicit start for an intentional new run", "environment")
+            self.guard_source_write(state, baseline=stage != "implementation")
+            effective_status = state.get("resume_status", state["status"]) if state["status"] == "blocked" else state["status"]
+            if stage == "preparation" and (not state.get("spec_digest") or not state.get("spec_acceptance") or effective_status not in {"specified", "planned", "preparing", "prepared", "implementation", "complete"}):
+                raise RddError("Preparation requires accepted specification", "environment")
+            if stage == "implementation" and (effective_status not in {"prepared", "implementation", "complete"}
+                    or not state.get("plan_digest") or state.get("preparation_gate", {}).get("status") != "passed"):
+                raise RddError("Implementation requires accepted preparation", "environment")
+            if stage != "specification":
+                self.frozen(planned=stage == "implementation", allow_blocked=True)
+                def evidence(path):
+                    if not isinstance(path, str) or not path.startswith(".rdd/evidence/"):
+                        raise RddError("Unsafe prerequisite evidence path")
+                    return safe_path(self.root, path, allow_missing=False).read_bytes().decode("utf-8")
+                self.validate_stage_acceptances(state, evidence,
+                    through="specification" if stage == "preparation" else "preparation")
         else:
-            prompt += ("This session will use native goal mode. Print the exact output of ./rdd goal and ask the developer to submit it with /goal. "
-                       "Do not claim that a normal prompt activated native goal mode. Once the goal is active, follow implementation-workflow through project validation.")
-        profile = load_profiles(self.root)["rdd_coordinator"]
-        return {"stage": stage, "prompt": prompt,
-                "requested_runtime": self.profile_settings("rdd_coordinator"),
-                "argv": ["codex", "--model", profile["model"], "-c", "model_reasoning_effort=" + codex_config_string(profile["effort"]),
-                         "--sandbox", profile["sandbox"], "-c", "developer_instructions=" + codex_config_string(profile["developer_instructions"]), prompt],
-                "native_goal": self.goal() if stage == "implementation" else None}
+            if stage != "specification" or mode == "amend":
+                raise RddError("Start with workflow specification --mode regenerate", "environment")
+            artifacts.requirements(self.root, self.config["requirements"])
+            if any((self.root / path).exists() for path in (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json")):
+                raise RddError("Frozen artifacts without local state require checkpoint recovery", "environment")
+            if git(self.root, "rev-parse", "--show-toplevel") != str(self.root):
+                raise RddError("Workflow requires its own Git checkout", "environment")
+            branch = git(self.root, "branch", "--show-current")
+            if branch != "main":
+                require_source_branch(self.root)
+            clean(self.root)
+
+    def workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False) -> dict:
+        self.guard_workflow(stage, mode, print_only=print_only)
+        from .workflow import launch_packet
+        return launch_packet(self, stage, mode)
 
 
 def head_ref(root: Path, ref: str) -> str:

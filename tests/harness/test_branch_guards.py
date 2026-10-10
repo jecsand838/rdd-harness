@@ -143,8 +143,7 @@ class BranchGuardTests(unittest.TestCase):
         self.c.store.put(state)
         for args in (("block", "--kind", "specification", "--reason", "must not auto-record"),
                      ("check", "contract"), ("contracts", "check"), ("task", "release", "T001", "--reason", "preserve"),
-                     ("review", "record", "missing.json"), ("readiness", "specification"),
-                     ("workflow", "specification", "--mode", "regenerate", "--print")):
+                     ("review", "record", "missing.json"), ("readiness", "specification")):
             with self.subTest(args=args):
                 before = self.snapshot()
                 result = self.cli(*args)
@@ -387,7 +386,9 @@ class BranchGuardTests(unittest.TestCase):
         packet = self.c.workflow("specification", print_only=True)
         self.assertEqual(packet["stage"], "specification")
         self.assertEqual(self.snapshot(), before)
-        self.rejected(lambda: self.c.workflow("specification", "regenerate", print_only=True))
+        before = self.snapshot()
+        self.assertEqual(self.c.workflow("specification", "regenerate", print_only=True)["stage"], "specification")
+        self.assertEqual(self.snapshot(), before)
 
     def test_main_origin_run_can_be_inspected_exported_and_archived_by_fresh_start(self):
         self.f.prepared()
@@ -446,8 +447,14 @@ class BranchGuardTests(unittest.TestCase):
                 with self.subTest(branch=branch, command=command):
                     before = self.snapshot()
                     result = self.cli(*command)
-                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-                    self.assertEqual(json.loads(result.stdout)["kind"], "environment")
+                    if command[0] == "workflow":
+                        # Acceptance recognition is read-only and precedes launch
+                        # branch checks; corrupted accepted evidence is failure.
+                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                        self.assertEqual(json.loads(result.stdout)["status"], "failed")
+                    else:
+                        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                        self.assertEqual(json.loads(result.stdout)["kind"], "environment")
                     self.assertEqual(self.snapshot(), before)
             self.assertFalse((self.root / ".rdd/runtime/controller.lock").exists())
 
@@ -462,17 +469,19 @@ class BranchGuardTests(unittest.TestCase):
             self.assertEqual(json.loads(result.stdout)["stage"], "specification")
             self.assertFalse((root / ".rdd/runtime").exists())
             result = self.cli("workflow", "specification", "--mode", "regenerate", "--print", root=root)
-            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-            self.assertEqual(json.loads(result.stdout)["kind"], "environment")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(json.loads(result.stdout)["stage"], "specification")
             self.assertFalse((root / ".rdd/runtime").exists())
 
     def test_explicit_print_mode_cannot_reuse_a_run_from_another_authoring_branch(self):
         self.f.g("switch", "-c", "codex/print-lookalike")
-        self.rejected(lambda: self.c.workflow("specification", "regenerate", print_only=True))
+        before = self.snapshot()
+        self.assertEqual(self.c.workflow("specification", "regenerate", print_only=True)["stage"], "specification")
+        self.assertEqual(self.snapshot(), before)
         before = self.snapshot()
         result = self.cli("workflow", "specification", "--mode", "regenerate", "--print")
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertEqual(json.loads(result.stdout)["kind"], "environment")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["stage"], "specification")
         self.assertEqual(self.snapshot(), before)
 
     def test_cli_malformed_checkpoint_fails_before_store_or_operation_lock_mutation(self):

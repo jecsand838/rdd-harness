@@ -707,8 +707,8 @@ class CodexAdapter:
              validator: Callable[[Any, Mapping[str, Any]], None] = validate_structured_output) -> dict[str, Any]:
         """Run one bounded worker turn, saving JSONL, stderr, output, and receipt.
 
-        This does not implement native Goals. Use interactive /goal for the
-        persistent coordinator and this adapter for optional bounded workers.
+        The App Server workflow runner owns persistent coordination and native
+        Goals; this adapter serves optional bounded workers only.
         The caller supplies a fresh run_dir under the repository's runtime path.
         """
         if not isinstance(prompt, str) or not prompt.strip():
