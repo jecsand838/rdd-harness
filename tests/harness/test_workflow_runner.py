@@ -361,6 +361,30 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.assertEqual(len(starts), 1)
         self.assertEqual(self.c.state()["workflow_runtime"]["specification"]["thread_id"], tid)
 
+    def test_qualified_version_change_cannot_migrate_saved_runtime_or_goal(self):
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import launch_packet
+        self.accepted_spec()
+        self.runner.stage, self.runner.server = "preparation", self.server
+        self.runner.update(connection="stopped", requested_runtime=self.c.profile_settings("rdd_coordinator"),
+                           runtime=self.server.runtime_identity, readonly={})
+        tid, _ = self.runner.open_session("rdd_coordinator")
+        goal = dict(threadId=tid, objective=launch_packet(self.c, "preparation")["objective"],
+                    status="paused", tokensUsed=37, timeUsedSeconds=8, createdAt=1, tokenBudget=None)
+        self.server.goals[tid] = copy.deepcopy(goal)
+        self.runner.update(thread_id=tid, goal=goal)
+        before = self.snapshot()
+        self.server.calls.clear()
+        self.server.runtime_identity["version"] = "0.162.1"
+        with self.assertRaisesRegex(RddError, "Recorded runtime differs") as failure:
+            self.runner.run("preparation")
+        self.assertEqual(failure.exception.kind, "environment")
+        self.assertEqual(before, self.snapshot())
+        self.assertEqual(self.server.goals[tid], goal)
+        self.assertFalse(any(m in {"thread/start", "thread/resume", "turn/start", "thread/goal/set"}
+                             for m, _ in self.server.calls))
+        self.assertTrue(self.server.closed)
+
     def test_approval_request_is_never_answered(self):
         from tools.rdd.common import RddError
         self.server.events.append(dict(id=37, method="item/commandExecution/requestApproval", params={}))
@@ -464,6 +488,31 @@ class WorkflowExecutionTests(WorkflowResultTests):
                     self.assertEqual(self.c.state()["workflow_runtime"]["specification"]["readonly"], saved)
                     self.assertEqual(len([1 for m, _ in self.server.calls if m == "thread/start"]), starts)
                     self.assertEqual(len([1 for m, _ in self.server.calls if m == "turn/start"]), turns)
+
+    def test_saved_empty_reviewer_missing_backend_cannot_be_replaced(self):
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import TOOL
+        self.server.runtime_identity["version"] = "0.162.1"
+        self.runner.run("specification")
+        tid, thread = self.runner.open_session("rdd_reviewer")
+        self.assertEqual(thread["historyMode"], "legacy")
+        self.assertEqual(thread["turns"], [])
+        self.runner.update(readonly={"live": dict(thread_id=tid,
+                           requested_runtime=self.c.profile_settings("rdd_reviewer"))})
+        before = self.snapshot()
+        self.server.threads.pop(tid)
+        self.runner.loaded.clear()
+        self.server.calls.clear()
+        message = dict(id="review", method="item/tool/call", params=dict(
+            tool=TOOL, callId="review", threadId=self.runner.thread_id,
+            arguments=dict(purpose="live", prompt="Inspect recovery evidence")))
+        with self.assertRaisesRegex(RddError, "backend session missing") as failure:
+            self.runner.observe(message)
+        self.assertEqual(failure.exception.kind, "environment")
+        self.assertEqual(before, self.snapshot())
+        self.assertEqual([m for m, _ in self.server.calls], ["thread/resume"])
+        self.assertEqual(self.server.calls[0][1]["threadId"], tid)
+        self.assertFalse(self.runner.readonly_busy)
 
     def test_late_approval_preserves_context_even_after_log_truncation(self):
         from tools.rdd.common import RddError, read_json

@@ -1,8 +1,8 @@
 {
   "format_version": 1,
   "scope": "Observed Codex runtime capabilities, bounded execution interfaces, and harness qualification tools",
-  "checked_date": "2026-10-09",
-  "observed_codex_cli": "0.161.0",
+  "checked_date": "2026-10-11",
+  "observed_codex_cli": "0.162.1",
   "model_catalog": {
     "source": "Installed CLI bundled catalog; canonical settings live in .codex/agents/*.toml",
     "advertised_pairs": [
@@ -26,13 +26,14 @@
   "verification_scope": {
     "adapter_protocols": "Offline injected GitHub/Codex protocols plus real subprocess argv delivery of profile instructions and Git-worktree lifecycle tests.",
     "ci_controller": "Real-Git trusted-policy/candidate fixtures and real check subprocesses; CI remains independent of candidate run locators.",
-    "codex_smoke": "Installed CLI 0.161.0 version, flags, bundled model/effort catalog and authenticated session observed. Requested settings are not backend-model attestation.",
+    "codex_smoke": "Installed CLI 0.162.1 version, generated protocol schema, bundled model/effort catalog and authenticated startup observed on macOS arm64. Requested settings are not backend-model attestation.",
     "github_actions": "Hosted baseline 0f7e76f: Ubuntu, macOS and Windows candidate harness jobs passed; trusted-controller and aggregate verify jobs failed. Later candidate results belong in their exact-revision CI reports.",
     "rust_and_buf_execution": "Actual multi-module native/WASM generator/compiler proof suite executed with Rust 1.99.0 and Buf 1.73.0. Raw results are retained under .rdd/evidence/harness-contracts/.",
-    "app_server_transport": "Python stdlib UTF-8 stdio runner pinned to qualified codex-cli 0.161.0. Deterministic fake subprocess tests cover protocol correlation, ordered events, bounded queues/logs, failures and owned cleanup; external model execution is not part of those tests.",
+    "app_server_transport": "Python stdlib UTF-8 stdio runner accepts only qualified codex-cli 0.161.0 and 0.162.1. Existing runs retain their exact executable path/hash/version and harness/profile policy. Deterministic subprocess tests exercise both accepted versions, strict rejection, unchanged settings and owned cleanup; workflow tests reject runtime drift without replacing sessions or Goal accounting.",
     "native_goal_and_specification_qa": "Independent disposable probes passed typed ordinary-turn Q&A, native automatic Goal continuation, same-thread reconnect/accounting and pause/interruption. Production transport/preflight and status-only reactivation were then observed: zero client continuation turns after reconnect, two native turns with real local checks, and bounded paused shutdown. See .rdd/evidence/runtime-qualification-20261009/production-smoke/FINAL_FINDINGS.json; prior native reviewer inheritance failure remains preserved.",
     "readonly_resolution": "Separate independent disposable qualification passed canonical profile-applied explicitly read-only threads, actual EPERM write denial, persistent review snapshots/reconnect, distinct final reviewer, and coordinator-only experimental dynamic tool callback correlation/resume. Inherited approval policy/reviewer unchanged. See .rdd/evidence/runtime-qualification-20261009/reviewer-isolation/FINAL_FINDINGS.json.",
-    "public_workflow_acceptance": "Three-command runner behavior is covered by offline tests with simulated Codex/GitHub protocols. Native end-to-end execution/acceptance of the public workflow commands and Todo/product acceptance have not been demonstrated."
+    "public_workflow_acceptance": "Three-command runner behavior is covered by offline tests with simulated Codex/GitHub protocols. Native end-to-end execution/acceptance of the public workflow commands and Todo/product acceptance have not been demonstrated.",
+    "codex_01621": "Disposable macOS arm64 qualification passed actual production transport/preflight, typed specification question/answer handling, canonical native specialist delegation, explicit read-only reviewer write denial and correlated callbacks across reconnect. Generated-schema validation covered the exercised RPCs. Native Goal reactivation and subsequent continuation required zero client continuation turns; identity/accounting, pause/interruption and complete legacy/paginated history checks passed. An unused legacy session was unavailable after reconnect; recovery preserved its recorded ID and stopped without replacement. No Todo or native public-workflow acceptance was claimed."
   },
   "sources": [
     {
@@ -90,10 +91,13 @@
     {
       "title": "Agent evaluation best practices",
       "url": "https://developers.openai.com/api/docs/guides/evaluation-best-practices"
+    },
+    {
+      "title": "Codex CLI 0.162.1 release",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.162.1"
     }
   ],
   "app_server_protocol": {
-    "qualified_codex_cli": "0.161.0",
     "dynamic_tool": "rdd_readonly_agent",
     "experimental_api": true,
     "readonly_purposes": {
@@ -107,12 +111,19 @@
     "evidence": [
       ".rdd/evidence/runtime-qualification-20261009/live/FINAL_FINDINGS.json",
       ".rdd/evidence/runtime-qualification-20261009/reviewer-isolation/FINAL_FINDINGS.json",
-      ".rdd/evidence/runtime-qualification-20261009/production-smoke/FINAL_FINDINGS.json"
+      ".rdd/evidence/runtime-qualification-20261009/production-smoke/FINAL_FINDINGS.json",
+      ".rdd/evidence/runtime-qualification-01621/FINAL_FINDINGS.json"
     ],
     "limits": [
       "Researcher inference and execution/research dynamic purpose branches were not run.",
       "Approval-requiring server requests, other hosts and backend attestation were not exercised by the live qualification.",
-      "Individual capability probes do not establish public workflow or application acceptance."
+      "Individual capability probes do not establish public workflow or application acceptance.",
+      "0.162.1 live observations are macOS arm64 capability probes, not hosted OS-matrix or application acceptance. Unmaterialized legacy threads may be unavailable after process shutdown; the runner stops rather than replacing them. Existing run runtime/profile identities are not migrated."
+    ],
+    "qualified_codex_cli_versions": [
+      "0.161.0",
+      "0.162.1"
     ]
-  }
+  },
+  "observed_codex_executable_sha256": "74c6a6d263f40d65f99c27a815275f5b4ed0bcc2baecc396b4cf3255498bdfc0"
 }

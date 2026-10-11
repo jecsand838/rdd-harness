@@ -61,7 +61,7 @@ The controller uses the Python standard library; no Python package installation 
 | Prerequisite | Purpose |
 | --- | --- |
 | Python 3.11+ and Git | Controller, regression suite, exact source identities, branches, and isolated worktrees |
-| Qualified Codex CLI 0.161.0 with App Server, native Goals and custom subagents | Workflow execution and configured agent roles |
+| Qualified Codex CLI 0.161.0 or 0.162.1 with App Server, native Goals and custom subagents | Workflow execution and configured agent roles |
 | Model/account access | The Astra/ultra, Sol/xhigh, and Luna/xhigh settings listed above; no silent model downgrade |
 | GitHub CLI `gh` and a writable GitHub `origin` remote | Phase PR publication, required checks, and stack verification |
 | Rustup with the [pinned Rust toolchain](rust-toolchain.toml) | Rust compiler, `rustfmt`, `clippy`, and `wasm32-unknown-unknown` for native and Rust/WASM work |

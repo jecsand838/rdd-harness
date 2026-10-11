@@ -136,19 +136,24 @@ class AppServerTests(unittest.TestCase):
         before = config.read_bytes()
         payload = {"text": "é雪🌱", "count": 3}
         with patch.dict(os.environ, {"RDD_TRANSPORT_SENTINEL": "雪"}):
-            with self.server() as server:
-                self.assertEqual(server.rpc("echo", payload), payload)
-                inspected = server.rpc("inspect", {})
-                self.assertEqual(inspected, {"argv": ["app-server", "--listen", "stdio://"], "cwd": str(self.root), "sentinel": "雪"})
-                self.assertEqual(server.effective_config["sentinel"], "unchanged")
-                self.assertEqual(server.runtime_identity["version"], "0.161.0")
-                self.assertEqual(server.runtime_identity["executable_sha256"], file_hash(Path(sys.executable).resolve()))
-        self.assertEqual(config.read_bytes(), before)
-        requests = self.transcript()
-        self.assertEqual([item["method"] for item in requests[:3]], ["initialize", "initialized", "config/read"])
-        self.assertTrue(requests[0]["params"]["capabilities"]["experimentalApi"])
-        self.assertEqual(requests[2]["params"], {"cwd": str(self.root), "includeLayers": False})
-        self.assertNotIn("id", requests[1])
+            for version in ("0.161.0", "0.162.1"):
+                with self.subTest(version=version):
+                    self.options(version=version)
+                    self.log_dir = self.root / ".rdd/evidence" / version
+                    offset = len(self.transcript()) if (self.root / "transcript.jsonl").exists() else 0
+                    with self.server() as server:
+                        self.assertEqual(server.rpc("echo", payload), payload)
+                        inspected = server.rpc("inspect", {})
+                        self.assertEqual(inspected, {"argv": ["app-server", "--listen", "stdio://"], "cwd": str(self.root), "sentinel": "雪"})
+                        self.assertEqual(server.effective_config, {"approval_policy": "on-request", "sandbox_mode": "workspace-write", "approvals_reviewer": "user", "sentinel": "unchanged"})
+                        self.assertEqual(server.runtime_identity["version"], version)
+                        self.assertEqual(server.runtime_identity["executable_sha256"], file_hash(Path(sys.executable).resolve()))
+                    self.assertEqual(config.read_bytes(), before)
+                    requests = self.transcript()[offset:]
+                    self.assertEqual([item["method"] for item in requests[:3]], ["initialize", "initialized", "config/read"])
+                    self.assertTrue(requests[0]["params"]["capabilities"]["experimentalApi"])
+                    self.assertEqual(requests[2]["params"], {"cwd": str(self.root), "includeLayers": False})
+                    self.assertNotIn("id", requests[1])
 
     def test_interleaved_events_and_unknown_approval_retained_in_order(self):
         with self.server() as server:
@@ -242,11 +247,30 @@ class AppServerTests(unittest.TestCase):
         self.assertIsNone(server.cleanup_error)
 
     def test_unsupported_version_fails_before_starting_server(self):
-        self.options(version="0.162.0")
-        with self.assertRaisesRegex(RddError, "qualified.*0.161.0") as failure:
-            with self.server():
-                self.fail("Unsupported runtime accepted")
+        for index, version in enumerate(("0.162.0", "0.163.0", "0.161.0-preview.1", "0.162.1-preview.1",
+                                         "0.162.1+metadata", "0.162", "v0.162.1", "00.162.1",
+                                         "0.162.1\nextra output")):
+            with self.subTest(version=version):
+                self.options(version=version)
+                self.log_dir = self.root / ".rdd/evidence" / str(index)
+                server = self.server()
+                with self.assertRaisesRegex(RddError, "qualified") as failure:
+                    with server:
+                        self.fail("Unsupported runtime accepted")
+                self.assertEqual(failure.exception.kind, "environment")
+                for supported in ("0.161.0", "0.162.1"):
+                    self.assertIn(supported, str(failure.exception))
+                self.assertIsNone(server.process)
+                self.assertFalse((self.root / "transcript.jsonl").exists())
+
+    def test_missing_executable_lists_qualified_versions(self):
+        with patch("tools.rdd.app_server.shutil.which", return_value=None):
+            with self.assertRaisesRegex(RddError, "executable not found") as failure:
+                with self.server():
+                    self.fail("Missing executable accepted")
         self.assertEqual(failure.exception.kind, "environment")
+        for supported in ("0.161.0", "0.162.1"):
+            self.assertIn(supported, str(failure.exception))
         self.assertFalse((self.root / "transcript.jsonl").exists())
 
     def test_version_probe_hang_uses_startup_budget_and_reaps(self):
