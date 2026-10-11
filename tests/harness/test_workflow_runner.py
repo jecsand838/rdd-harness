@@ -43,6 +43,7 @@ class FakeServer:
         self.effective_config = dict(sandbox_mode="workspace-write", approval_policy="on-request", approvals_reviewer="user")
         self.runtime_identity = dict(version="0.161.0", executable="fixture", executable_sha256="a" * 64)
         self.calls, self.events, self.threads, self.goals = [], [], {}, {}
+        self.materialized = set()
         self.on_turn = lambda thread, prompt: dict(kind="stopped", message="Fixture external evidence unavailable", questions=[])
         self.closed, self.goal_terminal = False, None
         self.fail_method = None
@@ -68,12 +69,24 @@ class FakeServer:
             tid = params.get("threadId") or "fixture-thread-" + str(len(self.threads) + 1)
             if method == "thread/resume" and tid not in self.threads:
                 raise RddError("Fixture backend session missing", "environment")
-            thread = self.threads.setdefault(tid, dict(id=tid, turns=[]))
+            thread = self.threads.setdefault(tid, dict(id=tid,
+                historyMode=params.get("historyMode", "paginated"), turns=[]))
             return dict(thread=copy.deepcopy(thread), model=params["model"],
                 reasoningEffort=params["config"]["model_reasoning_effort"], approvalPolicy="on-request", approvalsReviewer="user",
                 sandbox=dict(type=self.sandbox_override or ("readOnly" if params["sandbox"] == "read-only" else "workspaceWrite")))
         if method == "thread/read":
-            return dict(thread=copy.deepcopy(self.threads[params["threadId"]]))
+            tid = params["threadId"]
+            if tid not in self.threads:
+                raise RddError("Fixture backend session missing", "environment")
+            thread = copy.deepcopy(self.threads[tid])
+            if params.get("includeTurns"):
+                if tid not in self.materialized:
+                    error = ("-32600 thread is not materialized yet" if thread.get("historyMode") == "legacy"
+                             else "-32601 list_turns is not supported yet")
+                    raise RddError("App Server thread/read failed: " + error, "environment")
+            else:
+                thread["turns"] = []
+            return dict(thread=thread)
         if method == "turn/start":
             import json
             tid = params["threadId"]
@@ -82,6 +95,7 @@ class FakeServer:
             item = dict(type="agentMessage", text=json.dumps(value), phase="final_answer")
             turn = dict(id=turn_id, status="completed", items=[item])
             self.threads[tid]["turns"].append(turn)
+            self.materialized.add(tid)
             self.events += [dict(method="turn/started", params=dict(threadId=tid, turn=dict(id=turn_id))),
                             dict(method="item/completed", params=dict(threadId=tid, turnId=turn_id, item=item)),
                             dict(method="turn/completed", params=dict(threadId=tid, turn=turn))]
@@ -123,6 +137,104 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.f.stage_ready("specification")
         self.c.spec_freeze()
         self.f.commit("Accepted fixture specification")
+
+    def test_new_coordinator_and_readonly_sessions_request_legacy_history(self):
+        self.runner.server = self.server
+        for role in ("rdd_coordinator", "rdd_reviewer"):
+            with self.subTest(role=role):
+                tid, thread = self.runner.open_session(role)
+                method, params = self.server.calls[-1]
+                self.assertEqual(method, "thread/start")
+                self.assertEqual(params.get("historyMode"), "legacy")
+                self.assertEqual(thread["historyMode"], "legacy")
+                self.assertEqual(self.server.threads[tid]["historyMode"], "legacy")
+
+    def test_session_start_rejects_unconfirmed_legacy_history_before_turn(self):
+        from tools.rdd.common import RddError
+        self.runner.server = self.server
+        original = self.server.rpc
+        for role in ("rdd_coordinator", "rdd_reviewer"):
+            for mode in (None, "paginated", "unsupported"):
+                with self.subTest(role=role, mode=mode):
+                    def rpc(method, params, timeout=60):
+                        value = original(method, params, timeout)
+                        if method == "thread/start":
+                            if mode is None:
+                                value["thread"].pop("historyMode", None)
+                            else:
+                                value["thread"]["historyMode"] = mode
+                        return value
+                    self.server.rpc = rpc
+                    with self.assertRaisesRegex(RddError, "history"):
+                        self.runner.open_session(role)
+        self.assertFalse(any(method == "turn/start" for method, _ in self.server.calls))
+
+    def test_saved_paginated_session_resumes_without_new_identity_or_turn(self):
+        import json
+        tid, turn_id = "saved-coordinator", "saved-question"
+        envelope = dict(kind="questions", message="Saved clarification", questions=["Color?"])
+        self.server.threads[tid] = dict(id=tid, historyMode="paginated", turns=[dict(
+            id=turn_id, status="completed", items=[dict(type="agentMessage", phase="final_answer",
+            text=json.dumps(envelope))])])
+        self.server.materialized.add(tid)
+        self.runner.stage = "specification"
+        self.runner.update(thread_id=tid, last_turn=turn_id, connection="interrupted", readonly={},
+            requested_runtime=self.c.profile_settings("rdd_coordinator"), runtime=self.server.runtime_identity)
+        self.runner.ask = lambda *a: (_ for _ in ()).throw(KeyboardInterrupt())
+        run_id = self.c.state()["id"]
+        result = self.runner.run("specification")
+        self.assertTrue(result["interrupted"])
+        self.assertEqual(self.c.state()["id"], run_id)
+        row = self.c.state()["workflow_runtime"]["specification"]
+        self.assertEqual((row["thread_id"], row["last_turn"]), (tid, turn_id))
+        resumes = [p for m, p in self.server.calls if m == "thread/resume"]
+        self.assertEqual([p["threadId"] for p in resumes], [tid])
+        self.assertFalse(any(m == "thread/read" and p.get("includeTurns") for m, p in self.server.calls))
+        self.assertFalse(any(m in {"thread/start", "turn/start", "thread/goal/set"} for m, _ in self.server.calls))
+
+    def test_resume_without_verified_history_preserves_session_and_goal_accounting(self):
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import launch_packet
+        self.accepted_spec()
+        tid, turn_id = "saved-goal-coordinator", "saved-goal-turn"
+        self.server.threads[tid] = dict(id=tid, historyMode="paginated", turns=[dict(
+            id=turn_id, status="completed", items=[])])
+        self.server.materialized.add(tid)
+        self.runner.stage = "preparation"
+        goal = dict(threadId=tid, objective=launch_packet(self.c, "preparation")["objective"],
+            status="paused", tokensUsed=37, timeUsedSeconds=8, createdAt=1, tokenBudget=None)
+        self.server.goals[tid] = copy.deepcopy(goal)
+        self.runner.update(thread_id=tid, last_turn=turn_id, goal=goal, connection="stopped", readonly={},
+            requested_runtime=self.c.profile_settings("rdd_coordinator"), runtime=self.server.runtime_identity)
+        run_id = self.c.state()["id"]
+        original = self.server.rpc
+        for missing in (None, "not-a-turn-list", "incomplete", "unavailable", "empty", "older-only"):
+            with self.subTest(history=missing):
+                def rpc(method, params, timeout=60):
+                    value = original(method, params, timeout)
+                    if method == "thread/resume":
+                        if missing is None:
+                            value["thread"].pop("turns")
+                        elif missing == "incomplete":
+                            value["thread"]["turns"][0]["itemsView"] = "not-full"
+                        elif missing == "unavailable":
+                            raise RddError("Saved thread history unavailable", "environment")
+                        elif missing == "empty":
+                            value["thread"]["turns"] = []
+                        elif missing == "older-only":
+                            value["thread"]["turns"] = [dict(id="older-turn", status="completed", items=[])]
+                        else:
+                            value["thread"]["turns"] = missing
+                    return value
+                self.server.rpc = rpc
+                with self.assertRaisesRegex(RddError, "history"):
+                    self.runner.run("preparation")
+                row = self.c.state()["workflow_runtime"]["preparation"]
+                self.assertEqual(self.c.state()["id"], run_id)
+                self.assertEqual((row["thread_id"], row["last_turn"]), (tid, turn_id))
+                self.assertEqual(row["goal"], goal)
+                self.assertEqual(self.server.goals[tid], goal)
+        self.assertFalse(any(m in {"thread/start", "turn/start", "thread/goal/set"} for m, _ in self.server.calls))
 
     def test_missing_runtime_fails_before_any_mutation(self):
         from tools.rdd.common import RddError
@@ -275,6 +387,11 @@ class WorkflowExecutionTests(WorkflowResultTests):
         for params in starts[1:]:
             self.assertEqual(params["sandbox"], "read-only")
             self.assertNotIn("dynamicTools", params)
+        for tid in (sessions["live"]["thread_id"], sessions["execution"]["thread_id"]):
+            calls = [(m, p) for m, p in self.server.calls if p.get("threadId") == tid]
+            first_turn = next(i for i, (m, _) in enumerate(calls) if m == "turn/start")
+            self.assertFalse(any(m == "thread/read" and p.get("includeTurns")
+                                 for m, p in calls[:first_turn]))
         self.assertEqual(len([1 for method, _ in self.server.calls if method == "reply"]), 3)
 
     def test_inherited_write_sandbox_is_rejected_before_reviewer_turn(self):
@@ -299,9 +416,15 @@ class WorkflowExecutionTests(WorkflowResultTests):
             return len([1 for m, p in self.server.calls if m == "turn/start" and p["threadId"] != self.runner.thread_id])
         observe("first")
         self.assertEqual(turns(), 1)
+        observe("first")  # A lost reply on an already-loaded session also replays.
+        self.assertEqual(turns(), 1)
+        reviewer = self.c.state()["workflow_runtime"]["specification"]["readonly"]["live"]["thread_id"]
+        self.server.threads[reviewer]["historyMode"] = "paginated"
         self.runner.loaded.clear()  # Same callback after transport reconnection.
         observe("first")
         self.assertEqual(turns(), 1)
+        self.assertEqual(self.c.state()["workflow_runtime"]["specification"]["readonly"]["live"]["thread_id"], reviewer)
+        self.assertEqual(len([1 for m, _ in self.server.calls if m == "thread/start"]), 2)
         observe("second")  # A new observation never reuses an old report.
         self.assertEqual(turns(), 2)
         self.f.stage_ready("specification")
@@ -311,6 +434,36 @@ class WorkflowExecutionTests(WorkflowResultTests):
         (self.f.root / receipt["log_path"]).write_text("changed raw evidence", encoding="utf-8")
         observe("second")
         self.assertEqual(turns(), 4)
+
+    def test_readonly_history_cannot_drop_the_recorded_turn_or_replace_reviewer(self):
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import TOOL
+        self.runner.run("specification")
+        message = dict(id="review", method="item/tool/call", params=dict(
+            tool=TOOL, callId="review", threadId=self.runner.thread_id,
+            arguments=dict(purpose="live", prompt="Inspect recovery evidence")))
+        self.runner.observe(message)
+        saved = copy.deepcopy(self.c.state()["workflow_runtime"]["specification"]["readonly"])
+        tid = saved["live"]["thread_id"]
+        original = self.server.rpc
+        starts = len([1 for m, _ in self.server.calls if m == "thread/start"])
+        turns = len([1 for m, _ in self.server.calls if m == "turn/start"])
+        for reconnect in (False, True):
+            for history in ([], [dict(id="older-turn", status="completed", items=[])]):
+                with self.subTest(reconnect=reconnect, history=history):
+                    if reconnect:
+                        self.runner.loaded.clear()
+                    def rpc(method, params, timeout=60):
+                        value = original(method, params, timeout)
+                        if method in {"thread/read", "thread/resume"} and params["threadId"] == tid:
+                            value["thread"]["turns"] = copy.deepcopy(history)
+                        return value
+                    self.server.rpc = rpc
+                    with self.assertRaisesRegex(RddError, "history"):
+                        self.runner.observe(message)
+                    self.assertEqual(self.c.state()["workflow_runtime"]["specification"]["readonly"], saved)
+                    self.assertEqual(len([1 for m, _ in self.server.calls if m == "thread/start"]), starts)
+                    self.assertEqual(len([1 for m, _ in self.server.calls if m == "turn/start"]), turns)
 
     def test_late_approval_preserves_context_even_after_log_truncation(self):
         from tools.rdd.common import RddError, read_json
