@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import dataclass
 import contextlib
 import json
 import math
@@ -29,6 +30,32 @@ MAX_EVENT_COUNT = 4096
 MAX_EVENT_BYTES = 16 * 1024 * 1024
 MAX_PENDING_WRITES = 64
 MAX_WRITE_BYTES = 32 * 1024 * 1024
+
+
+class StaleRequestError(RddError):
+    """A rejected reply was definitely unsent because its request/context expired."""
+
+
+@dataclass
+class _ServerRequest:
+    original: str
+    size: int
+    scope: tuple[str | None, str | None, str | None]
+    revision: int
+    replying: bool = False
+    write: _PendingWrite | None = None
+
+
+@dataclass
+class _PendingWrite:
+    data: bytes
+    deadline: float
+    request_id: int | str | None = None
+    request: _ServerRequest | None = None
+    revision: int | None = None
+    state: str = "queued"
+    reason: str | None = None
+    stale: bool = False
 
 
 class AppServer:
@@ -59,7 +86,11 @@ class AppServer:
         self._responses: dict[int, dict] = {}
         self._pending: set[int] = set()
         self._timed_out: set[int] = set()
-        self._server_requests: set[int | str] = set()
+        self._server_requests: dict[int | str, _ServerRequest] = {}
+        self._request_bytes = 0
+        self._context_items: dict[tuple[str | None, str | None, str | None], tuple[dict, int]] = {}
+        self._context_bytes = 0
+        self._context_revision = 0
         self._sequence = 0
         self._failure: str | None = None
         self._eof = False
@@ -216,6 +247,8 @@ class AppServer:
         with self._condition:
             if self._failure is None:
                 self._failure = reason
+            self._retire_all_requests()
+            self._cancel_queued_writes(self._failure)
             self._condition.notify_all()
 
     def _check(self) -> None:
@@ -225,6 +258,166 @@ class AppServer:
             raise RddError("App Server is not running", "environment")
         if self._eof:
             raise RddError("App Server stdout EOF; inspect the bounded stderr log", "environment")
+
+    @staticmethod
+    def _valid_request_id(value) -> bool:
+        return isinstance(value, (str, int)) and not isinstance(value, bool)
+
+    @staticmethod
+    def _original(message) -> str:
+        # Key order is not content; JSON spelling distinguishes bools/integers.
+        return json.dumps(message, ensure_ascii=False, sort_keys=True,
+                          separators=(",", ":"), allow_nan=False)
+
+    @staticmethod
+    def _scope(params: dict, item=None) -> tuple[str | None, str | None, str | None]:
+        values = (params.get("threadId"), params.get("turnId"),
+                  item.get("id") if isinstance(item, dict) else params.get("itemId"))
+        return tuple(value if isinstance(value, str) else None for value in values)
+
+    def _next_context_revision(self) -> int:
+        self._context_revision += 1
+        return self._context_revision
+
+    def _cancel_write(self, entry: _PendingWrite, reason: str, *, stale=False) -> None:
+        if entry.state == "queued":
+            entry.state = "cancelled"
+            entry.reason = reason
+            entry.stale = stale
+            self._condition.notify_all()
+
+    def _cancel_queued_writes(self, reason: str) -> None:
+        # The writer retains queue accounting until it consumes cancelled entries.
+        # This keeps both physical queue storage and admitted bytes bounded.
+        with self._writes.mutex:
+            entries = list(self._writes.queue)
+        for entry in entries:
+            if entry is not None:
+                self._cancel_write(entry, reason)
+
+    def _write_request_current(self, entry: _PendingWrite) -> bool:
+        return entry.request is None or (
+            self._server_requests.get(entry.request_id) is entry.request
+            and entry.request.revision == entry.revision)
+
+    def _retire_request(self, request_id) -> None:
+        if not self._valid_request_id(request_id):
+            return
+        record = self._server_requests.pop(request_id, None)
+        if record is not None:
+            self._request_bytes -= record.size
+            if record.write is not None:
+                self._cancel_write(record.write, "App Server reply requires an outstanding server request ID", stale=True)
+
+    def _retire_all_requests(self) -> None:
+        for request_id in list(self._server_requests):
+            self._retire_request(request_id)
+        self._context_items.clear()
+        self._context_bytes = 0
+
+    def _remove_context(self, scope) -> None:
+        entry = self._context_items.pop(scope, None)
+        if entry is not None:
+            self._context_bytes -= entry[1]
+
+    def _update_context(self, scope, item=None) -> None:
+        if item is not None:
+            size = len(self._original(item).encode("utf-8"))
+            previous = self._context_items.get(scope)
+            updated_bytes = self._context_bytes - (previous[1] if previous is not None else 0) + size
+            if ((previous is None and len(self._context_items) >= MAX_EVENT_COUNT)
+                    or updated_bytes > MAX_EVENT_BYTES):
+                self._fail("App Server item context exceeded capacity; stop and reconnect")
+                return
+            self._context_items[scope] = (item, size)
+            self._context_bytes = updated_bytes
+        for record in self._server_requests.values():
+            if record.scope == scope:
+                record.revision = self._next_context_revision()
+                if record.write is not None:
+                    if record.write.state == "started":
+                        self._fail("App Server request context changed after reply delivery started; stop and reconnect")
+                        return
+                    self._cancel_write(record.write, "App Server request context changed before reply delivery", stale=True)
+
+    def _notification_context(self, message: dict) -> None:
+        """Apply lifecycle changes before callers can consume their notifications."""
+        params = message.get("params")
+        if not isinstance(params, dict):
+            return
+        method = message["method"]
+        if method == "serverRequest/resolved":
+            request_id = params.get("requestId")
+            record = self._server_requests.get(request_id) if self._valid_request_id(request_id) else None
+            if record is not None and record.scope[0] is not None and record.scope[0] != params.get("threadId"):
+                self._fail("App Server returned an uncorrelated request resolution; stop and reconnect")
+                return
+            self._retire_request(request_id)
+        elif method == "item/started" and isinstance(params.get("item"), dict):
+            item = params["item"]
+            scope = self._scope(params, item)
+            if all(value is not None for value in scope):
+                self._update_context(scope, json.loads(self._original(item)))
+        elif method == "item/fileChange/patchUpdated":
+            scope = self._scope(params)
+            cached = self._context_items.get(scope)
+            item = cached[0] if cached is not None else None
+            if item is not None and item.get("type") == "fileChange" and isinstance(params.get("changes"), list):
+                item = {**item, "changes": json.loads(self._original(params["changes"]))}
+            else:
+                # An incomplete replacement cannot keep an older displayed patch.
+                self._remove_context(scope)
+                item = None
+            self._update_context(scope, item)
+        elif method in {"item/completed", "turn/completed"}:
+            if method == "item/completed":
+                terminal = self._scope(params, params.get("item"))
+            else:
+                turn = params.get("turn")
+                terminal = self._scope({**params, "turnId": turn.get("id") if isinstance(turn, dict) else None})[:2]
+            if all(value is not None for value in terminal):
+                for request_id, record in list(self._server_requests.items()):
+                    if record.scope[:len(terminal)] == terminal:
+                        self._retire_request(request_id)
+                for scope in list(self._context_items):
+                    if scope[:len(terminal)] == terminal:
+                        self._remove_context(scope)
+
+    def _outstanding_request(self, request_id, expected=None):
+        if not self._valid_request_id(request_id):
+            return None
+        record = self._server_requests.get(request_id)
+        if record is None or record.replying:
+            return None
+        if expected is not None:
+            try:
+                if self._original(expected) != record.original:
+                    return None
+            except (TypeError, ValueError, UnicodeError):
+                return None
+        return record
+
+    def request_pending(self, request_id, *, expected=None) -> bool:
+        """Check original outstanding content, raising on a dead connection."""
+        with self._condition:
+            self._check()
+            return self._outstanding_request(request_id, expected) is not None
+
+    def request_snapshot(self, request_id, *, expected=None):
+        """Atomically copy the latest item and request/context revision.
+
+        Pass the returned revision to reply after displaying this snapshot. A
+        live resolved/replied/mismatched request returns None; transport failures
+        remain errors so ambiguous delivery cannot be mistaken for stale input.
+        """
+        with self._condition:
+            self._check()
+            record = self._outstanding_request(request_id, expected)
+            if record is None:
+                return None
+            cached = self._context_items.get(record.scope)
+            return {"revision": record.revision,
+                    "item": json.loads(self._original(cached[0])) if cached is not None else None}
 
     def _read_stdout(self) -> None:
         try:
@@ -245,13 +438,32 @@ class AppServer:
                     self._fail("App Server JSON message must be an object")
                     break
                 with self._condition:
+                    if self._failure or self._closed:
+                        break
                     if "method" in message and isinstance(message["method"], str):
                         if "id" in message:
                             ident = message["id"]
                             if not isinstance(ident, (str, int)) or isinstance(ident, bool):
                                 self._fail("App Server returned an invalid request ID")
                                 break
-                            self._server_requests.add(ident)
+                            if ident in self._server_requests:
+                                self._fail("App Server returned a duplicate outstanding request ID")
+                                break
+                            if len(self._server_requests) >= MAX_EVENT_COUNT:
+                                self._fail("App Server outstanding request capacity exceeded; stop and reconnect")
+                                break
+                            original = self._original(message)
+                            size = len(original.encode("utf-8"))
+                            if self._request_bytes + size > MAX_EVENT_BYTES:
+                                self._fail("App Server outstanding request capacity exceeded; stop and reconnect")
+                                break
+                            params = message.get("params")
+                            self._server_requests[ident] = _ServerRequest(
+                                original, size, self._scope(params if isinstance(params, dict) else {}),
+                                self._next_context_revision())
+                            self._request_bytes += size
+                        else:
+                            self._notification_context(message)
                         self._events.append((message, len(line)))
                         self._event_bytes += len(line)
                         if len(self._events) > MAX_EVENT_COUNT or self._event_bytes > MAX_EVENT_BYTES:
@@ -259,6 +471,8 @@ class AppServer:
                             # Stop reading explicitly rather than silently lose
                             # or coalesce notifications while another RPC waits.
                             self._fail("App Server event queue exceeded capacity; stop and reconnect")
+                            break
+                        if self._failure:
                             break
                     elif ("id" in message and isinstance(message["id"], int)
                           and not isinstance(message["id"], bool)
@@ -275,13 +489,15 @@ class AppServer:
                         self._fail("App Server returned an invalid RPC message")
                         break
                     self._condition.notify_all()
-        except (OSError, ValueError):
+        except (OSError, ValueError, UnicodeError):
             if not self._closed:
                 self._fail("App Server stdout read or log failed")
         finally:
             self.process.stdout.close()
             with self._condition:
                 self._eof = True
+                self._retire_all_requests()
+                self._cancel_queued_writes("App Server stdout EOF; inspect the bounded stderr log")
                 self._condition.notify_all()
 
     def _read_stderr(self) -> None:
@@ -302,50 +518,102 @@ class AppServer:
             entry = self._writes.get()
             if entry is None:
                 break
-            data, finished = entry
-            size = len(data)
             try:
+                with self._condition:
+                    if entry.state != "queued":
+                        continue
+                    if self._failure or self._closed or self._eof:
+                        self._cancel_write(entry, self._failure or "App Server is not running")
+                        continue
+                    if time.monotonic() >= entry.deadline:
+                        self._cancel_write(entry, "App Server write timed out")
+                        continue
+                    if not self._write_request_current(entry):
+                        self._cancel_write(entry, "App Server outstanding request or context changed before reply delivery", stale=True)
+                        continue
+                    # Admission and cancellation share this lock. Once started,
+                    # any timeout has ambiguous delivery and poisons the session.
+                    entry.state = "started"
+                data = entry.data
                 self._log("stdin", data)
                 while data:
+                    with self._condition:
+                        if self._failure or self._closed:
+                            break
+                        # Logging and partial OS writes may yield to lifecycle
+                        # input; revalidate the exact generation before bytes.
+                        if not self._write_request_current(entry):
+                            self._fail("App Server outstanding request or context changed after reply delivery started; stop and reconnect")
+                            break
+                        if time.monotonic() >= entry.deadline:
+                            self._fail("App Server write timed out after delivery started; stop and reconnect")
+                            break
                     written = self.process.stdin.write(data)
                     if not written:
                         raise BrokenPipeError
                     data = data[written:]
+                with self._condition:
+                    if not self._failure and not self._closed and time.monotonic() >= entry.deadline:
+                        self._fail("App Server write timed out after delivery started; stop and reconnect")
+                    entry.state = "failed" if self._failure or self._closed else "finished"
+                    entry.reason = self._failure or ("App Server is not running" if self._closed else None)
             except (OSError, ValueError):
                 if not self._closed:
                     self._fail("App Server stdin write or log failed")
-                break
+                entry.state = "failed"
+                entry.reason = self._failure or "App Server is not running"
             finally:
                 with self._condition:
                     self._write_count -= 1
-                    self._write_bytes -= size
-                    finished.set()
+                    self._write_bytes -= len(entry.data)
                     self._condition.notify_all()
 
-    def _send(self, message: dict, deadline: float) -> None:
+    @staticmethod
+    def _encode(message: dict) -> bytes:
         try:
             data = json.dumps(message, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8") + b"\n"
         except (TypeError, ValueError, UnicodeError):
             raise RddError("App Server request must contain valid UTF-8 JSON data", "environment") from None
         if len(data) > MAX_FRAME_BYTES:
             raise RddError("App Server request exceeds the JSON frame limit", "environment")
+        return data
+
+    def _send(self, message: dict, deadline: float) -> None:
+        self._send_bytes(self._encode(message), deadline)
+
+    def _send_bytes(self, data: bytes, deadline: float, *, request_id=None, request=None) -> None:
         with self._condition:
             self._check()
+            self._remaining(deadline, "write")
             if self._write_count >= MAX_PENDING_WRITES or self._write_bytes + len(data) > MAX_WRITE_BYTES:
                 self._fail("App Server write queue exceeded capacity; stop and reconnect")
                 raise RddError(self._failure, "environment")
-            finished = threading.Event()
+            entry = _PendingWrite(data, deadline, request_id, request,
+                                  request.revision if request is not None else None)
+            if request is not None:
+                request.write = entry
             self._write_count += 1
             self._write_bytes += len(data)
-            self._writes.put_nowait((data, finished))
-            while not finished.is_set():
-                if self._failure:
-                    raise RddError(self._failure, "environment")
-                if self._closed:
-                    raise RddError("App Server is not running", "environment")
-                self._condition.wait(self._remaining(deadline, "write"))
-            # A final response can arrive immediately before EOF. Let rpc read
-            # that correlated response rather than replacing it with an EOF.
+            self._writes.put_nowait(entry)
+            while entry.state in {"queued", "started"}:
+                if self._failure or self._closed:
+                    self._cancel_write(entry, self._failure or "App Server is not running")
+                    raise RddError(self._failure or "App Server is not running", "environment")
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    if entry.state == "queued":
+                        self._cancel_write(entry, "App Server write timed out")
+                    else:
+                        self._fail("App Server write timed out after delivery started; stop and reconnect")
+                    raise RddError(entry.reason or self._failure, "environment")
+                self._condition.wait(remaining)
+            if entry.state != "finished":
+                # A connection failure is never harmless stale input, even when
+                # retirement first cancelled this particular queued reply.
+                self._check()
+                error = StaleRequestError if entry.stale else RddError
+                raise error(entry.reason or "App Server write cancelled", "environment")
+            # Correlated responses and admitted events remain readable after EOF.
             if self._failure:
                 raise RddError(self._failure, "environment")
 
@@ -393,14 +661,31 @@ class AppServer:
             self._event_bytes -= size
             return message
 
-    def reply(self, request_id, result) -> None:
+    def reply(self, request_id, result, *, expected=None, revision=None) -> None:
+        data = self._encode({"id": request_id, "result": result})
         with self._condition:
             self._check()
-            if request_id not in self._server_requests:
-                raise RddError("App Server reply requires an outstanding server request ID", "environment")
-        self._send({"id": request_id, "result": result}, time.monotonic() + 60)
-        with self._condition:
-            self._server_requests.remove(request_id)
+            record = self._outstanding_request(request_id, expected)
+            if record is None:
+                raise StaleRequestError("App Server reply requires a matching outstanding server request ID and content", "environment")
+            if revision is not None:
+                if not isinstance(revision, int) or isinstance(revision, bool):
+                    raise RddError("App Server request context revision must be an integer", "environment")
+                if record.revision != revision:
+                    raise StaleRequestError("App Server request context revision changed before reply", "environment")
+            record.replying = True
+            try:
+                self._send_bytes(data, time.monotonic() + 60, request_id=request_id, request=record)
+            finally:
+                if self._server_requests.get(request_id) is record:
+                    if (record.write is not None and record.write.state == "cancelled"
+                            and record.write.reason == "App Server request context changed before reply delivery"):
+                        # Definitely unsent context changes may be displayed anew.
+                        # No retry is possible after started/ambiguous delivery.
+                        record.replying = False
+                        record.write = None
+                    else:
+                        self._retire_request(request_id)
 
     def close(self) -> None:
         """Bounded cleanup independent of an expired operation/startup deadline."""
@@ -409,6 +694,8 @@ class AppServer:
         deadline = time.monotonic() + SHUTDOWN_TIMEOUT
         with self._condition:
             self._closed = True
+            self._retire_all_requests()
+            self._cancel_queued_writes("App Server is not running")
             self._condition.notify_all()
         self._writes.put(None)
         process = self.process

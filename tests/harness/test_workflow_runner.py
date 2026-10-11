@@ -48,6 +48,10 @@ class FakeServer:
         self.closed, self.goal_terminal = False, None
         self.fail_method = None
         self.sandbox_override = None
+        self.pending_requests = {}
+        self.retired_requests = set()
+        self.approval_items = {}
+        self.approval_revision = 0
 
     def __enter__(self):
         return self
@@ -115,10 +119,704 @@ class FakeServer:
         raise AssertionError(method)
 
     def next_event(self, timeout=1):
-        return self.events.pop(0) if self.events else None
+        from tools.rdd.common import RddError
+        message = self.events.pop(0) if self.events else None
+        if message and "id" in message:
+            ident = message["id"]
+            if ident in self.pending_requests or ident in self.retired_requests:
+                raise RddError("Fixture duplicate server request ID", "environment")
+            self.pending_requests[ident] = copy.deepcopy(message)
+        elif message and message.get("method") == "serverRequest/resolved":
+            ident = message.get("params", {}).get("requestId")
+            self.pending_requests.pop(ident, None)
+            self.retired_requests.add(ident)
+        if message:
+            params = message.get("params", {})
+            item = params.get("item", {})
+            key = (params.get("threadId"), params.get("turnId"), item.get("id"))
+            if message.get("method") == "item/started" and item.get("type") in {"commandExecution", "fileChange"}:
+                self.approval_items[key] = copy.deepcopy(item)
+                self.approval_revision += 1
+            elif message.get("method") == "item/fileChange/patchUpdated":
+                key = (params.get("threadId"), params.get("turnId"), params.get("itemId"))
+                if key in self.approval_items:
+                    self.approval_items[key]["changes"] = copy.deepcopy(params.get("changes"))
+                    self.approval_revision += 1
+            elif message.get("method") in {"item/completed", "turn/completed"}:
+                for ident, request in list(self.pending_requests.items()):
+                    context = request.get("params", {})
+                    same_turn = (context.get("threadId") == params.get("threadId")
+                                 and context.get("turnId") == (params.get("turn", {}).get("id") or params.get("turnId")))
+                    if same_turn and (message["method"] == "turn/completed" or context.get("itemId") == item.get("id")):
+                        self.pending_requests.pop(ident, None)
+                        self.retired_requests.add(ident)
+        return message
 
-    def reply(self, request_id, result):
+    def request_pending(self, request_id, *, expected=None):
+        current = self.pending_requests.get(request_id)
+        return current is not None and (expected is None or current == expected)
+
+    def request_snapshot(self, request_id, *, expected=None):
+        if not self.request_pending(request_id, expected=expected):
+            return None
+        params = self.pending_requests[request_id].get("params", {})
+        key = (params.get("threadId"), params.get("turnId"), params.get("itemId"))
+        return dict(revision=self.approval_revision, item=copy.deepcopy(self.approval_items.get(key)))
+
+    def reply(self, request_id, result, *, expected=None, revision=None):
+        from tools.rdd.app_server import StaleRequestError
+        if expected is not None and (not self.request_pending(request_id, expected=expected)
+                                     or revision is not None and revision != self.approval_revision):
+            raise StaleRequestError("Fixture request is no longer pending or changed", "environment")
         self.calls.append(("reply", dict(id=request_id, result=result)))
+        self.pending_requests.pop(request_id, None)
+        self.retired_requests.add(request_id)
+
+
+class FakeApprovalTerminal:
+    """Scripted human terminal; it never turns redirected stdin into consent."""
+    def __init__(self, *answers, available=True):
+        self.answers = list(answers)
+        self.is_available = available
+        self.prompts = []
+        self.polls = self.resets = self.closes = 0
+
+    def available(self):
+        return self.is_available
+
+    def show(self, text):
+        self.prompts.append(text)
+
+    def poll(self):
+        self.polls += 1
+        if not self.answers:
+            raise EOFError()
+        answer = self.answers.pop(0)
+        if callable(answer):
+            return answer()
+        if isinstance(answer, BaseException):
+            raise answer
+        return answer
+
+    def reset(self):
+        self.resets += 1
+
+    def close(self):
+        self.closes += 1
+
+
+class WorkflowApprovalTests(unittest.TestCase):
+    """Human choices authorize one live owned operation; they never accept a stage."""
+    def setUp(self):
+        from tools.rdd.workflow import WorkflowRunner
+        self.f = fixture.EngineTests(methodName="runTest")
+        self.f.setUp()
+        self.addCleanup(self.f.doCleanups)
+        self.c = self.f.c
+        self.f.write(".rdd/goals/implementation.txt", "Complete the synthetic fixture through verified project acceptance.\n")
+        self.server = FakeServer(self.f.root)
+        self.terminal = FakeApprovalTerminal("a")
+        self.runner = WorkflowRunner(self.c, server_factory=lambda *a, **k: self.server,
+                                     approval_terminal=self.terminal, emit=lambda _: None)
+        self.runner.server = self.server
+        self.runner.diagnostics = self.f.root / ".rdd/evidence/approval-diagnostics"
+        self.runner.diagnostics.mkdir(parents=True)
+
+    def reconnect_stopped_fixture(self):
+        """Independent rejection subcases use fresh transport-local request IDs."""
+        from tools.rdd.workflow import WorkflowRunner
+        previous, server = self.runner, self.server
+        self.server = FakeServer(self.f.root)
+        self.server.calls = server.calls
+        self.server.threads = copy.deepcopy(server.threads)
+        self.server.goals = copy.deepcopy(server.goals)
+        self.server.materialized = set(server.materialized)
+        self.runner = WorkflowRunner(self.c, server_factory=lambda *a, **k: self.server,
+                                     approval_terminal=self.terminal, emit=lambda _: None)
+        self.runner.server = self.server
+        self.runner.stage = previous.stage
+        self.runner.thread_id = previous.thread_id
+        self.runner.diagnostics = previous.diagnostics
+        self.runner.active = copy.deepcopy(previous.active)
+
+    def owned_turn(self, stage="specification"):
+        if self.server.pending_requests:
+            self.reconnect_stopped_fixture()
+        self.runner.stage = stage
+        self.runner.update(connection="connected", requested_runtime=self.c.profile_settings("rdd_coordinator"),
+                           runtime=self.server.runtime_identity, readonly={})
+        tid, _ = self.runner.open_session("rdd_coordinator")
+        self.runner.thread_id = tid
+        self.runner.update(thread_id=tid)
+        turn = "approval-turn"
+        self.server.threads[tid]["turns"].append(dict(id=turn, status="inProgress", items=[]))
+        self.server.events.append(dict(method="turn/started", params=dict(threadId=tid, turn=dict(id=turn))))
+        self.runner.pump(0)
+        return tid, turn
+
+    def operation(self, *, file=False, tid=None, turn=None, item_id="operation-1"):
+        if self.server.pending_requests:
+            self.reconnect_stopped_fixture()
+        tid, turn = tid or self.runner.thread_id, turn or "approval-turn"
+        if file:
+            item = dict(id=item_id, type="fileChange", status="inProgress", changes=[dict(
+                path=str(self.f.root / "modules/value.py"), kind=dict(type="update", move_path=None),
+                diff="@@ -1 +1 @@\n-old_value\n+approved_value\n")])
+        else:
+            item = dict(id=item_id, type="commandExecution", command="sysctl -n hw.memsize",
+                        cwd=str(self.f.root), status="inProgress")
+        self.server.events.append(dict(method="item/started", params=dict(threadId=tid, turnId=turn, item=item)))
+        self.runner.pump(0)
+        return item
+
+    def request(self, item, *, ident=37, tid=None, turn=None, **overrides):
+        params = dict(threadId=tid or self.runner.thread_id, turnId=turn or "approval-turn", itemId=item["id"],
+                      reason="Inspect host capacity for the benchmark protocol")
+        method = "item/fileChange/requestApproval" if item["type"] == "fileChange" else "item/commandExecution/requestApproval"
+        if item["type"] == "commandExecution":
+            params.update(command=item["command"], cwd=item["cwd"], availableDecisions=["accept", "decline", "cancel"])
+        params.update(overrides)
+        message = dict(id=ident, method=method, params=params)
+        self.server.events.append(message)
+        return message
+
+    def replies(self):
+        return [params for method, params in self.server.calls if method == "reply"]
+
+    def finish_request(self, ident=37):
+        for _ in range(20):
+            self.runner.pump(0)
+            if any(reply["id"] == ident for reply in self.replies()):
+                return
+        self.fail("The live approval request did not receive the scripted human decision")
+
+    def test_constructor_accepts_terminal_dependency(self):
+        from tools.rdd.workflow import WorkflowRunner
+        terminal = FakeApprovalTerminal("a")
+        runner = WorkflowRunner(self.c, server_factory=lambda *a, **k: self.server,
+                                approval_terminal=terminal, emit=lambda _: None)
+        self.assertIs(runner.approval_terminal, terminal)
+
+    def test_one_time_accept_and_decline_work_in_all_three_stages(self):
+        for stage in ("specification", "preparation", "implementation"):
+            for answer, decision in (("A", "accept"), ("D", "decline")):
+                with self.subTest(stage=stage, decision=decision):
+                    self.terminal.answers = [answer]
+                    self.owned_turn(stage)
+                    item = self.operation(item_id=stage + "-" + decision)
+                    ident = stage + "-" + decision
+                    self.request(item, ident=ident)
+                    self.finish_request(ident)
+                    self.assertEqual(self.replies()[-1], dict(id=ident, result=dict(decision=decision)))
+                    prompt = self.terminal.prompts[-1]
+                    for text in (stage, self.runner.thread_id, "approval-turn", item["id"], item["command"], item["cwd"]):
+                        self.assertIn(text, prompt)
+                    self.assertFalse(self.server.request_pending(ident))
+        state = self.c.state()
+        self.assertNotIn("preparation_gate", state)
+        self.assertNotIn("project_gate", state)
+        self.assertFalse(state.get("spec_digest"))
+
+    def test_exact_observed_sysctl_choices_never_grant_session_or_rule(self):
+        self.owned_turn()
+        item = self.operation()
+        # This is the observed sysctl menu: decline is absent.
+        offered = ["accept", "acceptForSession", dict(acceptWithExecpolicyAmendment=dict(
+            execpolicy_amendment=["sysctl", "-n", "hw.memsize"])), "cancel"]
+        self.terminal.answers = ["d", "a"]
+        self.request(item, availableDecisions=offered)
+        self.finish_request()
+        self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="accept"))])
+        self.assertEqual(self.terminal.polls, 2)
+
+    def test_stop_uses_cancel_only_when_cancel_was_offered(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        item = self.operation()
+        self.terminal.answers = ["s"]
+        self.request(item, availableDecisions=["accept", "cancel"])
+        with self.assertRaises(RddError) as error:
+            self.finish_request()
+        self.assertEqual(error.exception.kind, "environment")
+        self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="cancel"))])
+
+    def test_file_change_prompt_contains_exact_path_and_patch(self):
+        self.owned_turn()
+        item = self.operation(file=True)
+        self.request(item)
+        self.finish_request()
+        prompt = self.terminal.prompts[-1]
+        self.assertIn(item["changes"][0]["path"], prompt)
+        self.assertIn(item["changes"][0]["diff"], prompt.replace("\n  | ", "\n"))
+        self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="accept"))])
+
+    def test_stop_blank_eof_and_no_terminal_are_recoverable_without_reply(self):
+        from tools.rdd.common import RddError
+        cases = [(stage, answer) for stage in ("specification", "preparation", "implementation")
+                 for answer in ("s", "", EOFError(), "no-terminal")]
+        for index, (stage, answer) in enumerate(cases):
+            with self.subTest(stage=stage, answer=answer):
+                self.owned_turn(stage)
+                item = self.operation(item_id="stop-" + str(index))
+                self.terminal.is_available = answer != "no-terminal"
+                self.terminal.answers = [answer]
+                self.request(item, ident=index, availableDecisions=["accept", "decline"])
+                before = len(self.replies())
+                with self.assertRaises(RddError) as error:
+                    self.finish_request(index)
+                self.assertEqual(error.exception.kind, "environment")
+                self.assertEqual(len(self.replies()), before)
+                self.assertTrue(self.server.request_pending(index))
+                self.assertFalse((self.f.root / ".rdd/runtime/failures/fixture-run.json").exists())
+
+    def test_ctrl_c_retains_interrupt_semantics_and_never_replies(self):
+        self.owned_turn()
+        item = self.operation()
+        self.terminal.answers = [KeyboardInterrupt()]
+        self.request(item)
+        with self.assertRaises(KeyboardInterrupt):
+            self.finish_request()
+        self.assertEqual(self.replies(), [])
+
+    def test_requests_for_unrelated_readonly_or_inactive_turns_fail_closed(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        readonly, _ = self.runner.open_session("rdd_reviewer")
+        for index, (tid, turn) in enumerate((("unrelated-thread", "approval-turn"),
+                                           (readonly, "approval-turn"),
+                                           (self.runner.thread_id, "wrong-turn"))):
+            with self.subTest(tid=tid, turn=turn):
+                if tid != self.runner.thread_id:
+                    self.runner.active[tid] = turn
+                item = self.operation(tid=tid, turn=turn, item_id="refuse-" + str(index))
+                self.request(item, ident=index, tid=tid, turn=turn)
+                with self.assertRaises(RddError) as error:
+                    self.finish_request(index)
+                self.assertEqual(error.exception.kind, "environment")
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.terminal.polls, 0)
+
+    def test_complete_command_context_must_match_live_runtime_item(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        for index, overrides in enumerate((dict(command="rm -rf /"), dict(cwd="/unrelated"),
+                                           dict(itemId="missing-item"))):
+            with self.subTest(overrides=overrides):
+                item = self.operation(item_id="context-" + str(index))
+                self.request(item, ident=index, **overrides)
+                with self.assertRaises(RddError):
+                    self.finish_request(index)
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.terminal.polls, 0)
+
+    def test_unsupported_grants_input_and_mcp_fail_closed(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        for index, overrides in enumerate((dict(additionalPermissions=dict(fileSystem=dict(write=["/"]))),
+                                           dict(execpolicyAmendment=["sh"]), dict(networkPolicyAmendment=dict(host="*")),
+                                           dict(grantRoot=str(self.f.root)))):
+            with self.subTest(overrides=overrides):
+                item = self.operation(file="grantRoot" in overrides, item_id="grant-" + str(index))
+                self.request(item, ident=index, **overrides)
+                with self.assertRaises(RddError):
+                    self.finish_request(index)
+        for index, method in enumerate(("item/permissions/requestApproval", "item/tool/requestUserInput",
+                                        "item/commandExecution/requestStdin", "item/mcpToolCall/requestApproval"), start=10):
+            self.reconnect_stopped_fixture()
+            self.server.events.append(dict(id=index, method=method, params=dict(
+                threadId=self.runner.thread_id, turnId="approval-turn", itemId="operation-1")))
+            with self.subTest(method=method), self.assertRaises(RddError):
+                self.finish_request(index)
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.terminal.polls, 0)
+
+    def test_runtime_resolution_before_human_answer_prevents_reply(self):
+        self.owned_turn()
+        item = self.operation()
+        def resolve():
+            self.server.events.append(dict(method="serverRequest/resolved", params=dict(
+                requestId=37, threadId=self.runner.thread_id)))
+            return "a"
+        self.terminal.answers = [resolve]
+        self.request(item)
+        from tools.rdd.common import RddError
+        try:
+            for _ in range(5):
+                self.runner.pump(0)
+        except RddError as error:
+            self.assertEqual(error.kind, "environment")
+        self.assertEqual(self.replies(), [])
+        self.assertFalse(self.server.request_pending(37))
+
+    def test_runtime_item_completion_before_human_answer_prevents_reply(self):
+        self.owned_turn()
+        item = self.operation()
+        def complete():
+            self.server.events.append(dict(method="item/completed", params=dict(
+                threadId=self.runner.thread_id, turnId="approval-turn", item={**item, "status": "completed"})))
+            return "a"
+        self.terminal.answers = [complete]
+        self.request(item)
+        from tools.rdd.common import RddError
+        try:
+            for _ in range(5):
+                self.runner.pump(0)
+        except RddError as error:
+            self.assertEqual(error.kind, "environment")
+        self.assertEqual(self.replies(), [])
+        self.assertFalse(self.server.request_pending(37))
+
+    def test_changed_patch_discards_old_choice_and_requires_new_human_answer(self):
+        self.owned_turn()
+        item = self.operation(file=True)
+        changed = [{**item["changes"][0], "diff": "@@ -1 +1 @@\n-old_value\n+changed_after_prompt\n"}]
+        def update_patch():
+            self.server.events.append(dict(method="item/fileChange/patchUpdated", params=dict(
+                threadId=self.runner.thread_id, turnId="approval-turn", itemId=item["id"], changes=changed)))
+            return "a"
+        self.terminal.answers = [update_patch, "d"]
+        self.request(item)
+        self.finish_request()
+        self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="decline"))])
+        self.assertGreaterEqual(len(self.terminal.prompts), 2)
+        self.assertIn("changed_after_prompt", self.terminal.prompts[-1])
+        self.assertEqual(self.terminal.polls, 2)
+
+    def test_missing_live_command_item_context_fails_closed(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        for index, missing in enumerate(("command", "status")):
+            with self.subTest(missing=missing):
+                item = self.operation(item_id="missing-" + str(index))
+                key = (self.runner.thread_id, "approval-turn", item["id"])
+                self.server.approval_items[key].pop(missing)
+                self.request(item, ident=index)
+                with self.assertRaises(RddError):
+                    self.finish_request(index)
+        self.assertEqual(self.replies(), [])
+
+    def test_verified_writable_native_specialists_can_receive_one_time_decisions(self):
+        self.owned_turn()
+        coordinator = self.runner.thread_id
+        profiles = ("rdd_complex_implementor", "rdd_light_implementor")
+        for index, role in enumerate(profiles):
+            with self.subTest(role=role):
+                tid = "native-author-" + str(index)
+                thread = dict(id=tid, historyMode="legacy", turns=[], cwd=str(self.f.root))
+                if index == 0:
+                    thread.update(parentThreadId=coordinator, agentRole=role)
+                else:
+                    thread["source"] = dict(subAgent=dict(thread_spawn=dict(
+                        parent_thread_id=coordinator, agent_role=role)))
+                self.server.threads[tid] = thread
+                self.server.events.append(dict(method="turn/started", params=dict(threadId=tid, turn=dict(id="child-turn"))))
+                self.runner.pump(0)
+                item = self.operation(tid=tid, turn="child-turn", item_id="native-item-" + str(index))
+                self.terminal.answers = ["a"]
+                self.request(item, ident=index, tid=tid, turn="child-turn")
+                self.finish_request(index)
+                self.assertEqual(self.replies()[-1], dict(id=index, result=dict(decision="accept")))
+
+    def test_native_child_with_readonly_or_unverified_ancestry_is_refused(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        coordinator = self.runner.thread_id
+        cases = (("rdd_reviewer", coordinator), ("rdd_researcher", coordinator),
+                 ("rdd_complex_implementor", "foreign-coordinator"), (None, coordinator))
+        for index, (role, parent) in enumerate(cases):
+            with self.subTest(role=role, parent=parent):
+                tid = "refused-native-" + str(index)
+                if self.server.pending_requests:
+                    self.reconnect_stopped_fixture()
+                self.server.threads[tid] = dict(id=tid, historyMode="legacy", turns=[],
+                    cwd=str(self.f.root), parentThreadId=parent, agentRole=role)
+                self.server.events.append(dict(method="turn/started", params=dict(threadId=tid, turn=dict(id="child-turn"))))
+                self.runner.pump(0)
+                item = self.operation(tid=tid, turn="child-turn", item_id="refused-child-" + str(index))
+                self.request(item, ident=index, tid=tid, turn="child-turn")
+                with self.assertRaises(RddError):
+                    self.finish_request(index)
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.terminal.polls, 0)
+
+    def test_foreign_execution_environment_is_never_authorized(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        item = self.operation()
+        self.request(item, environmentId="remote")
+        with self.assertRaises(RddError):
+            self.finish_request()
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.terminal.polls, 0)
+
+    def install_pending_turn(self):
+        original = self.server.rpc
+        def rpc(method, params, timeout=60):
+            if method != "turn/start":
+                result = original(method, params, timeout)
+                if method == "thread/goal/set" and "objective" in params:
+                    self.server.goals[params["threadId"]].update(tokensUsed=37, timeUsedSeconds=8)
+                return result
+            self.server.calls.append((method, copy.deepcopy(params)))
+            tid, turn = params["threadId"], "live-approval-turn"
+            item = dict(id="live-operation", type="commandExecution", command="sysctl -n hw.memsize",
+                        cwd=str(self.f.root), status="inProgress")
+            self.server.threads[tid]["turns"].append(dict(id=turn, status="inProgress", items=[item]))
+            self.server.materialized.add(tid)
+            self.server.events += [dict(method="turn/started", params=dict(threadId=tid, turn=dict(id=turn))),
+                dict(method="item/started", params=dict(threadId=tid, turnId=turn, item=item)),
+                dict(id=37, method="item/commandExecution/requestApproval", params=dict(
+                    threadId=tid, turnId=turn, itemId=item["id"], command=item["command"], cwd=item["cwd"],
+                    reason="Inspect host capacity", availableDecisions=["accept", "decline"]))]
+            return dict(turn=dict(id=turn, status="inProgress"))
+        self.server.rpc = rpc
+
+    def test_terminal_stop_preserves_goal_identity_accounting_and_never_replays_old_request(self):
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import WorkflowRunner
+        self.f.stage_ready("specification")
+        self.c.spec_freeze()
+        self.f.commit("Accepted fixture specification for approval recovery")
+        run_id = self.c.state()["id"]
+        self.install_pending_turn()
+        self.terminal.is_available = False
+        with self.assertRaises(RddError) as error:
+            self.runner.run("preparation")
+        self.assertEqual(error.exception.kind, "environment")
+        self.assertIn("sysctl -n hw.memsize", str(error.exception))
+        self.assertIn("preparation", str(error.exception))
+        row = copy.deepcopy(self.c.state()["workflow_runtime"]["preparation"])
+        self.assertEqual(row["connection"], "stopped")
+        self.assertEqual(row["last_turn"], "live-approval-turn")
+        self.assertEqual(row["goal"]["status"], "paused")
+        self.assertEqual((row["goal"]["tokensUsed"], row["goal"]["timeUsedSeconds"]), (37, 8))
+        self.assertEqual(self.replies(), [])
+        self.assertTrue(any(method == "turn/interrupt" for method, _ in self.server.calls))
+        self.assertEqual(self.c.state()["id"], run_id)
+        self.assertNotIn("preparation_gate", self.c.state())
+        self.assertFalse((self.f.root / ".rdd/runtime/failures/fixture-run.json").exists())
+        # A reconnect gets the same backend identity/accounting, but old JSON-RPC
+        # requests belong to the closed transport and cannot be answered again.
+        resumed = FakeServer(self.f.root)
+        resumed.threads = copy.deepcopy(self.server.threads)
+        resumed.threads[row["thread_id"]]["turns"][-1]["status"] = "interrupted"
+        resumed.materialized = set(self.server.materialized)
+        resumed.goals = copy.deepcopy(self.server.goals)
+        resumed.goals[row["thread_id"]]["status"] = "blocked"
+        terminal = FakeApprovalTerminal("a")
+        runner = WorkflowRunner(self.c, server_factory=lambda *a, **k: resumed,
+                                approval_terminal=terminal, emit=lambda _: None)
+        result = runner.run("preparation")
+        self.assertEqual(result["status"], "incomplete")
+        after = self.c.state()["workflow_runtime"]["preparation"]
+        self.assertEqual((after["thread_id"], after["last_turn"]), (row["thread_id"], row["last_turn"]))
+        for key in ("objective", "tokensUsed", "timeUsedSeconds", "createdAt", "tokenBudget"):
+            self.assertEqual(after["goal"][key], row["goal"][key])
+        self.assertFalse(any(method in {"thread/start", "turn/start", "reply"} for method, _ in resumed.calls))
+        self.assertFalse(any(method == "thread/goal/set" and "objective" in params for method, params in resumed.calls))
+        self.assertEqual(terminal.polls, 0)
+
+    def test_approval_ctrl_c_returns_interrupted_result_and_closes_terminal(self):
+        self.install_pending_turn()
+        self.terminal.answers = [KeyboardInterrupt()]
+        result = self.runner.run("specification")
+        self.assertEqual(result["status"], "incomplete")
+        self.assertTrue(result["interrupted"])
+        self.assertEqual(self.c.state()["workflow_runtime"]["specification"]["connection"], "interrupted")
+        self.assertEqual(self.replies(), [])
+        self.assertTrue(self.server.closed)
+        self.assertGreaterEqual(self.terminal.closes, 1)
+
+    def test_turn_deadline_and_runtime_disconnect_do_not_answer_pending_request(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        item = self.operation()
+        self.terminal.answers = [None]
+        self.request(item)
+        self.runner.pump(0)
+        with self.assertRaisesRegex(RddError, "deadline"):
+            self.runner.wait_turn(self.runner.thread_id, "approval-turn", timeout=0)
+        self.server.next_event = lambda **kwargs: (_ for _ in ()).throw(RddError("Fixture runtime disconnected", "environment"))
+        with self.assertRaisesRegex(RddError, "disconnected"):
+            self.runner.pump(0)
+        self.assertEqual(self.replies(), [])
+
+    def test_concurrent_network_requests_have_separate_human_choices(self):
+        self.owned_turn()
+        first = self.operation(item_id="network-first")
+        second = self.operation(item_id="network-second")
+        self.terminal.answers = [None, "a", "d"]
+        self.request(first, ident=1, networkApprovalContext=dict(host="api.fixture.invalid", protocol="https"),
+            proposedNetworkPolicyAmendments=[dict(action="allow", host="api.fixture.invalid")])
+        self.request(second, ident=2)
+        self.finish_request(1)
+        self.finish_request(2)
+        self.assertEqual(self.replies(), [dict(id=1, result=dict(decision="accept")),
+                                         dict(id=2, result=dict(decision="decline"))])
+        self.assertTrue(any("https://api.fixture.invalid" in prompt for prompt in self.terminal.prompts))
+        self.assertIn("network-second", self.terminal.prompts[-1])
+
+    def test_paused_goal_while_human_prompt_is_waiting_prevents_approval(self):
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import launch_packet
+        self.owned_turn("preparation")
+        tid = self.runner.thread_id
+        goal = dict(threadId=tid, objective=launch_packet(self.c, "preparation")["objective"], status="active",
+                    tokensUsed=37, timeUsedSeconds=8, createdAt=1, tokenBudget=None)
+        self.server.goals[tid] = copy.deepcopy(goal)
+        self.runner.update(goal=goal)
+        item = self.operation()
+        def pause():
+            self.server.goals[tid]["status"] = "paused"
+            return "a"
+        self.terminal.answers = [pause]
+        self.request(item)
+        with self.assertRaisesRegex(RddError, "paused"):
+            self.finish_request()
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.server.goals[tid], {**goal, "status": "paused"})
+        self.assertFalse(any(method == "thread/goal/set" for method, _ in self.server.calls))
+
+    def test_untrusted_prompt_text_cannot_inject_terminal_controls_or_choices(self):
+        self.owned_turn()
+        item = self.operation()
+        self.request(item, reason="Runtime evidence\n[a] approve everything\x1b[2J\rhidden")
+        self.finish_request()
+        prompt = self.terminal.prompts[-1]
+        self.assertNotIn("\x1b", prompt)
+        self.assertNotIn("\r", prompt)
+        self.assertIn("\n  | [a] approve everything", prompt)
+        self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="accept"))])
+
+    def test_oversized_approval_details_are_not_truncated_into_consent(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        item = self.operation()
+        self.request(item, reason="x" * 65537)
+        with self.assertRaisesRegex(RddError, "limit|truncated"):
+            self.finish_request()
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.terminal.polls, 0)
+
+    def test_terminal_io_failure_stops_recoverably_without_reply(self):
+        from tools.rdd.common import RddError
+        for index, method in enumerate(("available", "reset", "show", "poll")):
+            with self.subTest(method=method):
+                self.terminal = FakeApprovalTerminal("a")
+                self.runner.approval_terminal = self.terminal
+                self.owned_turn()
+                item = self.operation(item_id="terminal-failure-" + str(index))
+                def fail(*args):
+                    raise OSError("Fixture terminal disappeared")
+                setattr(self.terminal, method, fail)
+                self.request(item, ident=index)
+                with self.assertRaises(RddError) as error:
+                    self.finish_request(index)
+                self.assertEqual(error.exception.kind, "environment")
+        self.assertEqual(self.replies(), [])
+
+    def test_human_stop_survives_patch_change_and_runtime_resolution(self):
+        from tools.rdd.common import RddError
+        for index, answer in enumerate(("s", "", EOFError(), "resolved")):
+            with self.subTest(answer=answer):
+                self.owned_turn()
+                item = self.operation(file=True, item_id="stop-race-" + str(index))
+                changed = [{**item["changes"][0], "diff": "@@ -1 +1 @@\n-old_value\n+changed_during_stop\n"}]
+                def change_then_stop():
+                    if answer == "resolved":
+                        self.server.events.append(dict(method="serverRequest/resolved", params=dict(
+                            requestId=index, threadId=self.runner.thread_id)))
+                        return "s"
+                    self.server.events.append(dict(method="item/fileChange/patchUpdated", params=dict(
+                        threadId=self.runner.thread_id, turnId="approval-turn", itemId=item["id"], changes=changed)))
+                    if isinstance(answer, BaseException):
+                        raise answer
+                    return answer
+                # The second answer exposes a lost stop by granting the changed
+                # patch. A stop must end locally before that answer is read.
+                self.terminal.answers = [change_then_stop, "a"]
+                self.request(item, ident=index)
+                before = len(self.replies())
+                with self.assertRaises(RddError) as error:
+                    self.finish_request(index)
+                self.assertEqual(error.exception.kind, "environment")
+                self.assertFalse(any(reply["result"].get("decision") in {"accept", "decline"}
+                                     for reply in self.replies()[before:]))
+                self.assertEqual(self.terminal.answers, ["a"])
+
+    def test_stop_does_not_dispatch_a_queued_readonly_callback(self):
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import TOOL
+        self.owned_turn()
+        item = self.operation()
+        dispatched = []
+        self.runner.readonly_call = lambda message: dispatched.append(message)
+        def review_then_stop():
+            self.server.events.append(dict(id=77, method="item/tool/call", params=dict(
+                tool=TOOL, callId="queued-review", threadId=self.runner.thread_id,
+                turnId="approval-turn", arguments=dict(purpose="live", prompt="Inspect source"))))
+            return "s"
+        self.terminal.answers = [review_then_stop]
+        self.request(item)
+        with self.assertRaises(RddError) as error:
+            self.finish_request()
+        self.assertEqual(error.exception.kind, "environment")
+        self.assertEqual(dispatched, [])
+        self.assertFalse(any(reply["result"].get("decision") in {"accept", "decline"} for reply in self.replies()))
+
+    def test_reply_timeout_after_pending_removal_stops_without_representing(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        item = self.operation()
+        def timeout(request_id, result, **kwargs):
+            self.server.pending_requests.pop(request_id, None)
+            self.server.retired_requests.add(request_id)
+            raise RddError("App Server write timed out", "environment")
+        self.server.reply = timeout
+        self.terminal.answers = ["a", "a"]
+        self.request(item)
+        with self.assertRaisesRegex(RddError, "timed out") as error:
+            self.finish_request()
+        self.assertEqual(error.exception.kind, "environment")
+        self.assertEqual(self.terminal.polls, 1)
+        self.assertEqual(len(self.terminal.prompts), 1)
+        self.assertEqual(self.terminal.answers, ["a"])
+        self.assertEqual(self.replies(), [])
+
+    def test_post_reply_terminal_failure_acknowledges_decision_and_never_resends(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        item = self.operation()
+        reset = self.terminal.reset
+        def fail_after_reply():
+            reset()
+            if self.replies():
+                raise OSError("Fixture terminal disappeared after approval was delivered")
+        self.terminal.reset = fail_after_reply
+        self.request(item)
+        with self.assertRaises(RddError) as error:
+            self.finish_request()
+        self.assertEqual(error.exception.kind, "environment")
+        diagnostic = str(error.exception).lower()
+        self.assertNotIn("without granting permission", diagnostic)
+        self.assertRegex(diagnostic, r"decision.*(?:may.*sent|already.*sent)")
+        self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="accept"))])
+        self.assertFalse(self.server.request_pending(37))
+        self.assertEqual(self.terminal.polls, 1)
+        self.runner.pump(0)
+        self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="accept"))])
+        self.assertEqual(self.terminal.polls, 1)
+
+    def test_duplicate_request_ids_fail_closed_without_second_response(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        item = self.operation()
+        message = self.request(item)
+        self.finish_request()
+        self.server.events.append(copy.deepcopy(message))
+        with self.assertRaisesRegex(RddError, "duplicate"):
+            self.runner.pump(0)
+        self.assertEqual(len(self.replies()), 1)
 
 
 class WorkflowExecutionTests(WorkflowResultTests):
@@ -385,11 +1083,12 @@ class WorkflowExecutionTests(WorkflowResultTests):
                              for m, _ in self.server.calls))
         self.assertTrue(self.server.closed)
 
-    def test_approval_request_is_never_answered(self):
+    def test_startup_approval_without_live_context_is_never_answered(self):
         from tools.rdd.common import RddError
         self.server.events.append(dict(id=37, method="item/commandExecution/requestApproval", params={}))
-        with self.assertRaisesRegex(RddError, "human approval"):
+        with self.assertRaisesRegex(RddError, "thread/turn/item identity") as error:
             self.runner.run("specification")
+        self.assertEqual(error.exception.kind, "environment")
         self.assertFalse(any(method == "reply" for method, _ in self.server.calls))
         self.assertFalse(any(method == "thread/start" for method, _ in self.server.calls))
 

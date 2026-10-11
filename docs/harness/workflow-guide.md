@@ -8,7 +8,7 @@ Read `README.md` for host installation and `codex-runtime.md` for the installed 
 
 `requirements/requirements.md` defines the product obligations. `.rdd/spec.json` and its listed documents/decisions select the solution. Canonical contracts under `contracts/` and generated outputs under `gen/` are frozen with that solution. `.rdd/plan/plan.json` selects implementation work and phase order. Comments are generated task projections; `.rdd/runtime/` stores controller state. Evidence describes measured behavior and never overrides the requirements.
 
-Enter with `./rdd workflow specification`, `./rdd workflow preparation`, and `./rdd workflow implementation` in order. The runner supplies instructions, presents only typed specification questions, and activates native Goals for headless preparation/implementation. Repeating a command resumes its recorded run/session; an accepted stage is rechecked without relaunch. `--print` is pure, including with `--mode`. Exit 0 means accepted (or printed), 1 invalid, 2 incomplete/blocked, and 130 interrupted. Missing approvals, external evidence or backend sessions stops recoverably with identities and accounting preserved.
+Enter with `./rdd workflow specification`, `./rdd workflow preparation`, and `./rdd workflow implementation` in order. The runner supplies instructions, presents only typed specification questions, and activates native Goals for headless preparation/implementation. Repeating a command resumes its recorded run/session; an accepted stage is rechecked without relaunch. `--print` is pure, including with `--mode`. Exit 0 means accepted (or printed), 1 invalid, 2 incomplete/blocked, and 130 interrupted. Missing external evidence, unavailable approval input or backend sessions stop recoverably with identities and accounting preserved.
 
 Use controller commands for transitions. Do not edit run state, SQLite rows, locks, seals, evidence receipts, or task markers to force progress. `./rdd status` and `./rdd --help` are the operational entry points. On Windows use the provided launcher described in the README with the same arguments.
 
@@ -63,6 +63,10 @@ For specification and preparation corrections, `workflow claim --finding` permit
 
 Specification resolves requirement and architectural ambiguity and owns the target folder design. Preparation fully grooms its entire backlog before handoff. Implementation repairs implementation defects within the open phase’s frozen scope. A specification defect discovered during preparation, or a specification/planning defect discovered during implementation, is a critical harness regression: record it, stop the affected workflow, repair the missing preventive control and add a reproducing regression. Intentional requirement changes still use the amendment workflow; never rewrite accepted history.
 
+With a terminal attached, all three workflows can present **one-time permission prompts**. Inspect the requesting agent, exact command or complete file patch, working directory, reason and any network destination. Enter `a` to approve that request once, `d` to deny and let the agent continue when that option is offered, or `s`/Enter to stop. EOF also stops with exit 2; Ctrl-C exits 130. Approval never accepts a workflow or changes the configured approval policy.
+
+Without a terminal, the runner displays the pending action and stops; rerun the same workflow command in a terminal. Piped answers and saved request IDs are never replayed. A changed action requires a new decision. Session-wide grants, extra permission profiles, terminal-input approvals, generic permission requests, and MCP elicitation remain unsupported and stop recoverably. Read-only reviewer/researcher sessions cannot escalate. See [runtime approval handling](codex-runtime.md#one-time-permissions) for request lifetime and recovery limits.
+
 ## Stage one: specification
 
 Run:
@@ -107,7 +111,7 @@ Do not proceed if requirements are ambiguous, a required platform is unsupported
 ./rdd workflow preparation
 ```
 
-The runner continues the accepted frozen solution under a native Goal and executes headlessly. The coordinator runs `plan init` when needed and follows the preparation skill through planning, materialization and acceptance. Missing approvals or external evidence remains a recoverable stop; routine conversational prompts cannot change frozen scope.
+The runner continues the accepted frozen solution under a native Goal and executes headlessly. The coordinator runs `plan init` when needed and follows the preparation skill through planning, materialization and acceptance. Unavailable permission input or external evidence remains a recoverable stop; routine conversational prompts cannot change frozen scope.
 
 The `rdd_task_planner` resolves exact target files inside the frozen folder/ownership design. Every task is fully hydrated with objective, instructions, solution/scenario links, input producers and timing, outputs, dependencies, exact writes and work sites, checks, acceptance, category, scope and reuse rationale when adding code. Each task belongs to one phase and at least one ordered vertical. Every solution element has implementation and verification ownership, or actual baseline evidence. Implementation must not discover missing task scope or groom a partial backlog.
 
