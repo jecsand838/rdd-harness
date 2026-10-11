@@ -119,8 +119,12 @@ class FakeServer:
         raise AssertionError(method)
 
     def next_event(self, timeout=1):
-        from tools.rdd.common import RddError
         message = self.events.pop(0) if self.events else None
+        return self.admit(message)
+
+    def admit(self, message):
+        """Apply transport admission and lifetime context before runner observation."""
+        from tools.rdd.common import RddError
         if message and "id" in message:
             ident = message["id"]
             if ident in self.pending_requests or ident in self.retired_requests:
@@ -147,7 +151,8 @@ class FakeServer:
                     context = request.get("params", {})
                     same_turn = (context.get("threadId") == params.get("threadId")
                                  and context.get("turnId") == (params.get("turn", {}).get("id") or params.get("turnId")))
-                    if same_turn and (message["method"] == "turn/completed" or context.get("itemId") == item.get("id")):
+                    if same_turn and (message["method"] == "turn/completed"
+                                      or context.get("itemId", context.get("callId")) == item.get("id")):
                         self.pending_requests.pop(ident, None)
                         self.retired_requests.add(ident)
         return message
@@ -160,7 +165,7 @@ class FakeServer:
         if not self.request_pending(request_id, expected=expected):
             return None
         params = self.pending_requests[request_id].get("params", {})
-        key = (params.get("threadId"), params.get("turnId"), params.get("itemId"))
+        key = (params.get("threadId"), params.get("turnId"), params.get("itemId", params.get("callId")))
         return dict(revision=self.approval_revision, item=copy.deepcopy(self.approval_items.get(key)))
 
     def reply(self, request_id, result, *, expected=None, revision=None):
@@ -289,6 +294,492 @@ class WorkflowApprovalTests(unittest.TestCase):
             if any(reply["id"] == ident for reply in self.replies()):
                 return
         self.fail("The live approval request did not receive the scripted human decision")
+
+    def callback(self, ident="review-request", *, purpose="live", tid=None):
+        from tools.rdd.workflow import TOOL
+        return dict(id=ident, method="item/tool/call", params=dict(
+            threadId=tid or self.runner.thread_id, turnId="approval-turn",
+            callId="call-" + str(ident), tool=TOOL,
+            arguments=dict(purpose=purpose, prompt="Inspect this synthetic fixture")))
+
+    def defer_callback(self, message=None):
+        message = self.callback() if message is None else message
+        self.server.admit(message)
+        self.runner.approval_busy = True
+        try:
+            self.runner.observe(message)
+        finally:
+            self.runner.approval_busy = False
+        return message
+
+    def reviewer_turns(self):
+        return [params for method, params in self.server.calls
+                if method == "turn/start" and params["threadId"] != self.runner.thread_id]
+
+    def callback_lifecycle(self, message, event):
+        params = message["params"]
+        if event == "resolved":
+            return dict(method="serverRequest/resolved", params=dict(
+                requestId=message["id"], threadId=params["threadId"]))
+        if event == "item":
+            return dict(method="item/completed", params=dict(threadId=params["threadId"],
+                turnId=params["turnId"], item=dict(id=params["callId"], type="dynamicToolCall", status="completed")))
+        return dict(method="turn/completed", params=dict(threadId=params["threadId"],
+            turn=dict(id=params["turnId"], status="completed", items=[])))
+
+    def headless_goal(self, stage):
+        from tools.rdd.storage_failure import register_headless
+        from tools.rdd.workflow import launch_packet
+        self.owned_turn(stage)
+        tid = self.runner.thread_id
+        goal = dict(threadId=tid, objective=launch_packet(self.c, stage)["objective"], status="active",
+                    tokensUsed=37, timeUsedSeconds=8, createdAt=1, tokenBudget=1000)
+        self.server.goals[tid] = copy.deepcopy(goal)
+        self.runner.update(goal=goal)
+        register_headless(self.f.root, self.c.state()["id"], stage, tid)
+        return goal
+
+    def publish_approval_marker(self):
+        import sqlite3
+        from tools.rdd.common import RddStorageError
+        from tools.rdd.storage_failure import record_failure
+        fault = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("child approval callback race"))
+        self.assertIsNotNone(record_failure(self.f.root, fault))
+
+    def approval_marker_during_goal_rpc(self, stage):
+        """A child can publish a terminal marker while the last Goal RPC waits."""
+        import sqlite3
+        from unittest.mock import Mock, patch
+        from tools.rdd.common import RddStorageError
+        from tools.rdd.engine import Controller
+        from tools.rdd.storage_failure import TerminalStorageFailure, record_failure, register_headless
+        from tools.rdd.workflow import WorkflowRunner, launch_packet
+        self.owned_turn(stage)
+        tid, run_id = self.runner.thread_id, self.c.state()["id"]
+        goal = dict(threadId=tid, objective=launch_packet(self.c, stage)["objective"], status="active",
+                    tokensUsed=37, timeUsedSeconds=8, createdAt=1, tokenBudget=1000)
+        self.server.goals[tid] = copy.deepcopy(goal)
+        self.runner.update(goal=goal)
+        register_headless(self.f.root, run_id, stage, tid)
+        checkpoint = self.f.root / f".rdd/evidence/workflow-{stage}-checkpoint.json"
+        checkpoint.write_bytes(b"preserve checkpoint before approval\n")
+        marker = self.f.root / f".rdd/runtime/failures/{run_id}.json"
+        original_rpc = self.server.rpc
+        observed = {}
+
+        def rpc(method, params, timeout=60):
+            value = original_rpc(method, params, timeout)
+            if method == "thread/goal/get" and not observed:
+                observed.update(state=copy.deepcopy(self.c.state(allow_blocked=True)),
+                                edits=edit.call_count, journals=journal.call_count)
+                fault = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("child approval RPC race"))
+                self.assertIsNotNone(record_failure(self.f.root, fault))
+                observed["marker"] = marker.read_bytes()
+            return value
+
+        self.server.rpc = rpc
+        item = self.operation()
+        self.request(item)
+        caught = None
+        with patch.object(self.c.store, "edit", wraps=self.c.store.edit) as edit, \
+                patch.object(self.runner, "journal", wraps=self.runner.journal) as journal, \
+                patch.object(self.c, "export_run") as export:
+            try:
+                self.runner.pump(0)
+            except TerminalStorageFailure as error:
+                caught = error
+            finally:
+                with self.assertRaises(TerminalStorageFailure):
+                    self.runner.shutdown()
+            export.assert_not_called()
+            self.assertEqual(edit.call_count, observed["edits"])
+            self.assertEqual(journal.call_count, observed["journals"], "No journal read after the RPC publishes a terminal marker")
+        self.assertEqual(self.replies(), [], "A terminal storage marker must prevent the pending approval decision")
+        self.assertIsInstance(caught, TerminalStorageFailure)
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertEqual(checkpoint.read_bytes(), b"preserve checkpoint before approval\n")
+        self.assertEqual(marker.read_bytes(), observed["marker"])
+        self.assertEqual(self.server.goals[tid], {**goal, "status": "paused"})
+        self.assertTrue(self.server.closed)
+        self.assertFalse(any(method == "thread/goal/set" and "objective" in params for method, params in self.server.calls))
+        fresh = Controller(self.f.root)
+        self.addCleanup(fresh.close)
+        factory = Mock(side_effect=AssertionError("Terminal retry cannot reconnect or replace the Goal"))
+        retry = WorkflowRunner(fresh, server_factory=factory, emit=lambda _: None)
+        with patch.object(fresh, "save") as save, patch.object(fresh, "export_run") as export:
+            with self.assertRaises(TerminalStorageFailure):
+                retry.run(stage)
+            factory.assert_not_called()
+            save.assert_not_called()
+            export.assert_not_called()
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertEqual(marker.read_bytes(), observed["marker"])
+        self.assertEqual(self.server.goals[tid], {**goal, "status": "paused"})
+
+    def test_preparation_terminal_marker_during_final_goal_rpc_prevents_approval_and_retry(self):
+        self.approval_marker_during_goal_rpc("preparation")
+
+    def test_implementation_terminal_marker_during_final_goal_rpc_prevents_approval_and_retry(self):
+        self.approval_marker_during_goal_rpc("implementation")
+
+    def test_callback_during_approval_allows_second_approval_to_complete_review(self):
+        """The real reviewer waits for evidence released by a second human choice."""
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        coordinator = self.runner.thread_id
+        first = self.operation()
+        self.request(first)
+        callback = self.callback()
+        second = dict(id="second-operation", type="commandExecution", command="echo second",
+                      cwd=str(self.f.root), status="inProgress")
+        original_rpc, original_reply, original_wait = self.server.rpc, self.server.reply, self.runner.wait_turn
+        review = {}
+
+        def rpc(method, params, timeout=60):
+            if method == "turn/start" and params["threadId"] != coordinator:
+                self.assertIn(dict(id=37, result=dict(decision="accept")), self.replies(),
+                              "The first approval must finish before a reviewer callback starts")
+                self.server.calls.append((method, copy.deepcopy(params)))
+                tid = params["threadId"]
+                turn = dict(id="review-pending", status="inProgress", items=[])
+                review.update(tid=tid, turn=turn)
+                self.server.threads[tid]["turns"].append(turn)
+                self.server.materialized.add(tid)
+                self.server.events.append(dict(method="turn/started", params=dict(threadId=tid, turn=dict(id=turn["id"]))))
+                self.server.events.append(dict(method="item/started", params=dict(threadId=coordinator,
+                    turnId="approval-turn", item=second)))
+                self.request(second, ident=38)
+                return dict(turn=dict(id=turn["id"], status="inProgress"))
+            return original_rpc(method, params, timeout)
+
+        def reply(ident, result, **kwargs):
+            original_reply(ident, result, **kwargs)
+            if ident == 38 and result.get("decision") == "accept":
+                review["turn"].update(status="completed", items=[dict(type="agentMessage", phase="final_answer",
+                    text="Reviewer received the produced fixture evidence")])
+                self.server.events.append(dict(method="turn/completed", params=dict(
+                    threadId=review["tid"], turn=copy.deepcopy(review["turn"]))))
+
+        def first_answer():
+            self.server.events.append(callback)
+            return "a"
+
+        self.server.rpc, self.server.reply = rpc, reply
+        self.runner.wait_turn = lambda tid, turn, timeout=900: original_wait(
+            tid, turn, timeout=.05 if tid != coordinator else timeout)
+        self.terminal.answers = [first_answer, "a"]
+        try:
+            for _ in range(20):
+                self.runner.pump(0)
+                if any(value["id"] == callback["id"] for value in self.replies()):
+                    break
+        except RddError as error:
+            self.fail("Reviewer callback blocked a live human approval: " + str(error))
+        self.assertEqual([value["id"] for value in self.replies()], [37, 38, callback["id"]])
+        self.assertEqual(self.terminal.polls, 2)
+        self.assertFalse(self.runner.approval_busy)
+        self.assertFalse(self.runner.readonly_busy)
+        self.assertEqual(self.server.pending_requests, {})
+        reviewer_start = next(params for method, params in self.server.calls
+                              if method == "thread/start" and params["sandbox"] == "read-only")
+        self.assertNotIn("dynamicTools", reviewer_start)
+
+    def test_deferred_callbacks_keep_fifo_order_and_release_capacity(self):
+        self.owned_turn()
+        messages = [self.callback("fifo-" + str(index)) for index in range(3)]
+        self.defer_callback(messages[0])
+        self.defer_callback(messages[1])
+        # An existing backlog must also defer a newly observed callback.
+        self.runner.observe(self.server.admit(messages[2]))
+        self.assertEqual(self.reviewer_turns(), [], "Queued callbacks cannot overtake earlier work")
+        for _ in range(10):
+            self.runner.pump(0)
+            if len(self.replies()) == len(messages):
+                break
+        self.assertEqual([value["id"] for value in self.replies()], [message["id"] for message in messages])
+        self.assertEqual(len(self.reviewer_turns()), 3)
+        self.assertEqual(len(self.runner.deferred_readonly), 0)
+        self.assertEqual(self.runner.deferred_readonly_bytes, 0)
+
+    def test_approval_queued_during_final_goal_rpc_precedes_deferred_review(self):
+        self.headless_goal("preparation")
+        coordinator = self.runner.thread_id
+        first = self.operation()
+        message = self.callback()
+        second = dict(id="late-operation", type="commandExecution", command="echo late evidence",
+                      cwd=str(self.f.root), status="inProgress")
+        original_rpc, original_review = self.server.rpc, self.runner.readonly_call
+        injected = []
+        def rpc(method, params, timeout=60):
+            value = original_rpc(method, params, timeout)
+            if method == "thread/goal/get" and not injected:
+                injected.append(True)
+                self.server.events.append(dict(method="item/started", params=dict(threadId=coordinator,
+                    turnId="approval-turn", item=second)))
+                self.request(second, ident=38)
+            return value
+        def first_answer():
+            self.server.events.append(message)
+            return "a"
+        def review_after_both_choices(callback):
+            self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="accept")),
+                                             dict(id=38, result=dict(decision="decline"))],
+                             "Approval queued by the final Goal RPC must precede callback dispatch")
+            return original_review(callback)
+        self.server.rpc, self.runner.readonly_call = rpc, review_after_both_choices
+        self.terminal.answers = [first_answer, "d"]
+        self.request(first)
+        for _ in range(20):
+            self.runner.pump(0)
+            if any(reply["id"] == message["id"] for reply in self.replies()):
+                break
+        self.assertEqual([reply["id"] for reply in self.replies()], [37, 38, message["id"]])
+        self.assertEqual(self.terminal.polls, 2)
+
+    def test_callback_retired_before_dispatch_never_starts_reviewer(self):
+        self.owned_turn()
+        for event in ("resolved", "item", "turn"):
+            with self.subTest(event=event):
+                message = self.defer_callback(self.callback("retired-" + event))
+                self.server.admit(self.callback_lifecycle(message, event))
+                self.runner.pump(0)
+                self.assertEqual(self.reviewer_turns(), [])
+                self.assertEqual(self.replies(), [])
+                self.assertFalse(self.server.request_pending(message["id"]))
+                self.assertEqual(len(self.runner.deferred_readonly), 0)
+                self.assertEqual(self.runner.deferred_readonly_bytes, 0)
+
+    def test_changed_callback_content_before_dispatch_never_starts_reviewer(self):
+        self.owned_turn()
+        message = self.defer_callback()
+        self.server.pending_requests[message["id"]]["params"]["arguments"]["prompt"] = "Changed transport content"
+        self.runner.pump(0)
+        self.assertEqual(self.reviewer_turns(), [])
+        self.assertEqual(self.replies(), [])
+        self.assertTrue(self.server.request_pending(message["id"]))
+        self.assertFalse(self.server.request_pending(message["id"], expected=message))
+
+    def test_callback_retired_during_review_never_receives_report(self):
+        self.owned_turn()
+        original_rpc = self.server.rpc
+        for event in ("resolved", "item", "turn"):
+            with self.subTest(event=event):
+                message = self.callback("during-review-" + event)
+                def rpc(method, params, timeout=60):
+                    if method == "turn/start" and params["threadId"] != self.runner.thread_id:
+                        self.server.events.append(self.callback_lifecycle(message, event))
+                    return original_rpc(method, params, timeout)
+                self.server.rpc = rpc
+                self.server.events.append(message)
+                self.runner.pump(0)
+                self.assertFalse(self.server.request_pending(message["id"]))
+                self.assertEqual(self.replies(), [], "A retired callback must not receive a reviewer report")
+                self.assertFalse(self.runner.readonly_busy)
+        self.assertEqual(len(self.reviewer_turns()), 3)
+
+    def test_callback_change_at_reply_is_not_sent_or_retried(self):
+        self.owned_turn()
+        message = self.callback()
+        original_reply = self.server.reply
+        def changed_reply(ident, result, **kwargs):
+            self.assertEqual(kwargs.get("expected"), message, "Reviewer replies must bind exact admitted content")
+            self.server.pending_requests[ident]["params"]["arguments"]["prompt"] = "Changed at reply cut"
+            return original_reply(ident, result, **kwargs)
+        self.server.reply = changed_reply
+        self.server.events.append(message)
+        self.runner.pump(0)
+        self.runner.pump(0)
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(len(self.reviewer_turns()), 1)
+        self.assertTrue(self.server.request_pending(message["id"]))
+
+    def test_deferred_callback_stop_eof_and_ctrl_c_end_without_review(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        for index, answer in enumerate(("s", EOFError(), KeyboardInterrupt())):
+            with self.subTest(answer=type(answer).__name__ if isinstance(answer, BaseException) else answer):
+                if index:
+                    self.reconnect_stopped_fixture()
+                item = self.operation(item_id="stopped-operation-" + str(index))
+                message = self.defer_callback(self.callback("stopped-" + str(index)))
+                self.terminal.answers = [answer]
+                self.request(item, ident=index, availableDecisions=["accept", "decline"])
+                expected = KeyboardInterrupt if isinstance(answer, KeyboardInterrupt) else RddError
+                with self.assertRaises(expected):
+                    self.runner.pump(0)
+                self.assertEqual(self.reviewer_turns(), [])
+                self.assertEqual(self.replies(), [])
+                self.runner.shutdown()
+                self.assertEqual(len(self.runner.deferred_readonly), 0)
+                self.assertEqual(self.runner.deferred_readonly_bytes, 0)
+                self.assertTrue(self.server.request_pending(message["id"]))
+
+    def test_deferred_callback_disconnect_does_not_dispatch_and_shutdown_clears_queue(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        message = self.defer_callback()
+        self.server.next_event = lambda **kwargs: (_ for _ in ()).throw(RddError("Fixture runtime disconnected", "environment"))
+        with self.assertRaisesRegex(RddError, "disconnected"):
+            self.runner.pump(0)
+        self.assertEqual(self.reviewer_turns(), [])
+        self.assertEqual(self.replies(), [])
+        self.runner.shutdown()
+        self.assertEqual(len(self.runner.deferred_readonly), 0)
+        self.assertEqual(self.runner.deferred_readonly_bytes, 0)
+        self.assertTrue(self.server.request_pending(message["id"]))
+
+    def test_dead_transport_during_callback_pending_check_is_not_stale_success(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        self.defer_callback()
+        self.server.request_pending = lambda *args, **kwargs: (_ for _ in ()).throw(RddError("Fixture pending transport disconnected", "environment"))
+        with self.assertRaisesRegex(RddError, "disconnected"):
+            self.runner.pump(0)
+        self.assertEqual(self.reviewer_turns(), [])
+        self.assertEqual(self.replies(), [])
+
+    def test_callback_reply_disconnect_stops_without_repeating_report(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        message = self.callback()
+        original_reply = self.server.reply
+        def uncertain_reply(ident, result, **kwargs):
+            original_reply(ident, result, **kwargs)
+            raise RddError("Fixture callback reply disconnected after delivery", "environment")
+        self.server.reply = uncertain_reply
+        self.server.events.append(message)
+        with self.assertRaisesRegex(RddError, "disconnected after delivery"):
+            self.runner.pump(0)
+        self.runner.pump(0)
+        self.assertEqual([value["id"] for value in self.replies()], [message["id"]])
+        self.assertEqual(len(self.reviewer_turns()), 1)
+        self.assertFalse(self.runner.readonly_busy)
+
+    def test_changed_patch_keeps_callback_deferred_until_new_human_choice(self):
+        self.owned_turn()
+        item = self.operation(file=True)
+        message = self.callback()
+        changed = [{**item["changes"][0], "diff": "@@ -1 +1 @@\n-old_value\n+changed_for_review\n"}]
+        def update_patch():
+            self.server.events.append(message)
+            self.server.events.append(dict(method="item/fileChange/patchUpdated", params=dict(
+                threadId=self.runner.thread_id, turnId="approval-turn", itemId=item["id"], changes=changed)))
+            return "a"
+        original = self.runner.readonly_call
+        def review_after_choice(callback):
+            self.assertEqual(self.replies(), [dict(id=37, result=dict(decision="decline"))])
+            self.assertEqual(self.terminal.polls, 2)
+            return original(callback)
+        self.runner.readonly_call = review_after_choice
+        self.terminal.answers = [update_patch, "d"]
+        self.request(item)
+        self.finish_request()
+        self.assertEqual([value["id"] for value in self.replies()], [37, message["id"]])
+        self.assertIn("changed_for_review", self.terminal.prompts[-1])
+
+    def test_readonly_callback_isolation_is_preserved_during_approval_drain(self):
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        readonly, _ = self.runner.open_session("rdd_reviewer")
+        message = self.callback(tid=readonly)
+        item = self.operation()
+        def foreign_callback():
+            self.server.events.append(message)
+            return "a"
+        self.terminal.answers = [foreign_callback]
+        self.request(item)
+        with self.assertRaisesRegex(RddError, "not supported"):
+            self.runner.pump(0)
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.reviewer_turns(), [])
+        self.assertEqual(len(self.runner.deferred_readonly), 0)
+
+    def test_deferred_callback_terminal_marker_prevents_dispatch(self):
+        from unittest.mock import patch
+        from tools.rdd.storage_failure import TerminalStorageFailure
+        self.headless_goal("preparation")
+        self.defer_callback()
+        before = copy.deepcopy(self.c.state())
+        self.publish_approval_marker()
+        with patch.object(self.runner, "journal", wraps=self.runner.journal) as journal, \
+                patch.object(self.c.store, "edit", wraps=self.c.store.edit) as edit:
+            with self.assertRaises(TerminalStorageFailure):
+                self.runner.pump(0)
+            journal.assert_not_called()
+            edit.assert_not_called()
+        self.assertEqual(self.reviewer_turns(), [])
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(self.c.state(allow_blocked=True), before)
+        with self.assertRaises(TerminalStorageFailure):
+            self.runner.shutdown()
+        self.assertEqual(len(self.runner.deferred_readonly), 0)
+
+    def callback_marker_before_reply(self, stage):
+        from unittest.mock import patch
+        from tools.rdd.storage_failure import TerminalStorageFailure
+        goal = self.headless_goal(stage)
+        message = self.callback()
+        original_wait = self.runner.wait_turn
+        observed = {}
+        def reviewed_then_failed(tid, turn, timeout=900):
+            text = original_wait(tid, turn, timeout)
+            observed["state"] = copy.deepcopy(self.c.state())
+            observed["edits"] = edit.call_count
+            observed["journals"] = journal.call_count
+            self.publish_approval_marker()
+            return text
+        self.runner.wait_turn = reviewed_then_failed
+        self.server.events.append(message)
+        with patch.object(self.c.store, "edit", wraps=self.c.store.edit) as edit, \
+                patch.object(self.runner, "journal", wraps=self.runner.journal) as journal:
+            with self.assertRaises(TerminalStorageFailure):
+                self.runner.pump(0)
+            self.assertEqual(edit.call_count, observed["edits"])
+            self.assertEqual(journal.call_count, observed["journals"])
+        self.assertEqual(self.replies(), [], "A terminal child marker must prevent the reviewer report reply")
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        with self.assertRaises(TerminalStorageFailure):
+            self.runner.shutdown()
+        self.assertEqual(self.server.goals[self.runner.thread_id], {**goal, "status": "paused"})
+        self.assertFalse(self.runner.readonly_busy)
+
+    def test_preparation_terminal_marker_before_callback_reply_prevents_report(self):
+        self.callback_marker_before_reply("preparation")
+
+    def test_implementation_terminal_marker_before_callback_reply_prevents_report(self):
+        self.callback_marker_before_reply("implementation")
+
+    def test_deferred_callback_count_is_bounded_without_dispatch(self):
+        from unittest.mock import patch
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        with patch("tools.rdd.workflow.MAX_EVENT_COUNT", 2):
+            self.defer_callback(self.callback("bounded-1"))
+            self.defer_callback(self.callback("bounded-2"))
+            with self.assertRaisesRegex(RddError, "capacity|limit|bound"):
+                self.defer_callback(self.callback("bounded-overflow"))
+        self.assertEqual(self.reviewer_turns(), [])
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(len(self.runner.deferred_readonly), 2)
+        self.runner.shutdown()
+        self.assertEqual(self.runner.deferred_readonly_bytes, 0)
+
+    def test_deferred_callback_bytes_are_bounded_without_dispatch(self):
+        from unittest.mock import patch
+        from tools.rdd.common import RddError
+        self.owned_turn()
+        self.defer_callback(self.callback("bytes-first"))
+        size = self.runner.deferred_readonly_bytes
+        self.assertGreater(size, 0)
+        with patch("tools.rdd.workflow.MAX_EVENT_BYTES", size):
+            with self.assertRaisesRegex(RddError, "capacity|limit|bound"):
+                self.defer_callback(self.callback("bytes-overflow"))
+        self.assertEqual(self.reviewer_turns(), [])
+        self.assertEqual(self.replies(), [])
+        self.assertEqual(len(self.runner.deferred_readonly), 1)
+        self.assertEqual(self.runner.deferred_readonly_bytes, size)
+        self.runner.shutdown()
+        self.assertEqual(self.runner.deferred_readonly_bytes, 0)
 
     def test_constructor_accepts_terminal_dependency(self):
         from tools.rdd.workflow import WorkflowRunner
@@ -826,6 +1317,15 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.f.write(".rdd/goals/implementation.txt", "Complete the synthetic fixture through verified project acceptance.\n")
         self.server = FakeServer(self.f.root)
         self.runner = WorkflowRunner(self.c, server_factory=lambda *a, **k: self.server, emit=lambda text: None)
+        self.callback_requests = 0
+
+    def observe_callback(self, message):
+        """A replay keeps its logical callId, with a fresh transport request ID."""
+        self.callback_requests += 1
+        message = copy.deepcopy(message)
+        message["id"] = "callback-transport-" + str(self.callback_requests)
+        message["params"].setdefault("turnId", "fixture-callback-turn")
+        self.runner.observe(self.server.admit(message))
 
     def snapshot(self):
         from tools.rdd.common import inventory, head
@@ -1097,7 +1597,7 @@ class WorkflowExecutionTests(WorkflowResultTests):
         # Establish the run-scoped coordinator journal through the real runner.
         self.runner.run("specification")
         for index, purpose in enumerate(("live", "live", "execution")):
-            self.runner.observe(dict(id=index, method="item/tool/call", params=dict(callId=str(index),
+            self.observe_callback(dict(id=index, method="item/tool/call", params=dict(callId=str(index),
                 tool=TOOL, threadId=self.runner.thread_id, namespace=None,
                 arguments=dict(purpose=purpose, prompt="Inspect docs/specs/fixture.md against FR-001"))))
         sessions = self.c.state()["workflow_runtime"]["specification"]["readonly"]
@@ -1124,7 +1624,7 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.server.sandbox_override = "workspaceWrite"
         turns = len([1 for method, _ in self.server.calls if method == "turn/start"])
         with self.assertRaisesRegex(RddError, "profile/sandbox"):
-            self.runner.observe(dict(id=1, method="item/tool/call", params=dict(tool=TOOL,
+            self.observe_callback(dict(id=1, method="item/tool/call", params=dict(tool=TOOL,
                 callId="review-1", threadId=self.runner.thread_id, arguments=dict(purpose="live", prompt="Inspect source"))))
         self.assertEqual(turns, len([1 for method, _ in self.server.calls if method == "turn/start"]))
 
@@ -1132,7 +1632,7 @@ class WorkflowExecutionTests(WorkflowResultTests):
         from tools.rdd.workflow import TOOL
         self.runner.run("specification")
         def observe(callback):
-            self.runner.observe(dict(id=callback, method="item/tool/call", params=dict(
+            self.observe_callback(dict(id=callback, method="item/tool/call", params=dict(
                 tool=TOOL, callId=callback, threadId=self.runner.thread_id,
                 arguments=dict(purpose="live", prompt="Inspect readiness evidence"))))
         def turns():
@@ -1165,7 +1665,7 @@ class WorkflowExecutionTests(WorkflowResultTests):
         message = dict(id="review", method="item/tool/call", params=dict(
             tool=TOOL, callId="review", threadId=self.runner.thread_id,
             arguments=dict(purpose="live", prompt="Inspect recovery evidence")))
-        self.runner.observe(message)
+        self.observe_callback(message)
         saved = copy.deepcopy(self.c.state()["workflow_runtime"]["specification"]["readonly"])
         tid = saved["live"]["thread_id"]
         original = self.server.rpc
@@ -1183,7 +1683,7 @@ class WorkflowExecutionTests(WorkflowResultTests):
                         return value
                     self.server.rpc = rpc
                     with self.assertRaisesRegex(RddError, "history"):
-                        self.runner.observe(message)
+                        self.observe_callback(message)
                     self.assertEqual(self.c.state()["workflow_runtime"]["specification"]["readonly"], saved)
                     self.assertEqual(len([1 for m, _ in self.server.calls if m == "thread/start"]), starts)
                     self.assertEqual(len([1 for m, _ in self.server.calls if m == "turn/start"]), turns)
@@ -1206,7 +1706,7 @@ class WorkflowExecutionTests(WorkflowResultTests):
             tool=TOOL, callId="review", threadId=self.runner.thread_id,
             arguments=dict(purpose="live", prompt="Inspect recovery evidence")))
         with self.assertRaisesRegex(RddError, "backend session missing") as failure:
-            self.runner.observe(message)
+            self.observe_callback(message)
         self.assertEqual(failure.exception.kind, "environment")
         self.assertEqual(before, self.snapshot())
         self.assertEqual([m for m, _ in self.server.calls], ["thread/resume"])
@@ -1441,12 +1941,16 @@ class WorkflowExecutionTests(WorkflowResultTests):
         seen = {}
 
         def callback_failure(thread, packet):
+            from tools.rdd.workflow import TOOL
             seen["state"] = copy.deepcopy(self.c.state())
             self.runner.active[self.runner.thread_id] = "active-fixture-turn"
+            message = dict(id=7, method="item/tool/call", params=dict(tool=TOOL,
+                threadId=self.runner.thread_id, turnId="active-fixture-turn", callId="failing-review",
+                arguments=dict(purpose="live", prompt="Review fixture handoff")))
+            self.server.admit(message)
             with patch.object(self.c.store, "edit", side_effect=error) as edit:
                 try:
-                    self.runner.readonly_call(dict(id=7, params=dict(callId="failing-review",
-                        arguments=dict(purpose="live", prompt="Review fixture handoff"))))
+                    self.runner.readonly_call(message)
                 finally:
                     seen["edits"] = edit.call_count
 

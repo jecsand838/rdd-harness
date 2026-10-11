@@ -1,6 +1,7 @@
 """Three workflow commands; model execution proposes, controller evidence accepts."""
 from __future__ import annotations
 
+from collections import deque
 import json
 import os
 from pathlib import Path
@@ -13,7 +14,7 @@ import unicodedata
 from .common import (RddError, RddStorageError, atomic_write, clean, digest, file_hash, git, head, operation_lock,
                      read_json, safe_path, source_digest)
 from .profiles import load_profiles
-from .app_server import StaleRequestError
+from .app_server import MAX_EVENT_BYTES, MAX_EVENT_COUNT, StaleRequestError
 from .storage_failure import (TerminalStorageFailure, check_failure, headless_scope, record_failure,
                               register_headless, preserve_primary_error)
 
@@ -231,6 +232,8 @@ class WorkflowRunner:
         self.approvals = {}
         self.approval_display = None
         self.approval_busy = False
+        self.deferred_readonly = deque()
+        self.deferred_readonly_bytes = 0
         self.session_roles = {}
         self.session_cwds = {}
 
@@ -507,6 +510,7 @@ class WorkflowRunner:
                 check_failure(self.root)
                 current = self.server.request_snapshot(ident, expected=message)
                 if current == snapshot and "cancel" in allowed:
+                    check_failure(self.root)
                     self.server.reply(ident, {"decision": "cancel"}, expected=message, revision=snapshot["revision"])
                 raise RddError("Approval cancelled; workflow stopped recoverably. Rerun the same command when ready.", "environment")
             # Fake transports and real queued lifecycle events are reconciled
@@ -535,6 +539,7 @@ class WorkflowRunner:
                 if goal and goal.get("status") != "active":
                     raise RddError("Native Goal is " + str(goal.get("status")) + "; pending approval was not granted", "environment")
             if decision in allowed:
+                check_failure(self.root)
                 try:
                     self.server.reply(ident, {"decision": decision}, expected=message, revision=snapshot["revision"])
                 except StaleRequestError:
@@ -563,7 +568,11 @@ class WorkflowRunner:
                     or params.get("threadId") != self.thread_id or params.get("namespace") not in {None, ""}):
                 self.pending_diagnostic(message)
                 raise RddError(f"Runtime request {method} needs human approval or unsupported input; its scope is not supported", "environment")
-            self.readonly_call(message)
+            self.validate_readonly_call(message)
+            if self.approval_busy or self.approvals or self.deferred_readonly:
+                self.defer_readonly(message)
+            else:
+                self.readonly_call(message)
             return
         tid = params.get("threadId")
         if method == "turn/started":
@@ -579,10 +588,46 @@ class WorkflowRunner:
             self.emit(f"{self.stage}: {method} {params['turn']['id']}")
 
     def pump(self, seconds=1):
-        message = self.server.next_event(timeout=min(seconds, .1) if self.approvals else seconds)
+        timeout = (0 if self.deferred_readonly and not (self.readonly_busy or self.approvals)
+                   else min(seconds, .1) if self.approvals else seconds)
+        message = self.server.next_event(timeout=timeout)
         if message is not None:
             self.observe(message)
         self.approval_tick()
+        self.dispatch_readonly()
+
+    def defer_readonly(self, message):
+        size = len(json.dumps(message, ensure_ascii=False).encode("utf-8"))
+        if any(queued["id"] == message["id"] for queued, _ in self.deferred_readonly):
+            raise RddError("Duplicate deferred read-only request", "environment")
+        if len(self.deferred_readonly) >= MAX_EVENT_COUNT or self.deferred_readonly_bytes + size > MAX_EVENT_BYTES:
+            raise RddError("Deferred read-only requests exceeded capacity; stop and reconnect", "environment")
+        self.deferred_readonly.append((message, size))
+        self.deferred_readonly_bytes += size
+
+    def dispatch_readonly(self):
+        # Run only from the normal pump, after approval reconciliation returns.
+        # A review's nested pump can service approvals without starting a second review.
+        if self.approval_busy or self.readonly_busy or self.approvals or not self.deferred_readonly:
+            return
+        # Goal/metadata RPCs can queue another human request after reconciliation.
+        # Keep the FIFO in place so new callbacks cannot bypass older entries.
+        for _ in range(1000):
+            event = self.server.next_event(timeout=0)
+            if event is None:
+                break
+            self.observe(event)
+            if self.approvals:
+                return
+        else:
+            raise RddError("Read-only dispatch event stream did not quiesce", "environment")
+        while self.deferred_readonly:
+            check_failure(self.root)
+            message, size = self.deferred_readonly.popleft()
+            self.deferred_readonly_bytes -= size
+            if self.server.request_pending(message["id"], expected=message):
+                self.readonly_call(message)
+                return
 
     def wait_turn(self, tid, turn, timeout=900):
         until = time.monotonic() + timeout
@@ -606,7 +651,7 @@ class WorkflowRunner:
         self.active[tid] = turn
         return turn
 
-    def readonly_call(self, message):
+    def validate_readonly_call(self, message):
         args = message["params"].get("arguments")
         callback = message["params"].get("callId")
         if (self.readonly_busy or not isinstance(args, dict) or set(args) != {"purpose", "prompt"}
@@ -614,6 +659,13 @@ class WorkflowRunner:
                 or args.get("purpose") not in READONLY_PURPOSES or not isinstance(args.get("prompt"), str)
                 or not 0 < len(args["prompt"]) <= self.c.config["limits"]["max_packet_characters"]):
             raise RddError("Invalid or recursive read-only agent request", "environment")
+        return args, callback
+
+    def readonly_call(self, message):
+        args, callback = self.validate_readonly_call(message)
+        check_failure(self.root)
+        if not self.server.request_pending(message["id"], expected=message):
+            return
         purpose, role = args["purpose"], READONLY_PURPOSES[args["purpose"]]
         state = self.c.state(allow_blocked=True)
         authors = sum(row.get("status") == "claimed" for row in state.get("workflow_nodes", {}).values())
@@ -665,6 +717,9 @@ class WorkflowRunner:
             elif last and last.get("status") == "completed" and replay:
                 text = "\n".join(i["text"] for i in last.get("items", []) if i.get("type") == "agentMessage" and i.get("phase") != "commentary")
             if text is None:
+                check_failure(self.root)
+                if not self.server.request_pending(message["id"], expected=message):
+                    return
                 sessions[purpose]["packet_digest"] = digest(packet)
                 sessions[purpose]["callback_id"] = callback
                 self.update(readonly=sessions)
@@ -677,7 +732,12 @@ class WorkflowRunner:
             result = {"session_id": tid, "requested_runtime": self.c.profile_settings(role),
                       "snapshot_digest": digest(packet), "report": text,
                       "provenance": "Profile-applied read-only App Server session; no backend-model attestation."}
-            self.server.reply(message["id"], {"contentItems": [{"type": "inputText", "text": json.dumps(result)}], "success": True})
+            check_failure(self.root)
+            if self.server.request_pending(message["id"], expected=message):
+                try:
+                    self.server.reply(message["id"], {"contentItems": [{"type": "inputText", "text": json.dumps(result)}], "success": True}, expected=message)
+                except StaleRequestError:
+                    pass  # Preserve the completed review; never send it to a retired/reused request.
         finally:
             self.readonly_busy = False
 
@@ -773,6 +833,7 @@ class WorkflowRunner:
 
     def observed_goal(self, *, allow_absent=False, timeout=60):
         current = self.server.rpc("thread/goal/get", {"threadId": self.thread_id}, timeout=timeout).get("goal")
+        check_failure(self.root)
         stored = self.journal().get("goal")
         if current is None:
             if allow_absent and stored is None:
@@ -849,6 +910,8 @@ class WorkflowRunner:
             # Never send a client continuation turn here: native Goals own continuation.
 
     def shutdown(self):
+        self.deferred_readonly.clear()
+        self.deferred_readonly_bytes = 0
         if not self.server:
             return
         # Independent cleanup deadlines, including after the execution deadline expired.
@@ -914,6 +977,8 @@ class WorkflowRunner:
         self.storage_failed = False
         self.approvals.clear()
         self.approval_display = None
+        self.deferred_readonly.clear()
+        self.deferred_readonly_bytes = 0
         self.session_roles.clear()
         self.session_cwds.clear()
         try:

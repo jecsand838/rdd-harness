@@ -272,7 +272,7 @@ class AppServer:
     @staticmethod
     def _scope(params: dict, item=None) -> tuple[str | None, str | None, str | None]:
         values = (params.get("threadId"), params.get("turnId"),
-                  item.get("id") if isinstance(item, dict) else params.get("itemId"))
+                  item.get("id") if isinstance(item, dict) else params.get("itemId", params.get("callId")))
         return tuple(value if isinstance(value, str) else None for value in values)
 
     def _next_context_revision(self) -> int:

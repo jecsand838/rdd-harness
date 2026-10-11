@@ -332,6 +332,27 @@ class AppServerTests(unittest.TestCase):
             with self.assertRaises(RddError):
                 server.reply(request["id"], {"decision": "decline"})
 
+    def test_dynamic_callback_completion_retires_its_call_id_before_dispatch(self):
+        # Qualified native events use callId for the dynamic tool's item identity.
+        request = {"id": "review", "method": "item/tool/call", "params": {
+            "threadId": "thread-a", "turnId": "turn-a", "callId": "call-a",
+            "tool": "rdd_readonly_agent", "arguments": {"purpose": "live", "prompt": "Inspect source"}}}
+        other = {**request, "id": "other-review", "params": {**request["params"], "callId": "call-b"}}
+        item = {"id": "call-a", "type": "dynamicToolCall", "status": "inProgress"}
+        with self.server() as server:
+            server.rpc("frames", {"frames": [
+                {"method": "item/started", "params": {"threadId": "thread-a", "turnId": "turn-a", "item": item}},
+                request, other]})
+            self.assertEqual(server.request_snapshot("review", expected=request)["item"], item)
+            server.rpc("frames", {"frames": [{"method": "item/completed", "params": {
+                "threadId": "thread-a", "turnId": "turn-a", "item": {**item, "status": "completed"}}}]})
+            self.assertFalse(server.request_pending("review", expected=request))
+            self.assertTrue(server.request_pending("other-review", expected=other))
+            with self.assertRaisesRegex(RddError, "outstanding"):
+                server.reply("review", {"contentItems": [], "success": True}, expected=request)
+            server.reply("other-review", {"contentItems": [], "success": True}, expected=other)
+            self.assertEqual(server.rpc("reply-observed", {})["reply"]["id"], "other-review")
+
     def test_reply_is_atomically_single_use_during_blocked_write(self):
         probe = self.probe()
         request = self.approval()
