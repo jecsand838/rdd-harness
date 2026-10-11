@@ -343,15 +343,55 @@ class BranchGuardTests(unittest.TestCase):
         self.assertIsNone(self.c._store)
 
     def test_preflight_reads_latest_committed_live_wal_without_changing_its_files(self):
+        import time
         state = self.c.state()
         state["base_branch"] = "codex/latest-wal-baseline"
-        self.c.save(state)
-        before = self.snapshot()
-        self.assertEqual(Store.read(self.root, state["id"])["base_branch"], "codex/latest-wal-baseline")
-        with self.assertRaisesRegex(RddError, "latest-wal-baseline") as caught:
-            self.c.guard_source_write()
-        self.assertEqual(caught.exception.kind, "environment")
-        self.assertEqual(self.snapshot(), before)
+        path = self.root / ".rdd/runtime/state.sqlite3"
+        ready = path.parent / "child-writer-ready"
+        program = ("import sqlite3,sys\nfrom pathlib import Path\n"
+                   "db = sqlite3.connect(sys.argv[1])\n"
+                   "db.execute('UPDATE runs SET value=? WHERE id=?', (sys.argv[3], sys.argv[2]))\n"
+                   "db.commit()\n"
+                   "Path(sys.argv[4]).write_text('ready')\n"
+                   "sys.stdin.readline()\n"
+                   "db.close()\n")
+        child = subprocess.Popen([sys.executable, "-B", "-c", program, str(path), state["id"], json.dumps(state), str(ready)],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            deadline = time.monotonic() + 10
+            while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertTrue(ready.exists(), "Child writer did not become ready")
+            self.assertTrue(path.with_name(path.name + "-wal").is_file())
+            before = self.snapshot()
+            self.assertEqual(Store.read(self.root, state["id"])["base_branch"], "codex/latest-wal-baseline")
+            with self.assertRaisesRegex(RddError, "latest-wal-baseline") as caught:
+                self.c.guard_source_write()
+            self.assertEqual(caught.exception.kind, "environment")
+            self.assertEqual(self.snapshot(), before)
+        finally:
+            try:
+                child.communicate("done\n", timeout=10)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.communicate()
+        self.assertEqual(child.returncode, 0)
+
+    def test_malformed_storage_cli_stops_without_traceback_or_source_mutation(self):
+        self.c.close()
+        path = self.root / ".rdd/runtime/state.sqlite3"
+        path.write_bytes(b"malformed disposable fixture database\n")
+        def files():
+            return {p.relative_to(self.root).as_posix(): p.read_bytes()
+                    for p in self.root.rglob("*") if p.is_file() and ".git" not in p.relative_to(self.root).parts}
+        before = files()
+        result = self.cli("status")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        value = json.loads(result.stdout)
+        self.assertEqual((value["status"], value["kind"]), ("blocked", "environment"))
+        self.assertIn("state.sqlite3", value["error"])
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertEqual(files(), before)
 
     def test_preflight_recovers_wal_without_shm_only_in_the_temporary_copy(self):
         state = self.c.state()

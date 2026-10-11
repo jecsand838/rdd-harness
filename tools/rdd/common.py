@@ -12,6 +12,7 @@ import sqlite3
 import stat
 import subprocess
 import tempfile
+import threading
 import time
 from typing import Any, Iterator
 
@@ -20,6 +21,17 @@ class RddError(RuntimeError):
     def __init__(self, message: str, kind: str = "validation"):
         super().__init__(message)
         self.kind = kind
+
+
+class RddStorageError(RddError):
+    """A local storage failure, distinct from controller validation failures."""
+    def __init__(self, operation: str, path: Path, cause: sqlite3.Error | OSError):
+        self.operation = operation
+        self.database_path = path
+        self.sqlite_errorcode = getattr(cause, "sqlite_errorcode", None)
+        self.sqlite_errorname = getattr(cause, "sqlite_errorname", None)
+        code = f" ({self.sqlite_errorname or self.sqlite_errorcode})" if self.sqlite_errorcode is not None else ""
+        super().__init__(f"Local state {operation} failed for {path}{code}: {cause}", "environment")
 
 
 def canonical(value: Any) -> bytes:
@@ -165,73 +177,182 @@ def now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-class Store:
-    """One transactionally updated run record; WAL allows concurrent read-only progress."""
-    def __init__(self, root: Path):
-        self.path = root / ".rdd/runtime/state.sqlite3"
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(self.path, timeout=30, isolation_level=None)
-        self.db.execute("PRAGMA journal_mode=WAL")
-        self.db.execute("PRAGMA synchronous=FULL")
-        self.db.execute("CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, value TEXT NOT NULL)")
+_STORE_LOCK = threading.RLock()
+_STORE_ACTIVE = False
 
-    def get(self, run_id: str) -> dict:
-        row = self.db.execute("SELECT value FROM runs WHERE id=?", (run_id,)).fetchone()
+
+@contextlib.contextmanager
+def _store_access(operation: str) -> Iterator[None]:
+    """Do not copy source files while this process owns a SQLite handle."""
+    global _STORE_ACTIVE
+    with _STORE_LOCK:
+        if _STORE_ACTIVE:
+            raise RddError(f"Reentrant Store {operation} is not allowed during an active storage operation")
+        _STORE_ACTIVE = True
+        try:
+            yield
+        finally:
+            _STORE_ACTIVE = False
+
+
+@contextlib.contextmanager
+def _store_connection(path: Path | str, database_path: Path, operation: str, **options) -> Iterator[sqlite3.Connection]:
+    db = None
+    failed = False
+    try:
+        try:
+            db = sqlite3.connect(path, timeout=30, **options)
+        except (OSError, sqlite3.Error) as exc:
+            raise RddStorageError(operation, database_path, exc) from exc
+        yield db
+    except BaseException:
+        failed = True
+        raise
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except BaseException as exc:
+                if not failed:
+                    if isinstance(exc, (OSError, sqlite3.Error)):
+                        raise RddStorageError(operation, database_path, exc) from exc
+                    raise
+
+
+class Store:
+    """Path-owning run store; each operation closes its own SQLite connection."""
+    def __init__(self, root: Path):
+        self.root = root
+        self.path = root / ".rdd/runtime/state.sqlite3"
+
+    @staticmethod
+    def _execute(db, sql: str, parameters: tuple, path: Path, operation: str):
+        try:
+            return db.execute(sql, parameters)
+        except (OSError, sqlite3.Error) as exc:
+            raise RddStorageError(operation, path, exc) from exc
+
+    @staticmethod
+    def _row(db, run_id: str, path: Path, operation: str, *, existence: bool = False):
+        sql = "SELECT 1 FROM runs WHERE id=?" if existence else "SELECT value FROM runs WHERE id=?"
+        try:
+            return Store._execute(db, sql, (run_id,), path, operation).fetchone()
+        except (OSError, sqlite3.Error) as exc:
+            raise RddStorageError(operation, path, exc) from exc
+
+    @contextlib.contextmanager
+    def _writer(self, operation: str) -> Iterator[sqlite3.Connection]:
+        with _store_access(operation):
+            try:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                raise RddStorageError(operation, self.path, exc) from exc
+            with _store_connection(self.path, self.path, operation, isolation_level=None) as db:
+                for sql in ("PRAGMA journal_mode=WAL", "PRAGMA synchronous=FULL",
+                            "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, value TEXT NOT NULL)"):
+                    self._execute(db, sql, (), self.path, operation)
+                yield db
+
+    @staticmethod
+    def _state(row, run_id: str) -> dict:
         if row is None:
             raise RddError(f"No local state for {run_id}; use resume --from an exported checkpoint.", "environment")
         return json.loads(row[0])
 
+    def get(self, run_id: str) -> dict:
+        return self.read(self.root, run_id)
+
     @staticmethod
-    def read(root: Path, run_id: str) -> dict:
-        """Read a stable DB/WAL copy; even read-only SQLite can write auxiliary files."""
-        path = root / ".rdd/runtime/state.sqlite3"
+    def _snapshot_row(path: Path, run_id: str, operation: str, *, existence: bool = False):
+        """Copy raw DB/WAL bytes; SQLite touches only the disposable snapshot."""
         wal = path.with_name(path.name + "-wal")
 
         def inputs():
             return {p.name: file_hash(p) for p in (path, wal) if p == path or p.is_file()}
 
-        failure = "database changed during preflight"
-        with tempfile.TemporaryDirectory(prefix="rdd-state-preflight-") as directory:
-            snapshot = Path(directory)
-            for _ in range(3):
-                for previous in snapshot.iterdir():
-                    previous.unlink()
+        failure = OSError("database changed during preflight")
+        directory = None
+        failed = False
+        try:
+            try:
+                directory = tempfile.TemporaryDirectory(prefix="rdd-state-preflight-")
+                snapshot = Path(directory.name)
+                for _ in range(3):
+                    try:
+                        for previous in snapshot.iterdir():
+                            previous.unlink()
+                        before = inputs()
+                        for name in before:
+                            shutil.copyfile(path.parent / name, snapshot / name)
+                        if before != inputs() or any(file_hash(snapshot / name) != value for name, value in before.items()):
+                            failure = OSError("database changed during preflight")
+                            continue
+                        with _store_connection((snapshot / path.name).as_uri() + "?mode=ro", path, operation, uri=True) as db:
+                            return Store._row(db, run_id, path, operation, existence=existence)
+                    except (OSError, RddStorageError) as exc:
+                        failure = exc
+                if isinstance(failure, RddStorageError):
+                    raise failure
+                raise RddStorageError(operation, path, failure) from failure
+            except OSError as exc:
+                raise RddStorageError(operation, path, exc) from exc
+        except BaseException:
+            failed = True
+            raise
+        finally:
+            if directory is not None:
                 try:
-                    before = inputs()
-                    for name in before:
-                        shutil.copyfile(path.parent / name, snapshot / name)
-                    if before != inputs() or any(file_hash(snapshot / name) != value for name, value in before.items()):
-                        failure = "database changed during preflight"
-                        continue
-                    # SQLite reconstructs the WAL index only in the disposable copy.
-                    with contextlib.closing(sqlite3.connect((snapshot / path.name).as_uri() + "?mode=ro", uri=True)) as db:
-                        row = db.execute("SELECT value FROM runs WHERE id=?", (run_id,)).fetchone()
-                except (OSError, sqlite3.Error) as exc:
-                    failure = str(exc)
-                    continue
-                if row is None:
-                    raise RddError(f"No local state for {run_id}; use resume --from an exported checkpoint.", "environment")
-                return json.loads(row[0])
-        raise RddError(f"Cannot read a stable local state for {run_id}; retry after the writer stops or restore its checkpoint: {failure}", "environment")
+                    directory.cleanup()
+                except BaseException as exc:
+                    if not failed:
+                        if isinstance(exc, OSError):
+                            raise RddStorageError(operation, path, exc) from exc
+                        raise
+
+    @staticmethod
+    def read(root: Path, run_id: str) -> dict:
+        """Read a stable DB/WAL copy without creating source auxiliary files."""
+        with _store_access("read"):
+            row = Store._snapshot_row(root / ".rdd/runtime/state.sqlite3", run_id, "read")
+            return Store._state(row, run_id)
+
+    def exists(self, run_id: str) -> bool:
+        with _store_access("exists"):
+            try:
+                if not self.path.exists():
+                    return False
+            except OSError as exc:
+                raise RddStorageError("exists", self.path, exc) from exc
+            return self._snapshot_row(self.path, run_id, "exists", existence=True) is not None
+
+    def _put(self, db, state: dict, operation: str) -> None:
+        self._execute(db, "INSERT INTO runs VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
+                      (state["id"], canonical(state).decode()), self.path, operation)
 
     def put(self, state: dict) -> None:
-        self.db.execute("INSERT INTO runs VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
-                        (state["id"], canonical(state).decode()))
+        with self._writer("put") as db:
+            self._put(db, state, "put")
 
     @contextlib.contextmanager
     def edit(self, run_id: str) -> Iterator[dict]:
-        self.db.execute("BEGIN IMMEDIATE")
-        try:
-            state = self.get(run_id)
-            yield state
-            self.put(state)
-            self.db.execute("COMMIT")
-        except BaseException:
-            self.db.execute("ROLLBACK")
-            raise
+        with self._writer("edit") as db:
+            try:
+                self._execute(db, "BEGIN IMMEDIATE", (), self.path, "edit")
+                row = self._row(db, run_id, self.path, "edit")
+                state = self._state(row, run_id)
+                yield state
+                self._put(db, state, "edit")
+                self._execute(db, "COMMIT", (), self.path, "edit")
+            except BaseException:
+                try:
+                    if db.in_transaction:
+                        db.execute("ROLLBACK")
+                except BaseException:
+                    pass  # Cleanup must preserve the original failure or interrupt.
+                raise
 
     def close(self):
-        self.db.close()
+        """Compatibility no-op: no operation leaves a connection on this object."""
 
 
 def event(state: dict, action: str, **fields) -> None:

@@ -49,7 +49,7 @@ class RecoveryTests(unittest.TestCase):
         self.addCleanup(self.f.c.close)
 
     def assert_no_import(self):
-        self.assertEqual(self.f.c.store.db.execute("SELECT COUNT(*) FROM runs").fetchone()[0], 0)
+        self.assertFalse(self.f.c.store.exists("fixture-run"))
         self.assertFalse((self.root / ".rdd/run.json").exists())
         self.assertFalse(any((self.root / ".rdd/evidence").rglob("*")))
 

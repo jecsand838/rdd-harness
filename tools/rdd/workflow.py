@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 import tempfile
 import time
 import uuid
 
-from .common import (RddError, atomic_write, clean, digest, file_hash, git, head, operation_lock,
+from .common import (RddError, RddStorageError, atomic_write, clean, digest, file_hash, git, head, operation_lock,
                      read_json, safe_path, source_digest)
 from .profiles import load_profiles
 
@@ -135,19 +136,24 @@ class WorkflowRunner:
         self.thread_id = None
         self.readonly_busy = False
         self.diagnostics = None
+        self.storage_failed = False
 
     def journal(self):
         return self.c.state(allow_blocked=True).get("workflow_runtime", {}).get(self.stage, {})
 
     def update(self, **changes):
-        with operation_lock(self.root):
-            state = self.c.state(allow_blocked=True)
-            self.c.guard_source_write(state)
-            with self.c.store.edit(state["id"]) as current:
-                self.c.guard_run_policy(current)
-                row = current.setdefault("workflow_runtime", {}).setdefault(self.stage, {})
-                row.update(changes)
-                validate_runtime(self.c, current)
+        try:
+            with operation_lock(self.root):
+                state = self.c.state(allow_blocked=True)
+                self.c.guard_source_write(state)
+                with self.c.store.edit(state["id"]) as current:
+                    self.c.guard_run_policy(current)
+                    row = current.setdefault("workflow_runtime", {}).setdefault(self.stage, {})
+                    row.update(changes)
+                    validate_runtime(self.c, current)
+        except RddStorageError:
+            self.storage_failed = True
+            raise
 
     def session_params(self, role, tid=None):
         profile = load_profiles(self.root)[role]
@@ -537,24 +543,40 @@ class WorkflowRunner:
         if not self.server:
             return
         # Independent cleanup deadlines, including after the execution deadline expired.
-        if self.thread_id and self.stage != "specification":
+        failure = None
+        try:
+            if self.thread_id and self.stage != "specification":
+                try:
+                    # Pausing must not depend on an intact journal, even if the
+                    # storage failure is first discovered during cleanup.
+                    goal = self.server.rpc("thread/goal/get", {"threadId": self.thread_id}, timeout=5).get("goal")
+                    if goal and goal.get("threadId") == self.thread_id and goal.get("status") == "active":
+                        self.server.rpc("thread/goal/set", {"threadId": self.thread_id, "status": "paused"}, timeout=5)
+                        if not self.storage_failed:
+                            paused = self.observed_goal(timeout=5)
+                            self.update(goal=paused, driver_paused=True)
+                except RddStorageError as exc:
+                    self.storage_failed = True
+                    failure = exc
+                except RddError:
+                    pass
+            for tid, turn in list(self.active.items()):
+                try:
+                    self.server.rpc("turn/interrupt", {"threadId": tid, "turnId": turn}, timeout=5)
+                except RddError:
+                    pass
+        finally:
             try:
-                goal = self.observed_goal(allow_absent=True, timeout=5)
-                if goal and goal.get("status") == "active":
-                    self.server.rpc("thread/goal/set", {"threadId": self.thread_id, "status": "paused"}, timeout=5)
-                    paused = self.observed_goal(timeout=5)
-                    self.update(goal=paused, driver_paused=True)
-            except RddError:
-                pass
-        for tid, turn in list(self.active.items()):
-            try:
-                self.server.rpc("turn/interrupt", {"threadId": tid, "turnId": turn}, timeout=5)
-            except RddError:
-                pass
-        self.server.close()
+                self.server.close()
+            except (RddError, OSError):
+                if not self.storage_failed:
+                    raise
+        if failure:
+            raise failure
 
     def run(self, stage, mode=None):
         self.stage = stage
+        self.storage_failed = False
         self.c.guard_workflow(stage, mode, print_only=True)
         result = self.result()
         if mode and result["run_id"] and self.c.state(allow_blocked=True)["mode"] != mode:
@@ -607,6 +629,9 @@ class WorkflowRunner:
                     result = self.specification(thread, packet) if stage == "specification" else self.goal(packet)
                     self.update(connection="accepted" if result["status"] == "passed" else "stopped")
                     return {**result, "diagnostics": str(directory), "logs_truncated": sorted(getattr(server, "log_truncated", []))}
+                except RddStorageError:
+                    self.storage_failed = True
+                    raise
                 except RddError:
                     if self.thread_id:
                         try:
@@ -620,18 +645,29 @@ class WorkflowRunner:
                     return {"stage": stage, "status": "incomplete", "interrupted": True, "reason": "Interrupted; session preserved", "diagnostics": str(directory)}
                 finally:
                     self.shutdown()
-                    if self.thread_id:
+                    if self.thread_id and not self.storage_failed:
                         try:
                             clean(self.root)
                             with operation_lock(self.root):
                                 self.c.export_run(self.root / f".rdd/evidence/workflow-{stage}-checkpoint.json")
+                        except RddStorageError:
+                            self.storage_failed = True
+                            raise
                         except (RddError, OSError):
                             pass  # Uncommitted work remains in place; never manufacture a portable checkpoint.
         except RddError as exc:
             truncated = sorted(getattr(server, "log_truncated", []))
+            if isinstance(exc, RddStorageError):
+                exc.args = (f"{exc}. Runtime diagnostics: {directory}; truncated logs: {truncated}",)
+                raise
             raise RddError(f"{exc}. Runtime diagnostics: {directory}; truncated logs: {truncated}", exc.kind) from exc
         except KeyboardInterrupt:
             return {"stage": stage, "status": "incomplete", "interrupted": True,
                     "reason": "Interrupted during runtime preflight; run was not started", "diagnostics": str(directory)}
         finally:
-            server.close()
+            primary = sys.exc_info()[1]
+            try:
+                server.close()
+            except (RddError, OSError):
+                if not isinstance(primary, RddStorageError):
+                    raise

@@ -707,6 +707,140 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.c.resume(path)
         self.assertEqual(self.c.state()["workflow_runtime"], before)
 
+    def test_journal_updates_preserve_real_child_controller_mutations(self):
+        from pathlib import Path
+        import subprocess
+        import sys
+        entry = Path(__file__).resolve().parents[2] / "tools/rdd/cli.py"
+        self.runner.stage = "specification"
+        self.runner.update(connection="starting", readonly={}, runtime=self.server.runtime_identity,
+                           requested_runtime=self.c.profile_settings("rdd_coordinator"))
+        for session in ("child-author-one", "child-author-two"):
+            self.runner.journal()  # Previously dropped the persistent parent's SQLite lock.
+            child = subprocess.run([sys.executable, "-B", str(entry), "--root", str(self.f.root),
+                "author", "record", "--stage", "specification", "--session-id", session],
+                capture_output=True, text=True, timeout=30)
+            self.assertEqual(child.returncode, 0, child.stdout + child.stderr)
+        self.runner.update(connection="stopped")
+        state = self.c.state()
+        self.assertEqual(state["authors"]["specification"], ["child-author-one", "child-author-two"])
+        self.assertEqual(state["workflow_runtime"]["specification"]["connection"], "stopped")
+
+    def test_storage_failure_in_readonly_callback_does_not_retry_or_replace_checkpoint(self):
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddError, RddStorageError
+        checkpoint = self.f.root / ".rdd/evidence/workflow-specification-checkpoint.json"
+        checkpoint.parent.mkdir(parents=True, exist_ok=True)
+        checkpoint.write_bytes(b"preserved checkpoint\n")
+        error = RddStorageError("begin", self.c.store.path, sqlite3.DatabaseError("fixture malformed"))
+        seen = {}
+
+        def callback_failure(thread, packet):
+            seen["state"] = copy.deepcopy(self.c.state())
+            self.runner.active[self.runner.thread_id] = "active-fixture-turn"
+            with patch.object(self.c.store, "edit", side_effect=error) as edit:
+                try:
+                    self.runner.readonly_call(dict(id=7, params=dict(callId="failing-review",
+                        arguments=dict(purpose="live", prompt="Review fixture handoff"))))
+                finally:
+                    seen["edits"] = edit.call_count
+
+        def close_failure():
+            self.server.closed = True
+            raise RddError("secondary runtime cleanup failure", "environment")
+
+        with patch.object(self.runner, "specification", side_effect=callback_failure), \
+                patch.object(self.c, "export_run") as export, \
+                patch.object(self.server, "close", side_effect=close_failure):
+            with self.assertRaisesRegex(RddStorageError, "fixture malformed") as caught:
+                self.runner.run("specification")
+        self.assertIs(caught.exception, error)
+        export.assert_not_called()
+        self.assertEqual(seen["edits"], 1)
+        self.assertEqual(self.c.state(), seen["state"])
+        self.assertEqual(checkpoint.read_bytes(), b"preserved checkpoint\n")
+        self.assertTrue(self.runner.storage_failed)
+        self.assertTrue(self.server.closed)
+        self.assertTrue(any(m == "turn/interrupt" for m, _ in self.server.calls))
+        self.assertFalse(any(m == "reply" for m, _ in self.server.calls))
+
+    def test_storage_failure_shutdown_pauses_goal_without_database_access(self):
+        from unittest.mock import patch
+        self.runner.server, self.runner.stage = self.server, "preparation"
+        self.runner.thread_id, self.runner.storage_failed = "saved-thread", True
+        self.runner.active = {"saved-thread": "saved-turn"}
+        goal = dict(threadId="saved-thread", objective="Keep saved objective", status="active",
+                    tokensUsed=123, timeUsedSeconds=45, createdAt=1, tokenBudget=1000)
+        self.server.goals["saved-thread"] = copy.deepcopy(goal)
+        with patch.object(self.c, "state", side_effect=AssertionError("No storage access in cleanup")), \
+                patch.object(self.runner, "update", side_effect=AssertionError("No cleanup journal write")):
+            self.runner.shutdown()
+        self.assertEqual(self.server.goals["saved-thread"], {**goal, "status": "paused"})
+        self.assertTrue(self.server.closed)
+        self.assertEqual([m for m, _ in self.server.calls],
+                         ["thread/goal/get", "thread/goal/set", "turn/interrupt"])
+
+    def test_storage_failure_cannot_be_reported_as_failed_acceptance(self):
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddStorageError
+        error = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("fixture malformed"))
+        with patch.object(self.c, "state", side_effect=error):
+            with self.assertRaises(RddStorageError) as caught:
+                self.c.workflow_result("specification")
+        self.assertIs(caught.exception, error)
+
+    def test_storage_failure_during_shutdown_still_pauses_and_closes(self):
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddStorageError
+        self.runner.server, self.runner.stage = self.server, "preparation"
+        self.runner.thread_id = "saved-thread"
+        self.runner.active = {"saved-thread": "saved-turn"}
+        self.server.goals["saved-thread"] = dict(threadId="saved-thread", status="active")
+        error = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("fixture malformed"))
+        with patch.object(self.c, "state", side_effect=error), patch.object(self.runner, "update") as update:
+            with self.assertRaises(RddStorageError) as caught:
+                self.runner.shutdown()
+        self.assertIs(caught.exception, error)
+        update.assert_not_called()
+        self.assertTrue(self.runner.storage_failed)
+        self.assertTrue(self.server.closed)
+        self.assertEqual(self.server.goals["saved-thread"]["status"], "paused")
+        self.assertTrue(any(m == "turn/interrupt" for m, _ in self.server.calls))
+
+    def test_storage_failure_in_checkpoint_export_is_not_silenced(self):
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddStorageError
+        self.f.commit("Clean fixture for shutdown export")
+        error = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("fixture malformed"))
+        with patch.object(self.c, "export_run", side_effect=error) as export:
+            with self.assertRaises(RddStorageError) as caught:
+                self.runner.run("specification")
+        self.assertIs(caught.exception, error)
+        export.assert_called_once()
+        self.assertTrue(self.runner.storage_failed)
+        self.assertTrue(self.server.closed)
+
+    def test_storage_failure_in_check_save_cannot_become_missing_evidence(self):
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddStorageError
+        state = self.c.state()
+        before = copy.deepcopy(state)
+        error = RddStorageError("put", self.c.store.path, sqlite3.DatabaseError("fixture malformed"))
+        receipt = dict(id="fixture-receipt", outcome="pass")
+        with patch("tools.rdd.engine.execute_check", return_value=receipt) as check, \
+                patch.object(self.c, "save", side_effect=error) as save:
+            with self.assertRaises(RddStorageError) as caught:
+                self.c.ensure_checks(state, ["contract"], candidate_spec_digest="fixture-spec")
+        self.assertIs(caught.exception, error)
+        check.assert_called_once()
+        save.assert_called_once()
+        self.assertEqual(self.c.state(), before)
+
     def test_acceptance_and_checkpoint_preserve_crlf_raw_evidence_bytes(self):
         from unittest.mock import patch
         from tools.rdd.common import atomic_write, read_json

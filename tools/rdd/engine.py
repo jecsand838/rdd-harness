@@ -19,7 +19,7 @@ from .profiles import IMPLEMENTOR_SCOPES, load_profiles, profile_policy_digest, 
 from .readiness import validate_resources, validate_producers, required_probe_ids
 from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
 from .checks import execute_check, platform_name, verify_receipt
-from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, Store, assert_inventory, atomic_write, clean, digest, event,
+from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, RddStorageError, Store, assert_inventory, atomic_write, clean, digest, event,
                      file_hash, git, head, inventory, now, read_json, safe_path,
                      require_source_branch, source_digest, validate_artifact, write_json)
 
@@ -225,7 +225,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         run_id = run_id or time.strftime("R%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + uuid.uuid4().hex[:6]
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", run_id):
             raise RddError("Run ID must be 1-64 plain letters, digits, dots, underscores or hyphens")
-        existing = self.store.db.execute("SELECT 1 FROM runs WHERE id=?", (run_id,)).fetchone()
+        existing = self.store.exists(run_id)
         if existing or (self.root / f".rdd/baselines/{run_id}").exists():
             raise RddError("Run ID is already in use")
         locator = read_json(self.root / ".rdd/run.json")
@@ -923,6 +923,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                         self.save(state)
                         if receipt["outcome"] != "pass":
                             raise RddError(f"Check {cid} failed. Read {receipt['log_path']}")
+                    except RddStorageError:
+                        raise
                     except RddError as exc:
                         if exc.kind != "environment":
                             raise
@@ -1451,6 +1453,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 clean(self.root)
                 result["application_complete"] = True
             result.update(status="passed", accepted_identity=state[field].get("candidate", state[field]))
+        except RddStorageError:
+            raise
         except (RddError, OSError, ValueError, KeyError, TypeError) as exc:
             result.update(status="failed", error=str(exc))
         return result
