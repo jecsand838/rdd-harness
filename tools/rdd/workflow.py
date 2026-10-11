@@ -1,16 +1,20 @@
 """Three workflow commands; model execution proposes, controller evidence accepts."""
 from __future__ import annotations
 
+from collections import deque
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import time
 import uuid
+import unicodedata
 
 from .common import (RddError, RddStorageError, atomic_write, clean, digest, file_hash, git, head, operation_lock,
                      read_json, safe_path, source_digest)
 from .profiles import load_profiles
+from .app_server import MAX_EVENT_BYTES, MAX_EVENT_COUNT, StaleRequestError
 from .storage_failure import (TerminalStorageFailure, check_failure, headless_scope, record_failure,
                               register_headless, preserve_primary_error)
 
@@ -122,8 +126,93 @@ def validate_runtime(controller, state):
             raise RddError("Invalid pending runtime operation")
 
 
+class ApprovalTerminal:
+    """Poll only an attached terminal; no input thread or persistent permission."""
+    def __init__(self):
+        self.buffer = ""
+        self.extended_key = False
+
+    def available(self):
+        return sys.stdin.isatty() and sys.stderr.isatty()
+
+    def reset(self):
+        self.buffer = ""
+        self.extended_key = False
+        if not self.available():
+            return
+        if os.name == "nt":
+            import msvcrt
+            while msvcrt.kbhit():
+                msvcrt.getwch()
+        else:
+            import termios
+            termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+
+    def show(self, text):
+        print(text, file=sys.stderr, flush=True)
+
+    def poll(self):
+        if not self.available():
+            raise EOFError
+        if os.name == "nt":
+            import msvcrt
+            if not msvcrt.kbhit():
+                return None
+            char = msvcrt.getwch()
+            if char == "\x03":
+                raise KeyboardInterrupt
+            if char == "\x1a":
+                raise EOFError
+            if self.extended_key:
+                self.extended_key = False
+                return None
+            if char in ("\x00", "\xe0"):
+                self.extended_key = True
+                return None
+            if char in ("\r", "\n"):
+                msvcrt.putwch("\r"); msvcrt.putwch("\n")
+                value, self.buffer = self.buffer, ""
+                return value
+            if char == "\b":
+                if self.buffer:
+                    self.buffer = self.buffer[:-1]
+                    for c in "\b \b":
+                        msvcrt.putwch(c)
+            elif char.isprintable():
+                if len(self.buffer) < 32:
+                    self.buffer += char
+                    msvcrt.putwch(char)
+                else:
+                    self.buffer = "invalid input"
+            return None
+        import select
+        if not select.select([sys.stdin.fileno()], [], [], 0)[0]:
+            return None
+        data = os.read(sys.stdin.fileno(), 4096)
+        if not data:
+            raise EOFError
+        self.buffer += data.decode(sys.stdin.encoding or "utf-8", errors="replace")
+        if "\n" not in self.buffer:
+            if len(self.buffer) > 4096:
+                self.buffer = "invalid"
+            return None
+        value = self.buffer.split("\n", 1)[0]
+        self.buffer = ""  # Never carry pasted answers into another request.
+        return value
+
+    def close(self):
+        self.buffer = ""
+
+
+def approval_text(value):
+    """Keep action text visible without letting terminal escapes impersonate UI."""
+    text = str(value)
+    return "".join((c if c == "\n" or not unicodedata.category(c).startswith("C")
+                    else "\\u%04x" % ord(c)) for c in text).replace("\n", "\n  | ")
+
+
 class WorkflowRunner:
-    def __init__(self, controller, *, server_factory=None, ask=input, emit=print):
+    def __init__(self, controller, *, server_factory=None, ask=input, emit=print, approval_terminal=None):
         if server_factory is None:
             from .app_server import AppServer
             server_factory = AppServer
@@ -139,6 +228,14 @@ class WorkflowRunner:
         self.readonly_busy = False
         self.diagnostics = None
         self.storage_failed = False
+        self.approval_terminal = approval_terminal if approval_terminal is not None else ApprovalTerminal()
+        self.approvals = {}
+        self.approval_display = None
+        self.approval_busy = False
+        self.deferred_readonly = deque()
+        self.deferred_readonly_bytes = 0
+        self.session_roles = {}
+        self.session_cwds = {}
 
     def journal(self):
         return self.c.state(allow_blocked=True).get("workflow_runtime", {}).get(self.stage, {})
@@ -210,6 +307,8 @@ class WorkflowRunner:
             raise RddError("App Server did not preserve requested profile/sandbox and effective approval policy", "environment")
         self.session_history(response["thread"], observed, fresh=tid is None)
         self.loaded.add(observed)
+        self.session_roles[observed] = role
+        self.session_cwds[observed] = str(self.root)
         return observed, response["thread"]
 
     def result(self):
@@ -247,22 +346,233 @@ class WorkflowRunner:
             if message is None:
                 return
             self.observe(message)
+            self.approval_tick()
         raise RddError("Runtime startup event stream did not quiesce", "environment")
+
+    def pending_diagnostic(self, message):
+        if self.diagnostics:
+            params = message.get("params")
+            params = params if isinstance(params, dict) else {}
+            raw = json.dumps(message, ensure_ascii=False).encode("utf-8")
+            record = {"method": message.get("method"), "request_id": message["id"],
+                      "thread_id": params.get("threadId"), "turn_id": params.get("turnId"),
+                      "request_digest": digest(message), "truncated": len(raw) > 65536,
+                      "request": raw[:65536].decode("utf-8", errors="ignore")}
+            atomic_write(self.diagnostics / "pending-request.json", json.dumps(record).encode("utf-8"))
+
+    def approval_role(self, tid, seen=None):
+        if not isinstance(tid, str) or not tid:
+            raise RddError("Approval lacks a runtime thread identity", "environment")
+        if tid == self.thread_id:
+            self.session_cwds[tid] = str(self.root)
+            return "rdd_coordinator"
+        if tid in self.session_roles:
+            role = self.session_roles[tid]
+            if load_profiles(self.root)[role]["sandbox"] == "read-only":
+                raise RddError("Approval cannot escalate a read-only reviewer or researcher", "environment")
+            return role
+        seen = set() if seen is None else seen
+        if tid in seen or len(seen) >= 20:
+            raise RddError("Approval has unverified runtime ancestry", "environment")
+        seen.add(tid)
+        # Metadata-only reads avoid the qualified runtime's fresh-history gap.
+        thread = self.server.rpc("thread/read", {"threadId": tid, "includeTurns": False}).get("thread", {})
+        source = thread.get("source", {})
+        sub = source.get("subAgent", {}) if isinstance(source, dict) else {}
+        spawn = sub.get("thread_spawn", {}) if isinstance(sub, dict) else {}
+        role = thread.get("agentRole") or spawn.get("agent_role")
+        parent = thread.get("parentThreadId") or spawn.get("parent_thread_id")
+        profiles = load_profiles(self.root)
+        if (thread.get("id") != tid or role not in profiles or role == "rdd_coordinator"
+                or profiles[role]["sandbox"] != "workspace-write"
+                or not isinstance(thread.get("cwd"), str) or not thread["cwd"]):
+            raise RddError("Approval requires a verified writable specialist; unrelated/read-only sessions are blocked", "environment")
+        self.approval_role(parent, seen)
+        self.session_roles[tid], self.session_cwds[tid] = role, thread["cwd"]
+        return role
+
+    def approval_details(self, message, snapshot):
+        params, method = message.get("params"), message["method"]
+        common = {"threadId", "turnId", "itemId", "reason", "startedAtMs"}
+        fields = ({"kind", "command", "cwd", "commandActions", "environmentId", "approvalId",
+                   "availableDecisions", "additionalPermissions", "networkApprovalContext",
+                   "proposedExecpolicyAmendment", "proposedNetworkPolicyAmendments"}
+                  if method == "item/commandExecution/requestApproval" else {"grantRoot"})
+        if not isinstance(params, dict) or set(params) - common - fields:
+            scope = sorted(set(params) - common - fields) if isinstance(params, dict) else ["invalid params"]
+            raise RddError("Unsupported approval fields: " + approval_text(", ".join(scope)), "environment")
+        tid, turn, item_id = (params.get(key) for key in ("threadId", "turnId", "itemId"))
+        if any(not isinstance(v, str) or not v for v in (tid, turn, item_id)):
+            raise RddError("Approval lacks thread/turn/item identity", "environment")
+        if self.active.get(tid) != turn:
+            raise RddError("Approval is not for an active owned turn", "environment")
+        role = self.approval_role(tid)
+        item = snapshot.get("item")
+        if (not isinstance(item, dict) or item.get("id") != item_id
+                or item.get("status") != "inProgress"):
+            raise RddError("Approval lacks complete correlated item context", "environment")
+        if len(json.dumps([message, item], ensure_ascii=False).encode("utf-8")) > 65536:
+            raise RddError("Approval details exceed the complete display limit; cannot approve truncated content", "environment")
+        reason = params.get("reason")
+        if reason is not None and not isinstance(reason, str):
+            raise RddError("Invalid approval reason", "environment")
+        cwd = params.get("cwd") if params.get("cwd") is not None else item.get("cwd", self.session_cwds.get(tid))
+        if not isinstance(cwd, str) or not cwd:
+            raise RddError("Approval lacks a verified working directory", "environment")
+        lines = [f"{self.stage}: permission required by {role}",
+                 "Thread: " + approval_text(tid) + "; turn: " + approval_text(turn) + "; item: " + approval_text(item_id),
+                 "Working directory:\n  | " + approval_text(cwd),
+                 "Reason:\n  | " + approval_text(reason or "Not supplied by the runtime")]
+        if method == "item/commandExecution/requestApproval":
+            if params.get("kind", "command") != "command":
+                raise RddError("Unsupported approval scope: terminal input (writeStdin)", "environment")
+            if params.get("additionalPermissions"):
+                raise RddError("Unsupported approval scope: additionalPermissions " + approval_text(json.dumps(params["additionalPermissions"])), "environment")
+            if params.get("environmentId") not in (None, "local"):
+                raise RddError("Unsupported approval environment: " + approval_text(params["environmentId"]), "environment")
+            command = params.get("command") if params.get("command") is not None else item.get("command")
+            if (item.get("type") != "commandExecution" or not isinstance(command, str) or not command
+                    or not isinstance(item.get("command"), str) or command != item["command"]
+                    or item.get("cwd") != cwd):
+                raise RddError("Approval command or working directory mismatches its correlated item", "environment")
+            lines += ["Command:\n  | " + approval_text(command)]
+            network = params.get("networkApprovalContext")
+            if network is not None:
+                if (not isinstance(network, dict) or set(network) != {"host", "protocol"}
+                        or not isinstance(network.get("host"), str) or not network["host"]
+                        or network.get("protocol") not in {"http", "https", "socks5Tcp", "socks5Udp"}):
+                    raise RddError("Unsupported or incomplete network approval context", "environment")
+                lines += ["Network destination: " + approval_text(network["protocol"] + "://" + network["host"]),
+                          "This request may release already queued connections to this destination; no future rule is granted."]
+            choices = params.get("availableDecisions")
+            if choices is None:
+                choices = ["accept", "decline", "cancel"]
+            if not isinstance(choices, list) or not choices:
+                raise RddError("Approval has no supported decision list", "environment")
+        else:
+            if params.get("grantRoot") is not None:
+                raise RddError("Unsupported approval scope: session-wide file grantRoot " + approval_text(params["grantRoot"]), "environment")
+            changes = item.get("changes")
+            if item.get("type") != "fileChange" or not isinstance(changes, list) or not changes:
+                raise RddError("File approval lacks complete correlated patch context", "environment")
+            for change in changes:
+                kind = change.get("kind") if isinstance(change, dict) else None
+                if (not isinstance(kind, dict) or kind.get("type") not in {"add", "delete", "update"}
+                        or not isinstance(change.get("path"), str) or not change["path"]
+                        or not isinstance(change.get("diff"), str)
+                        or (kind.get("move_path") is not None and not isinstance(kind["move_path"], str))):
+                    raise RddError("File approval has incomplete patch details", "environment")
+                lines += ["File " + kind["type"] + ": " + approval_text(change["path"])]
+                if kind.get("move_path") is not None:
+                    lines += ["Move destination: " + approval_text(kind["move_path"])]
+                lines += ["Patch:\n  | " + approval_text(change["diff"])]
+            choices = ["accept", "decline", "cancel"]
+        allowed = {v for v in choices if isinstance(v, str) and v in {"accept", "decline", "cancel"}}
+        menu = (["[a] Approve once"] if "accept" in allowed else []) + (["[d] Deny and continue"] if "decline" in allowed else []) + ["[s] Stop workflow (default)"]
+        return "\n".join(lines + [" / ".join(menu) + "; press Enter to submit:"]), allowed
+
+    def approval_tick(self):
+        if self.approval_busy:
+            return
+        self.approval_busy = True
+        try:
+            for ident, message in list(self.approvals.items()):
+                if not self.server.request_pending(ident, expected=message):
+                    self.approvals.pop(ident)
+            if not self.approvals:
+                if self.approval_display is not None:
+                    self.approval_terminal.reset()
+                self.approval_display = None
+                return
+            check_failure(self.root)
+            ident, message = next(iter(self.approvals.items()))
+            snapshot = self.server.request_snapshot(ident, expected=message)
+            if snapshot is None:
+                return
+            text, allowed = self.approval_details(message, snapshot)
+            if not self.approval_terminal.available():
+                raise RddError(text + "\nHuman approval requires an attached terminal. Rerun the same workflow command in a terminal; no piped answer or saved approval will be used.", "environment")
+            display = (ident, snapshot["revision"], digest(snapshot["item"]))
+            if display != self.approval_display:
+                self.approval_terminal.reset()
+                self.approval_terminal.show(text)
+                self.approval_display = display
+            try:
+                answer = self.approval_terminal.poll()
+            except EOFError:
+                answer = "s"
+            if answer is None:
+                return
+            choice = answer.strip().lower() or "s"
+            if choice == "s":
+                # Stopping is not approval of an action. Do not dispatch a
+                # potentially long reviewer callback or discard EOF on drift.
+                check_failure(self.root)
+                current = self.server.request_snapshot(ident, expected=message)
+                if current == snapshot and "cancel" in allowed:
+                    check_failure(self.root)
+                    self.server.reply(ident, {"decision": "cancel"}, expected=message, revision=snapshot["revision"])
+                raise RddError("Approval cancelled; workflow stopped recoverably. Rerun the same command when ready.", "environment")
+            # Fake transports and real queued lifecycle events are reconciled
+            # before the final atomic snapshot check. Never use a stale answer.
+            for _ in range(1000):
+                event = self.server.next_event(timeout=0)
+                if event is None:
+                    break
+                self.observe(event)
+            else:
+                raise RddError("Approval event stream did not quiesce", "environment")
+            check_failure(self.root)
+            current = self.server.request_snapshot(ident, expected=message)
+            if current is None or current != snapshot:
+                self.approval_display = None
+                self.approval_terminal.reset()
+                return
+            self.approval_details(message, current)
+            decision = {"a": "accept", "d": "decline"}.get(choice)
+            if decision not in allowed:
+                self.approval_terminal.reset()
+                self.approval_terminal.show("Choose only an offered option.\n" + text)
+                return
+            if self.stage != "specification":
+                goal = self.observed_goal(allow_absent=True)
+                if goal and goal.get("status") != "active":
+                    raise RddError("Native Goal is " + str(goal.get("status")) + "; pending approval was not granted", "environment")
+            if decision in allowed:
+                check_failure(self.root)
+                try:
+                    self.server.reply(ident, {"decision": decision}, expected=message, revision=snapshot["revision"])
+                except StaleRequestError:
+                    # Only a definitely-unsent stale answer can be presented
+                    # again. Timeouts/disconnects must stop even if retired.
+                    self.approval_display = None
+                    return
+            self.approvals.pop(ident, None)
+            self.approval_display = None
+            self.approval_terminal.reset()
+        except OSError as exc:
+            raise RddError("Approval terminal unavailable; workflow stopped. A decision may already have been sent; inspect diagnostics before retrying: " + str(exc), "environment") from exc
+        finally:
+            self.approval_busy = False
 
     def observe(self, message):
         method, params = message.get("method"), message.get("params", {})
         if "id" in message and method:
+            if method in {"item/commandExecution/requestApproval", "item/fileChange/requestApproval"}:
+                self.pending_diagnostic(message)
+                if message["id"] in self.approvals:
+                    raise RddError("Duplicate outstanding approval request", "environment")
+                self.approvals[message["id"]] = message
+                return
             if (method != "item/tool/call" or params.get("tool") != TOOL
                     or params.get("threadId") != self.thread_id or params.get("namespace") not in {None, ""}):
-                if self.diagnostics:
-                    raw = json.dumps(message, ensure_ascii=False)
-                    record = {"method": method, "request_id": message["id"],
-                              "thread_id": params.get("threadId"), "turn_id": params.get("turnId"),
-                              "request_digest": digest(message), "truncated": len(raw.encode("utf-8")) > 65536,
-                              "request": raw.encode("utf-8")[:65536].decode("utf-8", errors="ignore")}
-                    atomic_write(self.diagnostics / "pending-request.json", json.dumps(record).encode("utf-8"))
-                raise RddError(f"Runtime request {method} needs human approval or unsupported input; resume after resolving it", "environment")
-            self.readonly_call(message)
+                self.pending_diagnostic(message)
+                raise RddError(f"Runtime request {method} needs human approval or unsupported input; its scope is not supported", "environment")
+            self.validate_readonly_call(message)
+            if self.approval_busy or self.approvals or self.deferred_readonly:
+                self.defer_readonly(message)
+            else:
+                self.readonly_call(message)
             return
         tid = params.get("threadId")
         if method == "turn/started":
@@ -278,9 +588,46 @@ class WorkflowRunner:
             self.emit(f"{self.stage}: {method} {params['turn']['id']}")
 
     def pump(self, seconds=1):
-        message = self.server.next_event(timeout=seconds)
+        timeout = (0 if self.deferred_readonly and not (self.readonly_busy or self.approvals)
+                   else min(seconds, .1) if self.approvals else seconds)
+        message = self.server.next_event(timeout=timeout)
         if message is not None:
             self.observe(message)
+        self.approval_tick()
+        self.dispatch_readonly()
+
+    def defer_readonly(self, message):
+        size = len(json.dumps(message, ensure_ascii=False).encode("utf-8"))
+        if any(queued["id"] == message["id"] for queued, _ in self.deferred_readonly):
+            raise RddError("Duplicate deferred read-only request", "environment")
+        if len(self.deferred_readonly) >= MAX_EVENT_COUNT or self.deferred_readonly_bytes + size > MAX_EVENT_BYTES:
+            raise RddError("Deferred read-only requests exceeded capacity; stop and reconnect", "environment")
+        self.deferred_readonly.append((message, size))
+        self.deferred_readonly_bytes += size
+
+    def dispatch_readonly(self):
+        # Run only from the normal pump, after approval reconciliation returns.
+        # A review's nested pump can service approvals without starting a second review.
+        if self.approval_busy or self.readonly_busy or self.approvals or not self.deferred_readonly:
+            return
+        # Goal/metadata RPCs can queue another human request after reconciliation.
+        # Keep the FIFO in place so new callbacks cannot bypass older entries.
+        for _ in range(1000):
+            event = self.server.next_event(timeout=0)
+            if event is None:
+                break
+            self.observe(event)
+            if self.approvals:
+                return
+        else:
+            raise RddError("Read-only dispatch event stream did not quiesce", "environment")
+        while self.deferred_readonly:
+            check_failure(self.root)
+            message, size = self.deferred_readonly.popleft()
+            self.deferred_readonly_bytes -= size
+            if self.server.request_pending(message["id"], expected=message):
+                self.readonly_call(message)
+                return
 
     def wait_turn(self, tid, turn, timeout=900):
         until = time.monotonic() + timeout
@@ -304,7 +651,7 @@ class WorkflowRunner:
         self.active[tid] = turn
         return turn
 
-    def readonly_call(self, message):
+    def validate_readonly_call(self, message):
         args = message["params"].get("arguments")
         callback = message["params"].get("callId")
         if (self.readonly_busy or not isinstance(args, dict) or set(args) != {"purpose", "prompt"}
@@ -312,6 +659,13 @@ class WorkflowRunner:
                 or args.get("purpose") not in READONLY_PURPOSES or not isinstance(args.get("prompt"), str)
                 or not 0 < len(args["prompt"]) <= self.c.config["limits"]["max_packet_characters"]):
             raise RddError("Invalid or recursive read-only agent request", "environment")
+        return args, callback
+
+    def readonly_call(self, message):
+        args, callback = self.validate_readonly_call(message)
+        check_failure(self.root)
+        if not self.server.request_pending(message["id"], expected=message):
+            return
         purpose, role = args["purpose"], READONLY_PURPOSES[args["purpose"]]
         state = self.c.state(allow_blocked=True)
         authors = sum(row.get("status") == "claimed" for row in state.get("workflow_nodes", {}).values())
@@ -363,6 +717,9 @@ class WorkflowRunner:
             elif last and last.get("status") == "completed" and replay:
                 text = "\n".join(i["text"] for i in last.get("items", []) if i.get("type") == "agentMessage" and i.get("phase") != "commentary")
             if text is None:
+                check_failure(self.root)
+                if not self.server.request_pending(message["id"], expected=message):
+                    return
                 sessions[purpose]["packet_digest"] = digest(packet)
                 sessions[purpose]["callback_id"] = callback
                 self.update(readonly=sessions)
@@ -375,7 +732,12 @@ class WorkflowRunner:
             result = {"session_id": tid, "requested_runtime": self.c.profile_settings(role),
                       "snapshot_digest": digest(packet), "report": text,
                       "provenance": "Profile-applied read-only App Server session; no backend-model attestation."}
-            self.server.reply(message["id"], {"contentItems": [{"type": "inputText", "text": json.dumps(result)}], "success": True})
+            check_failure(self.root)
+            if self.server.request_pending(message["id"], expected=message):
+                try:
+                    self.server.reply(message["id"], {"contentItems": [{"type": "inputText", "text": json.dumps(result)}], "success": True}, expected=message)
+                except StaleRequestError:
+                    pass  # Preserve the completed review; never send it to a retired/reused request.
         finally:
             self.readonly_busy = False
 
@@ -471,6 +833,7 @@ class WorkflowRunner:
 
     def observed_goal(self, *, allow_absent=False, timeout=60):
         current = self.server.rpc("thread/goal/get", {"threadId": self.thread_id}, timeout=timeout).get("goal")
+        check_failure(self.root)
         stored = self.journal().get("goal")
         if current is None:
             if allow_absent and stored is None:
@@ -547,6 +910,8 @@ class WorkflowRunner:
             # Never send a client continuation turn here: native Goals own continuation.
 
     def shutdown(self):
+        self.deferred_readonly.clear()
+        self.deferred_readonly_bytes = 0
         if not self.server:
             return
         # Independent cleanup deadlines, including after the execution deadline expired.
@@ -598,12 +963,24 @@ class WorkflowRunner:
                 self.storage_failed = True
                 if not getattr(failure, "restart_required", False):
                     failure = exc
+        self.approvals.clear()
+        self.approval_display = None
+        try:
+            self.approval_terminal.close()
+        except OSError as exc:
+            failure = failure or RddError("Approval terminal cleanup failed: " + str(exc), "environment")
         if failure:
             raise failure
 
     def run(self, stage, mode=None):
         self.stage = stage
         self.storage_failed = False
+        self.approvals.clear()
+        self.approval_display = None
+        self.deferred_readonly.clear()
+        self.deferred_readonly_bytes = 0
+        self.session_roles.clear()
+        self.session_cwds.clear()
         try:
             check_failure(self.root)
             # Scope early read-only preflight errors without writing context on
