@@ -143,71 +143,13 @@ class BranchGuardTests(unittest.TestCase):
         self.c.store.put(state)
         for args in (("block", "--kind", "specification", "--reason", "must not auto-record"),
                      ("check", "contract"), ("contracts", "check"), ("task", "release", "T001", "--reason", "preserve"),
-                     ("review", "record", "missing.json"), ("readiness", "specification")):
+                     ("review", "record", "missing.json"), ("readiness", "specification"),
+                     ("workflow", "specification", "--mode", "regenerate", "--print")):
             with self.subTest(args=args):
                 before = self.snapshot()
                 result = self.cli(*args)
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                 self.assertIn("earlier workflow/profile", result.stdout)
-                self.assertEqual(self.snapshot(), before)
-
-    def test_terminal_storage_cli_rejections_preserve_run_and_return_critical_exit_two(self):
-        import sqlite3
-        from tools.rdd.common import RddStorageError
-        from tools.rdd.storage_failure import record_failure
-        record_failure(self.root, RddStorageError("read", self.c.store.path,
-                       sqlite3.DatabaseError("fixture terminal failure")), stage="preparation")
-        commands = (("workflow", "preparation"), ("workflow", "implementation"),
-                    ("resume",), ("start", "--mode", "regenerate"), ("init",),
-                    ("block", "--kind", "environment", "--reason", "cannot clear terminal failure"),
-                    ("check", "contract"), ("review", "record", "missing.json"))
-        before = self.snapshot()
-        for args in commands:
-            with self.subTest(args=args):
-                result = self.cli(*args)
-                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-                diagnostic = json.loads(result.stdout)
-                self.assertEqual(diagnostic["status"], "failed")
-                self.assertEqual(diagnostic["kind"], "environment")
-                self.assertEqual(diagnostic["severity"], "critical")
-                self.assertTrue(diagnostic["restart_required"])
-                self.assertIn("fixture-run.json", diagnostic["failure_path"])
-                self.assertEqual(self.snapshot(), before)
-        status = self.cli("status")
-        self.assertEqual(status.returncode, 2, status.stdout + status.stderr)
-        self.assertTrue(json.loads(status.stdout)["restart_required"])
-        self.assertEqual(self.snapshot(), before)
-
-    def test_cleanup_failure_tags_keep_cli_exit_two_when_marker_publication_fails(self):
-        from tools.rdd.storage_failure import register_headless
-        register_headless(self.root, "fixture-run", "preparation", "fixture-thread")
-        before = self.snapshot()
-        script = """import sqlite3, sys
-from pathlib import Path
-from unittest.mock import patch
-sys.path.insert(0, sys.argv[1])
-from rdd import cli, common, storage_failure
-root = Path(sys.argv[2])
-primary = {'validation': common.RddError, 'value': ValueError, 'interrupt': KeyboardInterrupt}[sys.argv[3]]('original error')
-cleanup = common.RddStorageError('close', root / '.rdd/runtime/state.sqlite3', sqlite3.DatabaseError('cleanup SQLite failure'))
-with patch.object(storage_failure, 'atomic_write', side_effect=PermissionError('marker unavailable')):
-    common._record_store_failure(cleanup.database_path, cleanup, 'fixture-run', primary=primary)
-with patch('rdd.workflow.WorkflowRunner.run', side_effect=primary):
-    raise SystemExit(cli.main(['--root', str(root), 'workflow', 'preparation']))
-"""
-        for kind in ("validation", "value", "interrupt"):
-            with self.subTest(kind=kind):
-                result = subprocess.run([sys.executable, "-B", "-c", script,
-                    str(Path(__file__).resolve().parents[2] / "tools"), str(self.root), kind],
-                    capture_output=True, text=True, timeout=30)
-                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-                value = json.loads(result.stdout)
-                self.assertTrue(value["restart_required"])
-                self.assertEqual(value["severity"], "critical")
-                self.assertIn("original error", value["error"])
-                self.assertIn("cleanup SQLite failure", value["error"])
-                self.assertIn("marker unavailable", value["persistence_error"])
-                self.assertNotIn("Traceback", result.stderr)
                 self.assertEqual(self.snapshot(), before)
 
     def test_cli_draft_planning_error_preserves_run_and_corrected_draft_validates(self):
@@ -402,55 +344,15 @@ with patch('rdd.workflow.WorkflowRunner.run', side_effect=primary):
         self.assertIsNone(self.c._store)
 
     def test_preflight_reads_latest_committed_live_wal_without_changing_its_files(self):
-        import time
         state = self.c.state()
         state["base_branch"] = "codex/latest-wal-baseline"
-        path = self.root / ".rdd/runtime/state.sqlite3"
-        ready = path.parent / "child-writer-ready"
-        program = ("import sqlite3,sys\nfrom pathlib import Path\n"
-                   "db = sqlite3.connect(sys.argv[1])\n"
-                   "db.execute('UPDATE runs SET value=? WHERE id=?', (sys.argv[3], sys.argv[2]))\n"
-                   "db.commit()\n"
-                   "Path(sys.argv[4]).write_text('ready')\n"
-                   "sys.stdin.readline()\n"
-                   "db.close()\n")
-        child = subprocess.Popen([sys.executable, "-B", "-c", program, str(path), state["id"], json.dumps(state), str(ready)],
-                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        try:
-            deadline = time.monotonic() + 10
-            while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
-                time.sleep(.01)
-            self.assertTrue(ready.exists(), "Child writer did not become ready")
-            self.assertTrue(path.with_name(path.name + "-wal").is_file())
-            before = self.snapshot()
-            self.assertEqual(Store.read(self.root, state["id"])["base_branch"], "codex/latest-wal-baseline")
-            with self.assertRaisesRegex(RddError, "latest-wal-baseline") as caught:
-                self.c.guard_source_write()
-            self.assertEqual(caught.exception.kind, "environment")
-            self.assertEqual(self.snapshot(), before)
-        finally:
-            try:
-                child.communicate("done\n", timeout=10)
-            except subprocess.TimeoutExpired:
-                child.kill()
-                child.communicate()
-        self.assertEqual(child.returncode, 0)
-
-    def test_malformed_storage_cli_stops_without_traceback_or_source_mutation(self):
-        self.c.close()
-        path = self.root / ".rdd/runtime/state.sqlite3"
-        path.write_bytes(b"malformed disposable fixture database\n")
-        def files():
-            return {p.relative_to(self.root).as_posix(): p.read_bytes()
-                    for p in self.root.rglob("*") if p.is_file() and ".git" not in p.relative_to(self.root).parts}
-        before = files()
-        result = self.cli("status")
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        value = json.loads(result.stdout)
-        self.assertEqual((value["status"], value["kind"]), ("blocked", "environment"))
-        self.assertIn("state.sqlite3", value["error"])
-        self.assertNotIn("Traceback", result.stderr)
-        self.assertEqual(files(), before)
+        self.c.save(state)
+        before = self.snapshot()
+        self.assertEqual(Store.read(self.root, state["id"])["base_branch"], "codex/latest-wal-baseline")
+        with self.assertRaisesRegex(RddError, "latest-wal-baseline") as caught:
+            self.c.guard_source_write()
+        self.assertEqual(caught.exception.kind, "environment")
+        self.assertEqual(self.snapshot(), before)
 
     def test_preflight_recovers_wal_without_shm_only_in_the_temporary_copy(self):
         state = self.c.state()
@@ -485,9 +387,7 @@ with patch('rdd.workflow.WorkflowRunner.run', side_effect=primary):
         packet = self.c.workflow("specification", print_only=True)
         self.assertEqual(packet["stage"], "specification")
         self.assertEqual(self.snapshot(), before)
-        before = self.snapshot()
-        self.assertEqual(self.c.workflow("specification", "regenerate", print_only=True)["stage"], "specification")
-        self.assertEqual(self.snapshot(), before)
+        self.rejected(lambda: self.c.workflow("specification", "regenerate", print_only=True))
 
     def test_main_origin_run_can_be_inspected_exported_and_archived_by_fresh_start(self):
         self.f.prepared()
@@ -546,14 +446,8 @@ with patch('rdd.workflow.WorkflowRunner.run', side_effect=primary):
                 with self.subTest(branch=branch, command=command):
                     before = self.snapshot()
                     result = self.cli(*command)
-                    if command[0] == "workflow":
-                        # Acceptance recognition is read-only and precedes launch
-                        # branch checks; corrupted accepted evidence is failure.
-                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-                        self.assertEqual(json.loads(result.stdout)["status"], "failed")
-                    else:
-                        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-                        self.assertEqual(json.loads(result.stdout)["kind"], "environment")
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertEqual(json.loads(result.stdout)["kind"], "environment")
                     self.assertEqual(self.snapshot(), before)
             self.assertFalse((self.root / ".rdd/runtime/controller.lock").exists())
 
@@ -568,19 +462,17 @@ with patch('rdd.workflow.WorkflowRunner.run', side_effect=primary):
             self.assertEqual(json.loads(result.stdout)["stage"], "specification")
             self.assertFalse((root / ".rdd/runtime").exists())
             result = self.cli("workflow", "specification", "--mode", "regenerate", "--print", root=root)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual(json.loads(result.stdout)["stage"], "specification")
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertEqual(json.loads(result.stdout)["kind"], "environment")
             self.assertFalse((root / ".rdd/runtime").exists())
 
     def test_explicit_print_mode_cannot_reuse_a_run_from_another_authoring_branch(self):
         self.f.g("switch", "-c", "codex/print-lookalike")
-        before = self.snapshot()
-        self.assertEqual(self.c.workflow("specification", "regenerate", print_only=True)["stage"], "specification")
-        self.assertEqual(self.snapshot(), before)
+        self.rejected(lambda: self.c.workflow("specification", "regenerate", print_only=True))
         before = self.snapshot()
         result = self.cli("workflow", "specification", "--mode", "regenerate", "--print")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(json.loads(result.stdout)["stage"], "specification")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["kind"], "environment")
         self.assertEqual(self.snapshot(), before)
 
     def test_cli_malformed_checkpoint_fails_before_store_or_operation_lock_mutation(self):

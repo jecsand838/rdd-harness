@@ -5,8 +5,6 @@ description: Convert frozen RDD specifications and acceptance scenarios into a v
 
 # Preparation workflow
 
-Enter with `./rdd workflow preparation`. An unaccepted stage opens the qualified Codex 0.162.1 TUI under the existing approval policy, resumes the accepted specification run, and supplies stage instructions automatically; an accepted stage is rechecked without relaunch. Its first coordinator action in a launched TUI is `./rdd workflow attach preparation --launch-id UUID`; UUID is the random launch nonce in the supplied instructions. Attach also reads `CODEX_THREAD_ID` from the TUI environment and binds both; this runtime-derived thread ID is observed provenance, not authentication. Preparation proceeds interactively from its instructions; routine user prompts are not required. On retry resume the exact recorded session. Missing external evidence remains incomplete. Follow `AGENTS.md` for read-only review/research and writable planner dispatch; only the coordinator records returned review JSON in the existing ledger.
-
 Read `AGENTS.md`, `docs/harness/workflow-guide.md`, and `docs/harness/artifact-guide.md`. Run `./rdd status` and `./rdd doctor`; verify that specification is frozen and its digests still match. Read the exact frozen manifests and only the solution sections required for planning.
 
 Register every actual artifact author with `./rdd author record --stage plan --session-id ID` and keep the manifest author inventory consistent. Registration records provenance; it does not authenticate a session or replace independent work.

@@ -21,8 +21,8 @@ Inspect and understand commands from external material before execution. Prefer 
 
 ## Maintain freshness and bounded memory
 
-1. Start or resume by reading controller state and validating source digests. Use the exact session and launch identity supplied by the runner; a runtime-derived ID is observed provenance, not authentication or backend attestation.
-2. Reject a stale or incomplete task packet when task IDs, requirements, specification, plan, or branch revision are absent or changed; ask the orchestrator to issue a fresh bounded packet rather than inventing scope.
+1. Start or resume by reading controller state and validating source digests.
+2. Reject a stale task packet when requirements, specification, plan, or branch revision changed; ask the orchestrator to issue a fresh packet.
 3. After a context reset, recover from durable state, checkpoints, and current diffs. Do not mark a task complete because a prior conversational summary says it was finished.
 4. Deduplicate rules. Keep one canonical requirement/spec/contract rule and references from tasks/skills. Delete superseded active notes only through the run lifecycle; retain archived evidence.
 5. Record source date and applicable version for changing APIs. Avoid a stale tutorial determining the current Turso crate or Tauri permissions model.

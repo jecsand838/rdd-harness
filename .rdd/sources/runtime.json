@@ -1,8 +1,8 @@
 {
   "format_version": 1,
-  "scope": "Observed native TUI lifecycle, isolated read-only review transport and harness qualification tools",
-  "checked_date": "2026-10-11",
-  "observed_codex_cli": "0.162.1",
+  "scope": "Observed Codex runtime capabilities, bounded execution interfaces, and harness qualification tools",
+  "checked_date": "2026-10-08",
+  "observed_codex_cli": "0.161.0",
   "model_catalog": {
     "source": "Installed CLI bundled catalog; canonical settings live in .codex/agents/*.toml",
     "advertised_pairs": [
@@ -26,13 +26,9 @@
   "verification_scope": {
     "adapter_protocols": "Offline injected GitHub/Codex protocols plus real subprocess argv delivery of profile instructions and Git-worktree lifecycle tests.",
     "ci_controller": "Real-Git trusted-policy/candidate fixtures and real check subprocesses; CI remains independent of candidate run locators.",
-    "codex_smoke": "Installed CLI 0.162.1 version, generated protocol schema, bundled model/effort catalog and authenticated startup observed on macOS arm64. Requested settings are not backend-model attestation.",
-    "github_actions": "Not run for this native TUI qualification; required hosted gates remain unchanged.",
-    "rust_and_buf_execution": "Actual multi-module native/WASM generator/compiler proof suite executed with Rust 1.99.0 and Buf 1.73.0. Raw results are retained under .rdd/evidence/harness-contracts/.",
-    "app_server_transport": "Hardened stdlib transport retained for metadata preflight and explicitly read-only review/research only. TUI coordination does not use its event loop, question/approval handling or Goal RPCs. Existing historical records remain inspectable without migration.",
-    "public_workflow_acceptance": "Deterministic TUI/process doubles exercise controller gates with real local checks and explicitly simulated external/review evidence. Native public-command qualification is reported separately in docs/harness/codex-runtime.md; component probes do not establish product acceptance.",
-    "native_tui": "Codex 0.162.1 macOS arm64: exact CODEX_THREAD_ID across launch/resume, canonical writable specialist delegation, manual Goal entry, native continuation beyond 900 seconds, user pause and accounting preservation observed in disposable fixtures. Short whole-command Goal paste qualified; large pastes require the canonical objective to remain file-referenced. Requested runtime fields are not backend attestation.",
-    "isolated_review": "Canonical explicitly read-only App Server threads retained inherited approval settings, denied an actual write with EPERM, preserved the live reviewer across reconnects, and used a distinct execution reviewer. Historical dynamic-tool callbacks have been removed from the coordinator path."
+    "codex_smoke": "Installed CLI 0.161.0 version, flags, bundled model/effort catalog and authenticated session observed. Requested settings are not backend-model attestation.",
+    "github_actions": "Hosted baseline 0f7e76f: Ubuntu, macOS and Windows candidate harness jobs passed; trusted-controller and aggregate verify jobs failed. Later candidate results belong in their exact-revision CI reports.",
+    "rust_and_buf_execution": "Actual multi-module native/WASM generator/compiler proof suite executed with Rust 1.99.0 and Buf 1.73.0. Raw results are retained under .rdd/evidence/harness-contracts/."
   },
   "sources": [
     {
@@ -50,10 +46,6 @@
     {
       "title": "Native Codex Goals",
       "url": "https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex"
-    },
-    {
-      "title": "Codex App Server read-only thread lifecycle",
-      "url": "https://learn.chatgpt.com/docs/app-server"
     },
     {
       "title": "GitHub CLI PR metadata",
@@ -90,33 +82,6 @@
     {
       "title": "Agent evaluation best practices",
       "url": "https://developers.openai.com/api/docs/guides/evaluation-best-practices"
-    },
-    {
-      "title": "Codex CLI 0.162.1 release",
-      "url": "https://github.com/openai/codex/releases/tag/rust-v0.162.1"
-    },
-    {
-      "title": "Codex native CLI lifecycle",
-      "url": "https://learn.chatgpt.com/docs/cli/reference"
     }
-  ],
-  "app_server_protocol": {
-    "purpose": "Metadata preflight and isolated read-only review/research; no coordinator dynamic tools",
-    "readonly_purposes": {
-      "live": "persistent reviewer",
-      "execution": "distinct final reviewer",
-      "research": "bounded researcher"
-    },
-    "profile_provenance": "Canonical TOML applied to separate explicitly read-only threads; not native agent_type or backend-model attestation.",
-    "approval_policy": "Inherited unchanged; no approval-policy or reviewer override.",
-    "history": "Explicit legacy history on new reviewer threads; exact saved thread and complete recorded turn required on resumption.",
-    "qualified_tui_version": "0.162.1",
-    "limits": [
-      "Native TUI ownership currently supports the qualified macOS libproc ABI only; other hosts fail before run mutation. No general daemon containment is claimed.",
-      "Native observations are macOS arm64; no hosted OS-matrix or application acceptance was performed.",
-      "Saved App Server coordinator runs cannot be converted to TUI sessions or receive backfilled profile/Goal identities.",
-      "Missing evidence or unavailable runtime sessions remains incomplete."
-    ]
-  },
-  "observed_codex_executable_sha256": "74c6a6d263f40d65f99c27a815275f5b4ed0bcc2baecc396b4cf3255498bdfc0"
+  ]
 }

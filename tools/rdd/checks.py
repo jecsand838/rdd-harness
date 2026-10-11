@@ -70,10 +70,6 @@ def _receipt_log(path: Path, expected_digest: str) -> dict:
             raw = stream.read(MAX_RECEIPT_LOG_BYTES + 1)
     except OSError as exc:
         raise RddError(f"Cannot read evidence log: {exc}") from exc
-    return _verified_log(raw, expected_digest)
-
-
-def _verified_log(raw: bytes, expected_digest: str) -> dict:
     if len(raw) > MAX_RECEIPT_LOG_BYTES:
         raise RddError("Evidence log exceeds the verification size bound")
     if hashlib.sha256(raw).hexdigest() != expected_digest:
@@ -274,7 +270,7 @@ def execute_check(root: Path, check: dict, *, phase: str | None, task_id: str | 
 
 def verify_receipt(root: Path, evidence: dict, check: dict, *, commit: str,
                    sources: str, spec_digest: str, plan_digest: str | None,
-                   require_pass: bool = True, log_loader=None) -> None:
+                   require_pass: bool = True) -> None:
     validate_artifact(root, "evidence", evidence)
     expected = {"check_id": check["id"], "source_commit": commit, "source_digest": sources,
                 "spec_digest": spec_digest, "plan_digest": plan_digest, "command": check["argv"]}
@@ -291,14 +287,8 @@ def verify_receipt(root: Path, evidence: dict, check: dict, *, commit: str,
         raise RddError("Receipt host profile mismatch")
     if not evidence["log_path"].startswith(".rdd/evidence/"):
         raise RddError("Evidence logs must be staged inside .rdd/evidence/")
-    log_path = safe_path(root, evidence["log_path"], allow_missing=log_loader is not None)
-    if log_loader is None:
-        log = _receipt_log(log_path, evidence["log_digest"])
-    else:
-        text = log_loader(evidence["log_path"])
-        if not isinstance(text, str):
-            raise RddError("Recorded receipt lacks raw evidence")
-        log = _verified_log(text.encode("utf-8"), evidence["log_digest"])
+    log_path = safe_path(root, evidence["log_path"], allow_missing=False)
+    log = _receipt_log(log_path, evidence["log_digest"])
     if require_pass:
         evaluate_scenarios(check, log.get("scenario_results"))
     if evidence["origin"] == "ci" and not evidence["provenance"]["run_url"].startswith("https://github.com/"):

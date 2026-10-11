@@ -8,10 +8,6 @@ Read `README.md` for host installation and `codex-runtime.md` for the installed 
 
 `requirements/requirements.md` defines the product obligations. `.rdd/spec.json` and its listed documents/decisions select the solution. Canonical contracts under `contracts/` and generated outputs under `gen/` are frozen with that solution. `.rdd/plan/plan.json` selects implementation work and phase order. Comments are generated task projections; `.rdd/runtime/` stores controller state. Evidence describes measured behavior and never overrides the requirements.
 
-Enter with `./rdd workflow specification`, `./rdd workflow preparation`, and `./rdd workflow implementation` in order. While a stage remains unaccepted, its command opens the qualified Codex 0.162.1 TUI under the existing approval policy and supplies stage instructions automatically; accepted stages are rechecked without relaunch. Necessary specification questions appear in the native TUI. Preparation proceeds interactively from its instructions without routine user prompts. The implementation command prints exact copy-ready `/goal` text for the user to paste only when no Goal exists. Repeating a command inspects and resumes the exact recorded session and Goal; never choose `--last`, replace an uncertain identity, or reset Goal accounting. `--print` is pure, including with `--mode`. After the TUI exits, the runner's read-only `workflow_result` determines exit 0 accepted (or printed), 1 invalid, 2 incomplete/blocked, and 130 interrupted. Missing external evidence or backend sessions stop recoverably with identities and accounting preserved.
-
-The coordinator's first action in each launched TUI is `./rdd workflow attach STAGE --launch-id UUID`; UUID is a random launch nonce in the supplied instructions. Attach also reads `CODEX_THREAD_ID` from the TUI environment and binds both. The runtime-derived thread ID is observed session provenance, not authentication or backend-model attestation.
-
 Use controller commands for transitions. Do not edit run state, SQLite rows, locks, seals, evidence receipts, or task markers to force progress. `./rdd status` and `./rdd --help` are the operational entry points. On Windows use the provided launcher described in the README with the same arguments.
 
 ```mermaid
@@ -55,7 +51,7 @@ Inspect `./rdd workflow nodes` and `./rdd workflow next`. Claim eligible authori
 
 CLI node and claim summaries show source identities and file counts without repeating full source inventories at every attempt. `export-run` preserves those inventories and the complete canonical history for recovery.
 
-Use canonical profiles from [the runtime roster](codex-runtime.md#runtime-contract). Writable specialists use exact registered native `agent_type` and `fork_turns="none"`; start reviewers/researchers with `./rdd review run --stage STAGE --purpose live|execution|research --prompt-file FILE`. This creates explicitly read-only App Server threads with inherited approval settings unchanged. Keep `live` persistent, make `execution` distinct, and use `research` for bounded advice. Only the coordinator records returned JSON through existing ledgers; read-only sessions cannot write or run writing controller commands. Authoring nodes have exclusive owners: S1 `rdd_domain_analyst`, S2–S4 `rdd_verification_designer`, S5 `rdd_qualification_engineer`, S6 `rdd_contract_architect`, and P1–P5 `rdd_task_planner`. Remaining nodes retain coordinator/controller ownership. Researchers and reviewers provide read-only evidence and feedback; they cannot claim authoring nodes. The coordinator does not substitute for an unavailable specialist.
+Use named native profiles from [the runtime roster](codex-runtime.md#runtime-contract). Authoring nodes have exclusive owners: S1 `rdd_domain_analyst`, S2–S4 `rdd_verification_designer`, S5 `rdd_qualification_engineer`, S6 `rdd_contract_architect`, and P1–P5 `rdd_task_planner`. Remaining nodes retain coordinator/controller ownership. Researchers and reviewers provide read-only evidence and feedback; they cannot claim authoring nodes. The coordinator does not substitute for an unavailable specialist.
 
 The architect can give bounded advice before S6 when an author slot is available. Reconciliation findings return to the original domain, verification or qualification owner; S6 must not silently rewrite accepted upstream handoffs. The planner owns vertical and phase reconciliation using `plan-verticals` and `plan-phases`, rather than delegating the same dependency graph to separate role profiles.
 
@@ -65,19 +61,27 @@ For specification and preparation corrections, `workflow claim --finding` permit
 
 Specification resolves requirement and architectural ambiguity and owns the target folder design. Preparation fully grooms its entire backlog before handoff. Implementation repairs implementation defects within the open phase’s frozen scope. A specification defect discovered during preparation, or a specification/planning defect discovered during implementation, is a critical harness regression: record it, stop the affected workflow, repair the missing preventive control and add a reproducing regression. Intentional requirement changes still use the amendment workflow; never rewrite accepted history.
 
-Questions and any approval requests are handled by the native Codex TUI using the user's existing policy and approval settings. The workflow runner supplies stage instructions but does not add a separate question or approval interface, and it does not override that policy.
-
 ## Stage one: specification
 
-Run:
+Start from a clean dedicated authoring branch as directed by the README. `main` is a merge-only release branch. For a fresh clone, create the baseline before starting the run:
 
-```sh
-./rdd workflow specification
+```bash
+git fetch origin
+git switch -c codex/todo-baseline origin/main
+./rdd init
+./rdd doctor
+./rdd start --mode regenerate
+./rdd requirements index
+./rdd spec init
 ```
 
-For a fresh clean checkout on `main`, successful read-only runtime preflight precedes creating a dedicated baseline branch and local run state. A selected clean authoring branch is retained. All later specification/preparation work must stay on the recorded baseline; authoring on detached HEAD or a wrong branch is refused. Standalone `start` remains the deliberate new-run operation for amendments/regeneration. The runner never silently archives a resumed run because a command was repeated.
+Create this branch once; subsequent specification and preparation operations must stay on the baseline recorded by `start`. The controller refuses source writes on `main`, detached HEAD, and the wrong named branch without switching or discarding work. Read-only status, validation, CI and prompt inspection remain available. The controller records exact source identities, not a filename alone.
 
-The coordinator delegates eligible nodes to writable specialist owners and requests read-only review/research through the runner. Ask necessary architectural questions in the native TUI and record actual answers in decisions; ordinary research choices are autonomous. The skill defines the expected output; the controller validates structure and invariants. The following lower-level commands are coordinator procedures within this workflow, not additional user launch steps.
+Ask Codex:
+
+> Use $specification-workflow for the active regenerate run. Derive the complete solution from requirements/requirements.md, resolve architectural questions here, qualify the fixed Rust/Tauri/Turso stack, and freeze the specification only after independent review and reproducible contract compilation. Do not implement application behavior.
+
+`./rdd workflow specification` provides the repository's stage prompt/instructions. Follow `codex-runtime.md` for invocation in the installed client. The interactive coordinator delegates eligible nodes to their named specialist owners and uses the read-only researcher and reviewer for evidence and continuous feedback. The skill describes the expected output; the controller validates machine structure and invariants.
 
 The agent creates solution documents and decisions, a complete requirement/behavior map, functional subdomains, the complete target folder system, structured scenarios and test oracles, benchmark protocols, module boundaries, dependency/version decisions, check execution prerequisites, and the exact contract/generation set. Every functional requirement and positive behavior has golden scenarios, and every golden scenario links back to a functional requirement. Reciprocal links must agree. It authors the machine manifest from the schema. Human-readable templates are in `.rdd/templates/`; they are not completed solution artifacts.
 
@@ -107,11 +111,13 @@ Do not proceed if requirements are ambiguous, a required platform is unsupported
 
 ## Stage two: preparation
 
-```sh
-./rdd workflow preparation
+```bash
+./rdd plan init
 ```
 
-The command opens the TUI and continues the accepted frozen solution under the existing approval policy. The coordinator runs `plan init` when needed and follows the preparation skill through planning, materialization and acceptance. Preparation can proceed interactively from its instructions; routine user prompts are not required and cannot change frozen scope.
+Ask Codex:
+
+> Use $preparation-workflow for the frozen solution. Resolve work sites within its target tree, inspect reuse, and complete the task DAG, ordered verticals and dependency-closed phases. Preserve tests, deletion, modification, addition, documentation order. Keep a live reviewer comparing progress with the specification and contracts. Qualify and independently review the full plan, freeze it, materialize task packets, and obtain preparation acceptance.
 
 The `rdd_task_planner` resolves exact target files inside the frozen folder/ownership design. Every task is fully hydrated with objective, instructions, solution/scenario links, input producers and timing, outputs, dependencies, exact writes and work sites, checks, acceptance, category, scope and reuse rationale when adding code. Each task belongs to one phase and at least one ordered vertical. Every solution element has implementation and verification ownership, or actual baseline evidence. Implementation must not discover missing task scope or groom a partial backlog.
 
@@ -152,19 +158,19 @@ Register a mandatory specification `contract_check_ids` entry with kind `contrac
 
 `prepare` runs after plan freeze. It verifies the specification and compiled contracts, creates only approved shells, projects every primary/secondary task packet, and writes the implementation matrix and materialization receipt. It does not implement application behavior or establish final handoff acceptance. No phase may inherit uncommitted preparation work. The first phase PR targets the gate-accepted baseline; do not merge preparation into `main`.
 
-The GitHub adapter requires readable required-check results. Configure `verify` on the prepared baseline, and on each exact predecessor branch after it is sealed. Avoid wildcard status rules on active phase branches, which need to publish and repair commits before their PR checks can run. The [short playbook](blog-demo.md) covers the three-command entry; the [runtime guide](codex-runtime.md#stacked-pr-policy) retains check-policy setup.
+The GitHub adapter requires readable required-check results. Configure `verify` on the prepared baseline, and on each exact predecessor branch after it is sealed. Avoid wildcard status rules on active phase branches, which need to publish and repair commits before their PR checks can run. The [manual demo](blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) supplies the setup sequence.
 
 Use adjacent sidecars for editable noncommentable files and deletion targets. Each task has one full primary packet and a local instruction/reference at every other write site. Markers encode phase, category, sorted verticals, task and site; for example `RDD:P01:tests:V01+V03:T001:A01`. Existing-code selectors must locate the intended edit unambiguously. Frozen contracts and generated interfaces remain read/check inputs. Comment-only Rust shells may exist without being imported into a build graph. Do not create bogus JSON or manifests merely to reserve paths.
 
 ## Stage three: implementation
 
-Run:
+Read `codex-runtime.md`, then retrieve the objective:
 
-```sh
-./rdd workflow implementation
+```bash
+./rdd goal
 ```
 
-The command opens the TUI and prints the exact copy-ready `/goal` text. Paste it to start implementation only when no Goal exists. On retry inspect and resume the exact existing Goal and session without creating or replacing it. The short command references the complete objective in `.rdd/goals/implementation.txt`; keep that canonical objective below 4,000 characters. Long command pastes in Codex 0.162.1 become ordinary messages or attachments, so paste the printed short command rather than expanding it. The `implementation-workflow` skill supplies the detailed procedure. Never use `--last` or reset accounting. Controller acceptance, not a model's final message or Goal status, establishes success. After leaving the TUI, the runner reads `workflow_result` without mutation to determine command status; missing or uncertain session identity remains a recoverable stop.
+Use the printed objective with the installed client's native goal facility described in that guide. The objective is below 4,000 characters. The longer `implementation-workflow` skill supplies the procedure through normal skill loading, rather than expanding the goal into an objective file.
 
 Implementation uses `rdd_complex_implementor` for large tasks and either implementor for small tasks; `rdd_light_implementor` handles only small, unambiguous scope. The model assignments and capability checks are in the runtime guide. A missing required configuration is a capability blocker, never permission to silently substitute a model or role.
 
@@ -239,13 +245,7 @@ For a worker failure, preserve its worktree and use the supported release/resume
 
 Run recovery from the recorded baseline or phase branch. If a mistaken checkout left you on `main` or another branch, inspect and preserve dirty work before returning; do not force-switch or reset. Older runs recorded on `main` can be inspected and exported, but source authoring requires a fresh run on a dedicated baseline. Never rewrite the recorded branch or frozen identities to relocate a run.
 
-Local state uses operation-scoped SQLite connections; preflight inspection copies DB/WAL bytes only while this process has no open Store connection. A storage failure returns an environment diagnostic and exit code `2`. The runner stops owned execution without retrying journal writes or replacing the last checkpoint. Preserve the database and any WAL/SHM files together after confirming writers have stopped; do not delete journals, rebuild state, or retry uncertain writes. A passing SQLite integrity check alone cannot establish that every acknowledged controller update survived.
-
-**A storage failure during preparation or implementation is terminal for that run.** A run-bound record under `.rdd/runtime/failures/` survives independently of SQLite and stops further controller mutations, workflow retries and checkpoint restoration. Parent and child controller failures share this record; forensic exports include it in the existing evidence envelope and cannot be resumed. Choose a new export path; runtime control files and existing failed-run evidence cannot be overwritten. If recording the failure also fails, the diagnostic says so; do not infer that a later retry is safe. Preserve the failed checkout, worktrees, checkpoints and phase history, then start all three workflows in a separate clean baseline. Never delete the failure record to continue or restore an older checkpoint over it.
-
-Ordinary user pauses remain pauses, not storage failures. TUI shutdown preserves the existing Goal objective and accounting; retry inspects and resumes that same Goal. This policy does not retroactively classify historical runs. Historical App Server sessions remain inspectable/exportable under their recorded runtime; do not migrate their identities or override a policy digest. Never manufacture acceptance or reset Goal accounting.
-
-Use `./rdd block --kind KIND --reason TEXT` and the current blocker schema. Critical specification/planning escapes need origin/detection stage, affected IDs, candidate identities, evidence and the missing preventive check. Record immediately; a reproduction is required to accept the harness repair, not to record the failure. Keep environment, authorization and controller-limit failures distinct. A missing platform is incomplete evidence, not an automatic skip. A sealed-phase defect preserves closure history; do not silently repair it in a later phase.
+Use `./rdd block --kind KIND --reason TEXT` and the current blocker schema. Critical specification/planning escapes need origin/detection stage, affected IDs, candidate identities, evidence and the missing preventive check. Record immediately; a reproduction is required to accept the harness repair, not to record the failure. Keep environment, authorization and budget failures distinct. A missing platform is incomplete evidence, not an automatic skip. A sealed-phase defect preserves closure history; do not silently repair it in a later phase.
 
 After all phases:
 
@@ -259,7 +259,7 @@ Success requires complete task state and removal of every primary/secondary pack
 
 Keep the accepted phase branches and PR bases intact. Create a separate `codex/rdd-release/<run-id>` branch at the final project-accepted head for one release PR into `main`. The operator pins the prepared-policy commit and accepted source commit with repository Actions variables `RDD_RELEASE_POLICY_SHA` and `RDD_RELEASE_SOURCE_SHA`; candidate files or PR descriptions cannot select them.
 
-The release workflow runs the verifier from `main`, checks the separate pinned prepared policy against the candidate, requires complete source with no remaining anchors, and runs the applicable contract, phase and project check inventory. It reports source verification, not new manual/platform acceptance. Normal PR review and successful checks precede merge; no failed-CI baseline adoption is needed. After merge, verify ancestry, identical tracked contents, clean status and main push CI. Keep the original acceptance report tied to its accepted phase commit and record the main merge commit separately. See the [release overview](../../README.md#release-into-main).
+The release workflow runs the verifier from `main`, checks the separate pinned prepared policy against the candidate, requires complete source with no remaining anchors, and runs the applicable contract, phase and project check inventory. It reports source verification, not new manual/platform acceptance. Normal PR review and successful checks precede merge; no failed-CI baseline adoption is needed. After merge, verify ancestry, identical tracked contents, clean status and main push CI. Keep the original acceptance report tied to its accepted phase commit and record the main merge commit separately. See the [full release commands](blog-demo.md#8-verify-and-merge-one-complete-release-pr-into-main).
 
 ## Amendment and regeneration
 

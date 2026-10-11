@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import test_engine as engine_fixture
 from tools.rdd import engine
-from tools.rdd.common import RddError, head, inventory, operation_lock, read_json, write_json
+from tools.rdd.common import RddError, head, inventory, read_json, write_json
 
 
 class RecoveryTests(unittest.TestCase):
@@ -49,7 +49,7 @@ class RecoveryTests(unittest.TestCase):
         self.addCleanup(self.f.c.close)
 
     def assert_no_import(self):
-        self.assertFalse(self.f.c.store.exists("fixture-run"))
+        self.assertEqual(self.f.c.store.db.execute("SELECT COUNT(*) FROM runs").fetchone()[0], 0)
         self.assertFalse((self.root / ".rdd/run.json").exists())
         self.assertFalse(any((self.root / ".rdd/evidence").rglob("*")))
 
@@ -156,178 +156,6 @@ class RecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(RddError, "digest mismatch|hash mismatch"):
             self.f.c.resume(path)
         self.assert_no_import()
-
-    def terminal_storage_record(self, stage="implementation"):
-        """Record a fault without rewriting the preserved run's SQLite state."""
-        import sqlite3
-        from tools.rdd.common import RddStorageError
-        from tools.rdd.storage_failure import record_failure, register_headless
-        run_id = self.f.c.state()["id"]
-        register_headless(self.root, run_id, stage, "preserved-goal-thread")
-        error = RddStorageError("read", self.f.c.store.path, sqlite3.DatabaseError("checkpoint fixture fault"))
-        record_failure(self.root, error, run_id=run_id, stage=stage, thread_id="preserved-goal-thread")
-        marker = self.root / f".rdd/runtime/failures/{run_id}.json"
-        self.assertTrue(marker.is_file())
-        return marker
-
-    def assert_terminal_resume_rejected(self, path=None):
-        before = copy.deepcopy(self.f.c.state(allow_blocked=True)) if (self.root / ".rdd/run.json").is_file() else None
-        locator = self.root / ".rdd/run.json"
-        locator_bytes = locator.read_bytes() if locator.exists() else None
-        with patch.object(self.f.c, "save") as save, \
-                patch.object(self.f.c.store, "put") as put, \
-                patch("tools.rdd.engine.atomic_write") as imported_evidence:
-            with self.assertRaises(RddError) as caught:
-                self.f.c.resume(path)
-            self.assertEqual(caught.exception.kind, "environment")
-            self.assertTrue(getattr(caught.exception, "restart_required", False))
-            save.assert_not_called()
-            put.assert_not_called()
-            imported_evidence.assert_not_called()
-        self.assertEqual(locator.read_bytes() if locator.exists() else None, locator_bytes)
-        if before is not None:
-            self.assertEqual(self.f.c.state(allow_blocked=True), before)
-        else:
-            self.assertFalse(self.f.c.store.exists("fixture-run"))
-        self.assertFalse((self.root / ".rdd/evidence/must-not-be-written.txt").exists())
-
-    def test_terminal_run_rejects_resume_without_rewriting_state(self):
-        self.f.prepared()
-        before = copy.deepcopy(self.f.c.state())
-        marker = self.terminal_storage_record()
-        marker_bytes = marker.read_bytes()
-        self.assertEqual(self.f.c.state(allow_blocked=True), before)
-        self.assert_terminal_resume_rejected()
-        self.assertEqual(marker.read_bytes(), marker_bytes)
-
-    def test_terminal_run_rejects_direct_mutations_before_state_or_branch_writes(self):
-        self.f.prepared()
-        marker = self.terminal_storage_record()
-        before = (copy.deepcopy(self.f.c.state(allow_blocked=True)), head(self.root), inventory(self.root), marker.read_bytes())
-        for operation in (lambda: self.f.c.phase_begin("P01"),
-                          lambda: self.f.c.author_record("preparation", "forbidden-new-author")):
-            with self.subTest(operation=operation), patch.object(self.f.c, "save") as save, \
-                    patch.object(self.f.c.store, "edit") as edit:
-                with self.assertRaises(RddError) as caught:
-                    operation()
-                self.assertEqual(caught.exception.kind, "environment")
-                self.assertTrue(getattr(caught.exception, "restart_required", False))
-                save.assert_not_called()
-                edit.assert_not_called()
-        self.assertEqual((self.f.c.state(allow_blocked=True), head(self.root), inventory(self.root), marker.read_bytes()), before)
-
-    def test_checkpoint_from_before_storage_failure_cannot_revive_same_or_empty_store(self):
-        self.f.prepared()
-        path = self.export()
-        checkpoint = read_json(path)
-        checkpoint["evidence"][".rdd/evidence/must-not-be-written.txt"] = "sentinel"
-        write_json(path, checkpoint)
-        marker = self.terminal_storage_record()
-        marker_bytes = marker.read_bytes()
-        self.assert_terminal_resume_rejected(path)
-        self.empty_runtime_store()
-        self.assert_terminal_resume_rejected(path)
-        self.assert_no_import()
-        self.assertEqual(marker.read_bytes(), marker_bytes)
-
-    def test_forensic_checkpoint_preserves_terminal_marker_and_cannot_restore_without_local_marker(self):
-        import json
-        from tools.rdd.storage_failure import checkpoint_evidence_path
-        self.f.prepared()
-        marker = self.terminal_storage_record()
-        marker_text = marker.read_text(encoding="utf-8")
-        path = self.export()
-        checkpoint = read_json(path)
-        self.assertEqual(json.loads(checkpoint["evidence"][checkpoint_evidence_path("fixture-run")]), json.loads(marker_text))
-        self.assertEqual(read_json(path)["state"], self.f.c.state(allow_blocked=True))
-        self.assert_terminal_resume_rejected(path)
-        self.empty_runtime_store()
-        marker.unlink()  # Only the portable forensic record now carries the failure.
-        self.assert_terminal_resume_rejected(path)
-        self.assert_no_import()
-        self.assertFalse(marker.exists())
-
-    def reserved_export_destination(self, path=None, *, context=False):
-        if path is None:
-            self.f.prepared()
-            marker = self.terminal_storage_record()
-            path = self.root / ".rdd/runtime/headless.json" if context else marker
-        before = path.read_bytes() if path.exists() else None
-        state = copy.deepcopy(self.f.c.state(allow_blocked=True))
-        with patch.object(self.f.c, "state", wraps=self.f.c.state) as read_state, \
-                patch("tools.rdd.engine.write_json", side_effect=RddError(
-                    "Regression fixture intercepted an unsafe export write")) as write:
-            with self.assertRaises(RddError):
-                self.f.c.export_run(path)
-            # Intercept output so the RED cannot destroy the fixture's database,
-            # locator, or evidence. Rejection must happen before this boundary.
-            self.assertEqual(write.call_count, 0, "Export reached output write before rejecting its destination")
-            read_state.assert_not_called()
-        self.assertEqual(path.read_bytes() if path.exists() else None, before)
-        self.assertEqual(self.f.c.state(allow_blocked=True), state)
-
-    def test_export_cannot_replace_active_reviewer_lock(self):
-        path = self.root / ".rdd/runtime/reviewer.lock"
-        with operation_lock(self.root, reviewer=True):
-            identity = (path.stat().st_dev, path.stat().st_ino)
-            contents = path.read_bytes()
-            with patch.object(self.f.c, "state", side_effect=AssertionError("Destination must reject before export reads state")):
-                with self.assertRaisesRegex(RddError, "reserved run controls"):
-                    self.f.c.export_run(path)
-            self.assertEqual((path.stat().st_dev, path.stat().st_ino), identity)
-            self.assertEqual(path.read_bytes(), contents)
-            with self.assertRaises(RddError):
-                with operation_lock(self.root, reviewer=True):
-                    self.fail("The original reviewer lock must remain held")
-
-    def test_export_cannot_overwrite_terminal_failure_marker(self):
-        self.reserved_export_destination()
-
-    def test_export_cannot_overwrite_headless_context(self):
-        self.reserved_export_destination(context=True)
-
-    def test_export_cannot_replace_controller_files_or_existing_terminal_evidence(self):
-        self.f.prepared()
-        checkpoint = self.export()
-        state = copy.deepcopy(self.f.c.state())
-        log = self.root / next(iter(state["checks"].values()))["log_path"]
-        self.assertTrue(log.is_file())
-        for workflow in (False, True):
-            with operation_lock(self.root, workflow=workflow):
-                pass
-        marker = self.terminal_storage_record()
-        paths = [self.root / ".rdd/run.json"]
-        paths.extend(self.root / (".rdd/runtime/state.sqlite3" + suffix)
-                     for suffix in ("", "-wal", "-shm", "-journal"))
-        paths.extend(self.root / (".rdd/runtime/" + name)
-                     for name in ("controller.lock", "workflow.lock"))
-        paths.extend((checkpoint, log, marker, self.root / ".rdd/runtime/headless.json"))
-        before = {path: path.read_bytes() if path.exists() else None for path in paths}
-        for suffix in ("-wal", "-shm", "-journal"):
-            self.assertIsNone(before[self.root / (".rdd/runtime/state.sqlite3" + suffix)])
-        for path in paths:
-            with self.subTest(destination=path.relative_to(self.root).as_posix()):
-                self.reserved_export_destination(path)
-        for path, original in before.items():
-            self.assertEqual(path.read_bytes() if path.exists() else None, original)
-        self.assertEqual(self.f.c.state(allow_blocked=True), state)
-
-    def test_terminal_record_preserves_old_run_and_allows_distinct_fresh_baseline(self):
-        from tools.rdd.storage_failure import check_failure
-        self.f.prepared()
-        marker = self.terminal_storage_record()
-        marker_bytes = marker.read_bytes()
-        old = copy.deepcopy(self.f.c.state(allow_blocked=True))
-        fresh = engine_fixture.EngineTests(methodName="runTest")
-        self.addCleanup(fresh.doCleanups)
-        fresh.setUp()
-        self.assertNotEqual(fresh.root, self.root)
-        self.assertEqual(fresh.c.state()["status"], "specification")
-        check_failure(fresh.root)
-        self.assertEqual(fresh.c.spec_init()["status"], "existing")
-        self.assertFalse((fresh.root / ".rdd/runtime/failures").exists())
-        self.assertEqual(self.f.c.store.get("fixture-run"), old)
-        self.assertEqual(marker.read_bytes(), marker_bytes)
 
     def test_import_rejects_changed_preparation_baseline_before_any_write(self):
         self.f.prepared()

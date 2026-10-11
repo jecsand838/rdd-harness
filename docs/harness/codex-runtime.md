@@ -6,9 +6,14 @@ and their primary sources are recorded in `.rdd/sources/runtime.json`; run
 
 ## Runtime contract
 
-The three workflow commands open the native Codex 0.162.1 TUI under the user's existing approval policy. The runner supplies stage instructions automatically; the deterministic controller owns durable state, task leases, evidence and acceptance. The TUI uses the canonical coordinator profile. Writable specialists use exact registered `agent_type` values, `fork_turns="none"` and bounded packets. Let profiles supply model and effort without overrides; changed profiles require a fresh runtime session.
+The normal execution surface is an interactive local Codex session opened in the
+repository. Repository skills perform specification, preparation, and
+implementation in sequence. The Python controller supplies validation, durable
+state, task ownership, evidence, and PR lifecycle operations. Model reasoning is
+responsible for producing and reviewing artifacts; the controller decides whether
+the evidence permits a transition.
 
-The canonical roster is:
+The primary thread normally coordinates directly; `rdd_coordinator` is also an explicit role. Native delegation selects the exact `agent_type` with `fork_turns="none"` and a bounded packet, keeping child context limited to its assignment. Let the registered profile supply model and effort without overrides. Reload changed profiles in a fresh Codex session. The canonical roster is:
 
 | Profile | Model / effort | Responsibility |
 |---|---|---|
@@ -23,11 +28,11 @@ The canonical roster is:
 | `rdd_researcher` | `gpt-6.1-sol` / `xhigh` | Read-only evidence gathering and advice |
 | `rdd_reviewer` | `gpt-6.1-sol` / `xhigh` | Read-only live review and independent final perspectives |
 
-Keep at most two writable authors alongside one continuous reviewer. A distinct final execution reviewer or bounded researcher uses a released author slot. Read-only sessions are separate App Server threads managed by the runner; they do not add author capacity. Use bounded node/task packets and disjoint write ownership.
+Three child slots permit two authors and a continuous reviewer; the primary coordinator is outside that child limit. A second final reviewer uses a released author slot. More profiles do not increase concurrency. Use bounded node/task packets and disjoint write ownership.
 
 Canonical `.codex/agents/` TOMLs are the single authority for each role's instructions, model, effort and sandbox. The shared loader validates names, paths, required settings and read-only research/review permissions. `.codex/config.toml` retains native defaults checked against the coordinator and default complex implementor, plus the three-slot limit. Unrelated custom profiles receive no controller claim authority. Procedures stay in the existing skills.
 
-Request exact named `agent_type` values for writable specialists. Start reviewer/researcher work with `./rdd review run --stage STAGE --purpose live|execution|research --prompt-file FILE`. This creates explicitly read-only App Server threads with canonical profiles and inherited approval settings unchanged. `live` retains the continuous reviewer, `execution` supplies a distinct final reviewer, and `research` supplies bounded advice. Reviewers return source-linked JSON; only the coordinator writes and records it through the existing controller ledger. Read-only sessions cannot write files or execute writing controller commands. Do not treat a session ID or requested model/effort as authentication or backend attestation. Consult [custom-subagent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents) and the [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) when changing the installed client.
+Request the exact named `agent_type` during native delegation and verify discovery in a fresh session after profile changes. An already running session may retain the previous roster. Do not treat the CLI's `--profile` option as custom-agent selection. Consult [custom-subagent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents) and the [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) when changing the installed client.
 
 ### Capability checks
 
@@ -35,40 +40,35 @@ Request exact named `agent_type` values for writable specialists. Start reviewer
 
 `requested_runtime` records the role, profile identity/hash, model, effort and sandbox requested by the controller. Keep these declarations distinct from observed session events, exit status and captured results. The JSONL stream supplies actual thread/turn events, not authenticated backend-model or effort attestation. A submitted `verified: true` or remembered session label cannot establish those observations.
 
-Use qualified Codex CLI **0.162.1**. The runner rejects other versions, including prereleases, with an environment error until their protocol is qualified. Authenticate and complete normal project trust setup locally. The TUI and reviewer App Server use the existing configuration and approval policy without overrides. The workflow layer adds no custom approval or question UI.
+Install or update Codex using its official installation instructions, authenticate
+locally, then run the repository doctor. A current client compatible with the
+configuration above is required. The reference client is 0.159.2; the older
+minimum version that introduced Goals does not establish support for all current
+role/configuration features. Follow normal local project-trust prompts rather
+than bypassing them.
 
-Native TUI process ownership is currently qualified on **macOS**. The launcher checks identity-aware process inspection/signaling before changing a run; other hosts stop explicitly until equivalent ownership support is qualified. It observes children through verified ancestry and retains their identities after reparenting, so shutdown can stop observed workers even if they have their own process groups. Signals use the kernel-validated process version rather than a recycled PID/group. This uses the macOS libproc ABI, including an XNU identity selector checked during preflight; ABI or permission failure stops execution. It is cleanup of the qualified `--no-daemon` lifecycle, not containment of arbitrary unobserved daemons. The deterministic controller and platform evidence rules are unchanged. See [Apple’s process identity implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/proc_info.c).
+## Native Goal execution
 
-## Workflow execution and native Goals
+1. Complete `$specification-workflow` and `$preparation-workflow` in sequence, including both independent review perspectives and `gate preparation` for the exact committed handoff.
+2. Run `./rdd goal` to print `.rdd/goals/implementation.txt`.
+3. Open Codex in the repository, or use `./rdd workflow implementation`.
+4. Set the native Goal by entering `/goal ` followed by the printed objective.
+5. Inspect progress with the controller and Codex subagent views. Resume an
+   interrupted Goal with the native `/goal resume` command after checking state.
 
-```sh
-./rdd workflow specification
-./rdd workflow preparation
-./rdd workflow implementation
-```
-
-An unaccepted workflow stage opens the native TUI and supplies its stage instructions; an accepted stage is rechecked without relaunch. Specification presents necessary questions in the TUI. Preparation can proceed interactively without routine user prompts. The implementation command prints exact copy-ready `/goal` text for the user to paste only when no Goal exists. Before stage work, the coordinator runs `./rdd workflow attach STAGE --launch-id UUID`; UUID is a random launch nonce in the supplied instructions. Attach also reads `CODEX_THREAD_ID` from the TUI environment and binds both. The runtime-derived thread ID is observed session provenance, not authentication or backend-model attestation.
-
-On retry, inspect and resume the exact recorded TUI session. For implementation, inspect and resume the existing Goal; never use `--last`, create a replacement, or reset accounting. Missing or uncertain sessions stop recoverably. After the TUI exits, the runner obtains read-only `workflow_result`; that result determines command status. Exit codes are `0` for accepted (or successful print), `1` for invalid request/validation, `2` for incomplete/blocked, and `130` for interruption. Preparation still requires readiness/CI and both final reviews before `gate preparation`; implementation still requires all phase gates/seals/PRs and `gate project`. `--print` is pure inspection for every stage, including an explicit `--mode`. See the [workflow guide](workflow-guide.md) and [official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex) for details.
-
-Runs retain their recorded graph/profile policy and session identities. Historical App Server runs remain inspectable and exportable without identity or policy migration. Continue a policy-incompatible historical run only with its matching harness revision; do not override or backfill stored digests. A new qualified CLI version permits new runs but does not migrate an existing session or Goal accounting.
-
-New read-only reviewer/researcher sessions select `historyMode=legacy` and use the complete thread history returned by `thread/start` or `thread/resume`. Existing saved reviewer sessions may resume in legacy or paginated mode when the runtime returns complete history; missing or partial history stops recovery without replacing the session. Earlier App Server probes found older clients that could not return complete history, so preserve those historical coordinator sessions for inspection/export and continue them only with the matching harness revision. Do not migrate their identities or policy. See the [App Server history contract](https://learn.chatgpt.com/docs/app-server#start-or-resume-a-thread).
-
-### Qualification scope
-
-Qualification on 2026-10-11 used Codex 0.162.1 on macOS arm64 in disposable fixtures, with inherited approval settings unchanged:
-
-- Native launch and exact-session resumption preserved `CODEX_THREAD_ID`; a named writable specialist ran through its canonical profile. A manually entered Goal continued for more than 900 seconds without client continuation turns. Native pause and accounting survived resumption.
-- Shutdown stopped eight observed native processes, including workers outside the parent process group; a delayed-write probe stayed unchanged afterward. Regression tests cover identity loss and bounded direct-child cleanup. Unobserved daemon containment is not claimed.
-- Explicit read-only reviewer sessions denied a real write, retained the live reviewer, and used a distinct execution reviewer. The extracted helper returned snapshot-bound reports after changed source and after interrupting and resuming the same reviewer session.
-- Native whole-command paste works for the short generated `/goal` reference. A multi-paragraph or long single-line command instead became ordinary input or an attachment. The full objective remains in `.rdd/goals/implementation.txt`; do not expand the printed command before pasting.
-
-Public-command probes and complete local gate tests use explicitly simulated compiler/review/CI/PR prerequisites where needed. These establish launch, attachment, manual Goal entry and honest incomplete results separately from real generator/compiler proofs. They do not establish all-native artifact authoring, hosted acceptance or Todo completion. Missing production evidence still blocks acceptance. Raw transcripts and reproducible probes stay in ignored `.rdd/evidence/`; [runtime sources](../../.rdd/sources/runtime.json) records the qualified executable identity. Historical coordinator sessions remain historical; no identity or policy migration is performed.
+The file is a distribution convenience. The goal text itself is under 4,000
+characters and is pasted as the native objective. The workflow skill contains
+the detailed procedure and reads the canonical plan and state as needed. Do not
+inline every requirement, specification, skill or task into the goal. The
+[official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex)
+describes the lifecycle and completion-evidence model. A budget stop or pause is
+not success. Missing benchmarks, model access, unresolved specs, and unavailable
+PR evidence must remain visible blockers.
 
 ## Bounded worker adapter
 
-`CodexAdapter.exec()` remains an optional one-turn worker adapter, separate from native TUI workflow launch and read-only App Server review sessions. It resolves a canonical role, loads its developer instructions and builds an argv list equivalent to:
+`CodexAdapter.exec()` is an optional one-turn adapter for automation. It is not an
+emulation of native Goals. It resolves a canonical role, loads its developer instructions and builds an argv list equivalent to:
 
 ```text
 codex -a never exec --json --color never --model MODEL
@@ -98,7 +98,7 @@ A remembered session ID cannot override the repository baseline. Claims and repo
 
 ### Python adapter interface
 
-The external adapters in `tools/rdd/adapters.py` use only the Python standard library. They accept an injected
+All adapters use only the Python standard library. They accept an injected
 `runner(argv, cwd=..., timeout=..., **kwargs)` returning `CommandResult` for offline
 testing. `RddAdapterError.code` distinguishes capability, malformed-evidence,
 timeout, revision-mismatch and safety failures.
@@ -157,8 +157,9 @@ The configured required-check list must be nonempty. The supplied workflow expos
 the aggregate check **`verify`**. Configure GitHub branch rules to require this
 check for `main`, the prepared baseline, and each exact sealed phase branch before
 it becomes a successor's base. Do not protect active or future phase branches
-with a wildcard rule that prevents their publication or repair. See
-[protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+with a wildcard rule that prevents their publication or repair. See the
+[demo runbook](blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline)
+and [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 If `gh pr checks --required` cannot establish the server-required checks, inspect
 the repository rules and CLI response; do not waive the controller check.
 
