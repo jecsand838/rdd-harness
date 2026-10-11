@@ -160,7 +160,27 @@ class WorkflowRunner:
                 params["dynamicTools"] = [DYNAMIC_TOOL]
         if tid:
             params["threadId"] = tid
+        else:
+            params["historyMode"] = "legacy"
         return params
+
+    @staticmethod
+    def session_history(thread, tid, *, fresh=False, last_turn=None):
+        # Existing paginated sessions can resume with full history on the
+        # qualified runtime. Never replace them or reinterpret omitted history.
+        modes = {"legacy"} if fresh else {"legacy", "paginated"}
+        turns = thread.get("turns")
+        if (thread.get("id") != tid or thread.get("historyMode") not in modes
+                or not isinstance(turns, list)
+                or any(not isinstance(t, dict) or not t.get("id")
+                       or t.get("status") not in {"inProgress", "completed", "interrupted", "failed"}
+                       or not isinstance(t.get("items"), list)
+                       or (t["status"] != "inProgress" and t.get("itemsView", "full") != "full")
+                       for t in turns)):
+            raise RddError("Runtime did not return supported complete thread history; preserve the saved session and diagnostics", "environment")
+        if last_turn and not any(t["id"] == last_turn for t in turns):
+            raise RddError("Runtime history omits the saved last turn; preserve the session instead of repeating work", "environment")
+        return turns
 
     def open_session(self, role, tid=None):
         response = self.server.rpc("thread/resume" if tid else "thread/start", self.session_params(role, tid))
@@ -175,6 +195,7 @@ class WorkflowRunner:
                 or response.get("approvalPolicy") != config.get("approval_policy", "on-request")
                 or response.get("approvalsReviewer") != (config.get("approvals_reviewer") or "user")):
             raise RddError("App Server did not preserve requested profile/sandbox and effective approval policy", "environment")
+        self.session_history(response["thread"], observed, fresh=tid is None)
         self.loaded.add(observed)
         return observed, response["thread"]
 
@@ -295,9 +316,13 @@ class WorkflowRunner:
                 self.update(readonly=sessions)
             tid = session.get("thread_id") if session else None
             if tid not in self.loaded:
-                tid, _ = self.open_session(role, tid)
+                tid, thread = self.open_session(role, tid)
+                old = self.session_history(thread, tid, last_turn=sessions[purpose].get("last_turn"))
                 sessions[purpose]["thread_id"] = tid
                 self.update(readonly=sessions)
+            else:
+                thread = self.server.rpc("thread/read", {"threadId": tid, "includeTurns": True})["thread"]
+                old = self.session_history(thread, tid, last_turn=sessions[purpose].get("last_turn"))
             packet = {"run_id": state["id"], "stage": self.stage, "source_commit": head(self.root),
                       "source_digest": source_digest(self.root), "review_cursor": len(state.get("live_reviews", [])),
                       "controller_digest": digest({k: v for k, v in state.items() if k != "workflow_runtime"}),
@@ -312,7 +337,6 @@ class WorkflowRunner:
                 raise RddError("Read-only snapshot exceeds bounded packet limit", "environment")
             # Reconcile any previous callback before starting another review. A lost
             # reply must not silently create a replacement reviewer or concurrent turn.
-            old = self.server.rpc("thread/read", {"threadId": tid, "includeTurns": True})["thread"].get("turns", [])
             last = old[-1] if old else None
             text = None
             replay = (sessions[purpose].get("callback_id") == callback
@@ -572,9 +596,9 @@ class WorkflowRunner:
                         self.update(connection="starting", requested_runtime=packet["requested_runtime"],
                                     runtime=server.runtime_identity, readonly={})
                     self.thread_id, thread = self.open_session("rdd_coordinator", row.get("thread_id"))
+                    self.session_history(thread, self.thread_id, last_turn=row.get("last_turn"))
                     self.update(thread_id=self.thread_id, connection="connected")
                     if row:
-                        thread = self.server.rpc("thread/read", {"threadId": self.thread_id, "includeTurns": True})["thread"]
                         for turn in thread.get("turns", []):
                             if turn.get("status") == "inProgress":
                                 self.active[self.thread_id] = turn["id"]
