@@ -25,7 +25,7 @@ class RddError(RuntimeError):
 
 class RddStorageError(RddError):
     """A local storage failure, distinct from controller validation failures."""
-    def __init__(self, operation: str, path: Path, cause: sqlite3.Error | OSError):
+    def __init__(self, operation: str, path: Path, cause: BaseException):
         self.operation = operation
         self.database_path = path
         self.sqlite_errorcode = getattr(cause, "sqlite_errorcode", None)
@@ -179,6 +179,7 @@ def now() -> str:
 
 _STORE_LOCK = threading.RLock()
 _STORE_ACTIVE = False
+_STORE_CLOSE_FAILURE: RddStorageError | None = None
 
 
 @contextlib.contextmanager
@@ -188,6 +189,8 @@ def _store_access(operation: str) -> Iterator[None]:
     with _STORE_LOCK:
         if _STORE_ACTIVE:
             raise RddError(f"Reentrant Store {operation} is not allowed during an active storage operation")
+        if _STORE_CLOSE_FAILURE is not None:
+            raise _STORE_CLOSE_FAILURE
         _STORE_ACTIVE = True
         try:
             yield
@@ -195,11 +198,20 @@ def _store_access(operation: str) -> Iterator[None]:
             _STORE_ACTIVE = False
 
 
+def _preserve_storage_failure(primary: BaseException, operation: str, path: Path, failure: BaseException) -> None:
+    """Keep the primary diagnostic and expose suppressed cleanup to its caller."""
+    if (isinstance(failure, (OSError, sqlite3.Error, RddStorageError)) and not isinstance(primary, RddStorageError)
+            and not hasattr(primary, "rdd_storage_error")):
+        error = failure if isinstance(failure, RddStorageError) else RddStorageError(operation, path, failure)
+        if error is not failure:
+            error.__cause__ = failure
+        primary.rdd_storage_error = error
+
+
 @contextlib.contextmanager
-def _store_connection(path: Path | str, database_path: Path, operation: str,
-                      *, run_id: str | None = None, **options) -> Iterator[sqlite3.Connection]:
+def _store_connection(path: Path | str, database_path: Path, operation: str, **options) -> Iterator[sqlite3.Connection]:
+    global _STORE_CLOSE_FAILURE
     db = None
-    failed = False
     primary = None
     try:
         try:
@@ -208,7 +220,6 @@ def _store_connection(path: Path | str, database_path: Path, operation: str,
             raise RddStorageError(operation, database_path, exc) from exc
         yield db
     except BaseException as exc:
-        failed = True
         primary = exc
         raise
     finally:
@@ -216,25 +227,18 @@ def _store_connection(path: Path | str, database_path: Path, operation: str,
             try:
                 db.close()
             except BaseException as exc:
-                if isinstance(exc, (OSError, sqlite3.Error)):
-                    cleanup_error = RddStorageError(operation, database_path, exc)
-                    if failed:
-                        if isinstance(primary, RddStorageError):
-                            _record_store_failure(database_path, primary, run_id)
-                        _record_store_failure(database_path, cleanup_error, run_id, primary=primary)
-                    else:
-                        raise cleanup_error from exc
-                elif not failed:
+                # A raised close does not prove that its handle released SQLite
+                # locks. Refuse all storage in this process before any raw fds.
+                if _STORE_CLOSE_FAILURE is None:
+                    _STORE_CLOSE_FAILURE = RddStorageError(operation + " close", database_path, exc)
+                    _STORE_CLOSE_FAILURE.__cause__ = exc
+                if primary is not None:
+                    _preserve_storage_failure(primary, operation + " close", database_path, _STORE_CLOSE_FAILURE)
+                elif isinstance(exc, (OSError, sqlite3.Error)):
+                    raise _STORE_CLOSE_FAILURE
+                else:
+                    _preserve_storage_failure(exc, operation + " close", database_path, _STORE_CLOSE_FAILURE)
                     raise
-
-
-def _record_store_failure(path: Path, error: RddStorageError, run_id: str | None,
-                          *, primary: BaseException | None = None) -> None:
-    if path.parts[-3:] == (".rdd", "runtime", "state.sqlite3"):
-        from .storage_failure import preserve_primary_error, record_failure
-        record_failure(path.parents[2], error, run_id=run_id)
-        if primary is not None:
-            preserve_primary_error(primary, error, "SQLite cleanup")
 
 
 class Store:
@@ -259,15 +263,13 @@ class Store:
             raise RddStorageError(operation, path, exc) from exc
 
     @contextlib.contextmanager
-    def _writer(self, operation: str, run_id: str) -> Iterator[sqlite3.Connection]:
+    def _writer(self, operation: str) -> Iterator[sqlite3.Connection]:
         with _store_access(operation):
-            from .storage_failure import check_failure
-            check_failure(self.root, run_id)
             try:
                 self.path.parent.mkdir(parents=True, exist_ok=True)
             except OSError as exc:
                 raise RddStorageError(operation, self.path, exc) from exc
-            with _store_connection(self.path, self.path, operation, run_id=run_id, isolation_level=None) as db:
+            with _store_connection(self.path, self.path, operation, isolation_level=None) as db:
                 for sql in ("PRAGMA journal_mode=WAL", "PRAGMA synchronous=FULL",
                             "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, value TEXT NOT NULL)"):
                     self._execute(db, sql, (), self.path, operation)
@@ -292,124 +294,85 @@ class Store:
 
         failure = OSError("database changed during preflight")
         directory = None
-        failed = False
+        primary = None
         try:
             try:
                 directory = tempfile.TemporaryDirectory(prefix="rdd-state-preflight-")
                 snapshot = Path(directory.name)
                 for _ in range(3):
+                    for previous in snapshot.iterdir():
+                        previous.unlink()
                     try:
-                        for previous in snapshot.iterdir():
-                            previous.unlink()
                         before = inputs()
                         for name in before:
                             shutil.copyfile(path.parent / name, snapshot / name)
                         if before != inputs() or any(file_hash(snapshot / name) != value for name, value in before.items()):
                             failure = OSError("database changed during preflight")
                             continue
-                        with _store_connection((snapshot / path.name).as_uri() + "?mode=ro", path, operation,
-                                               run_id=run_id, uri=True) as db:
-                            return Store._row(db, run_id, path, operation, existence=existence)
-                    except RddStorageError as exc:
-                        _record_store_failure(path, exc, run_id)
-                        if getattr(exc, "restart_required", False):
-                            raise
-                        failure = exc
-                    except OSError as exc:
-                        failure = exc
-                if isinstance(failure, RddStorageError):
-                    raise failure
+                    except FileNotFoundError as exc:
+                        failure = exc  # A writer may checkpoint/remove the WAL while copying.
+                        continue
+                    with _store_connection((snapshot / path.name).as_uri() + "?mode=ro", path, operation, uri=True) as db:
+                        return Store._row(db, run_id, path, operation, existence=existence)
                 raise RddStorageError(operation, path, failure) from failure
             except OSError as exc:
                 raise RddStorageError(operation, path, exc) from exc
-        except BaseException:
-            failed = True
+        except BaseException as exc:
+            primary = exc
             raise
         finally:
             if directory is not None:
                 try:
                     directory.cleanup()
                 except BaseException as exc:
-                    if not failed:
-                        if isinstance(exc, OSError):
-                            raise RddStorageError(operation, path, exc) from exc
+                    if primary is not None:
+                        _preserve_storage_failure(primary, operation + " snapshot cleanup", path, exc)
+                    elif isinstance(exc, OSError):
+                        raise RddStorageError(operation, path, exc) from exc
+                    else:
                         raise
 
     @staticmethod
     def read(root: Path, run_id: str) -> dict:
         """Read a stable DB/WAL copy without creating source auxiliary files."""
-        try:
-            with _store_access("read"):
-                row = Store._snapshot_row(root / ".rdd/runtime/state.sqlite3", run_id, "read")
-                return Store._state(row, run_id)
-        except RddStorageError as exc:
-            from .storage_failure import record_failure
-            record_failure(root, exc, run_id=run_id)
-            raise
+        with _store_access("read"):
+            row = Store._snapshot_row(root / ".rdd/runtime/state.sqlite3", run_id, "read")
+            return Store._state(row, run_id)
 
     def exists(self, run_id: str) -> bool:
-        try:
-            with _store_access("exists"):
-                try:
-                    if not self.path.exists():
-                        return False
-                except OSError as exc:
-                    raise RddStorageError("exists", self.path, exc) from exc
-                return self._snapshot_row(self.path, run_id, "exists", existence=True) is not None
-        except RddStorageError as exc:
-            from .storage_failure import record_failure
-            record_failure(self.root, exc, run_id=run_id)
-            raise
+        with _store_access("exists"):
+            try:
+                if not self.path.exists():
+                    return False
+            except OSError as exc:
+                raise RddStorageError("exists", self.path, exc) from exc
+            return self._snapshot_row(self.path, run_id, "exists", existence=True) is not None
 
     def _put(self, db, state: dict, operation: str) -> None:
-        from .storage_failure import check_failure
-        check_failure(self.root, state["id"])
         self._execute(db, "INSERT INTO runs VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
                       (state["id"], canonical(state).decode()), self.path, operation)
 
-    @contextlib.contextmanager
-    def _transaction(self, db, run_id: str, operation: str) -> Iterator[None]:
-        from .storage_failure import check_failure
-        try:
-            self._execute(db, "BEGIN IMMEDIATE", (), self.path, operation)
-            yield
-            check_failure(self.root, run_id)
-            self._execute(db, "COMMIT", (), self.path, operation)
-        except BaseException as primary:
-            try:
-                if db.in_transaction:
-                    db.execute("ROLLBACK")
-            except BaseException as exc:
-                if isinstance(exc, (OSError, sqlite3.Error)):
-                    if isinstance(primary, RddStorageError):
-                        _record_store_failure(self.path, primary, run_id)
-                    _record_store_failure(self.path, RddStorageError(operation, self.path, exc), run_id, primary=primary)
-            raise
-
     def put(self, state: dict) -> None:
-        from .storage_failure import record_failure
-        try:
-            with self._writer("put", state["id"]) as db:
-                with self._transaction(db, state["id"], "put"):
-                    self._put(db, state, "put")
-        except RddStorageError as exc:
-            record_failure(self.root, exc, run_id=state["id"])
-            raise
+        with self._writer("put") as db:
+            self._put(db, state, "put")
 
     @contextlib.contextmanager
     def edit(self, run_id: str) -> Iterator[dict]:
-        from .storage_failure import check_failure, record_failure
-        try:
-            with self._writer("edit", run_id) as db:
-                with self._transaction(db, run_id, "edit"):
-                    row = self._row(db, run_id, self.path, "edit")
-                    state = self._state(row, run_id)
-                    yield state
-                    check_failure(self.root, run_id)
-                    self._put(db, state, "edit")
-        except RddStorageError as exc:
-            record_failure(self.root, exc, run_id=run_id)
-            raise
+        with self._writer("edit") as db:
+            try:
+                self._execute(db, "BEGIN IMMEDIATE", (), self.path, "edit")
+                row = self._row(db, run_id, self.path, "edit")
+                state = self._state(row, run_id)
+                yield state
+                self._put(db, state, "edit")
+                self._execute(db, "COMMIT", (), self.path, "edit")
+            except BaseException as primary:
+                try:
+                    if db.in_transaction:
+                        db.execute("ROLLBACK")
+                except BaseException as exc:
+                    _preserve_storage_failure(primary, "edit rollback", self.path, exc)
+                raise
 
     def close(self):
         """Compatibility no-op: no operation leaves a connection on this object."""
@@ -514,9 +477,9 @@ def validate_artifact(root: Path, name: str, value: Any) -> None:
 
 
 @contextlib.contextmanager
-def operation_lock(root: Path, *, workflow: bool = False):
+def operation_lock(root: Path):
     """Serialize CLI mutations across processes; OS releases the lock after crashes."""
-    path = safe_path(root, ".rdd/runtime/workflow.lock" if workflow else ".rdd/runtime/controller.lock")
+    path = safe_path(root, ".rdd/runtime/controller.lock")
     path.parent.mkdir(parents=True, exist_ok=True)
     stream = path.open("a+b")
     locked = False
@@ -531,14 +494,14 @@ def operation_lock(root: Path, *, workflow: bool = False):
                 msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
                 locked = True
             except OSError as exc:
-                raise RddError("Another workflow driver is running" if workflow else "Another controller mutation is running; read status and retry after it finishes", "environment") from exc
+                raise RddError("Another controller mutation is running; read status and retry after it finishes", "environment") from exc
         else:
             import fcntl
             try:
                 fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 locked = True
             except BlockingIOError as exc:
-                raise RddError("Another workflow driver is running" if workflow else "Another controller mutation is running; read status and retry after it finishes", "environment") from exc
+                raise RddError("Another controller mutation is running; read status and retry after it finishes", "environment") from exc
         yield
     finally:
         if locked:

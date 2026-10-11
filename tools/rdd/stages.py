@@ -48,10 +48,6 @@ class StageWorkflow:
                 raise RddError(f"Stage review {field} coverage is incomplete or unknown", "review")
 
     def validate_stage_checkpoint(self, state: dict, checkpoint: dict) -> None:
-        self.validate_stage_acceptances(state, checkpoint["evidence"].get)
-
-    def validate_stage_acceptances(self, state: dict, evidence, *, through: str = "preparation") -> None:
-        """Verify recorded acceptance with local or staged evidence, without executing checks."""
         if state.get("workflow_version") != 2:
             raise RddError("Legacy checkpoints are read/export only; start a fresh v2 baseline")
         required = []
@@ -60,14 +56,12 @@ class StageWorkflow:
         if state.get("plan_digest"):
             required.append(("plan", state.get("plan_acceptance")))
         status = state.get("resume_status") if state["status"] == "blocked" else state["status"]
-        if through == "preparation" and status in {"prepared", "implementation", "complete"}:
+        if status in {"prepared", "implementation", "complete"}:
             gate = state.get("preparation_gate")
             if not gate or gate.get("status") != "passed" or gate.get("application_complete") is not False:
                 raise RddError("Checkpoint lacks accepted preparation gate")
             required.append(("preparation", gate))
         for stage, acceptance in required:
-            if STAGES.index(stage) > STAGES.index(through):
-                continue
             if not isinstance(acceptance, dict) or not {"candidate", "readiness_digest", "review_digests"} <= acceptance.keys():
                 raise RddError(f"Checkpoint lacks {stage} acceptance")
             candidate = acceptance["candidate"]
@@ -90,9 +84,19 @@ class StageWorkflow:
                 checks = artifacts.unique(self.spec()["checks"], "check")
                 if receipt["check_id"] not in checks:
                     raise RddError("Checkpoint readiness check is unknown")
-                verify_receipt(self.root, receipt, checks[receipt["check_id"]],
-                    commit=candidate["source_commit"], sources=candidate["source_digest"],
-                    spec_digest=candidate["spec_digest"], plan_digest=candidate["plan_digest"], log_loader=evidence)
+                raw = checkpoint["evidence"].get(receipt["log_path"])
+                if raw is None:
+                    raise RddError("Checkpoint lacks readiness raw evidence")
+                # Verify staged bytes before importing anything into the run.
+                with tempfile.TemporaryDirectory(prefix="rdd-receipt-preflight-") as directory:
+                    scratch = Path(directory)
+                    schema = scratch / ".rdd/schemas/evidence.schema.json"
+                    schema.parent.mkdir(parents=True)
+                    shutil.copyfile(self.root / ".rdd/schemas/evidence.schema.json", schema)
+                    from .common import atomic_write, safe_path
+                    atomic_write(safe_path(scratch, receipt["log_path"]), raw.encode("utf-8"))
+                    verify_receipt(scratch, receipt, checks[receipt["check_id"]], commit=candidate["source_commit"],
+                        sources=candidate["source_digest"], spec_digest=candidate["spec_digest"], plan_digest=candidate["plan_digest"])
             receipts = [state["checks"][eid] for eid in ready["evidence"]]
             verify_readiness_coverage(self.spec(), self.stage_check_ids(stage), receipts, require_ci=stage == "preparation")
             if stage == "preparation":
@@ -102,7 +106,7 @@ class StageWorkflow:
                 if set(runs) != ci_platforms:
                     raise RddError("Checkpoint preparation lacks its observed CI runs")
                 for platform, observed in runs.items():
-                    raw = evidence(observed["path"])
+                    raw = checkpoint["evidence"].get(observed["path"])
                     report = _strict_json(raw) if isinstance(raw, str) else {}
                     if (digest(report) != observed["report_digest"] or report.get("source_commit") != candidate["source_commit"]
                             or report.get("source_digest") != candidate["source_digest"] or report.get("platform") != platform
@@ -113,7 +117,7 @@ class StageWorkflow:
                 scratch = Path(directory)
                 from .common import atomic_write, safe_path
                 for receipt in receipts:
-                    atomic_write(safe_path(scratch, receipt["log_path"]), evidence(receipt["log_path"]).encode("utf-8"))
+                    atomic_write(safe_path(scratch, receipt["log_path"]), checkpoint["evidence"][receipt["log_path"]].encode("utf-8"))
                 verify_canonical_contract_receipts(self.root, self.spec(), receipts, log_root=scratch)
                 verify_resource_observations(scratch, self.spec(), receipts)
             reviews = state.get("stage_reviews", {}).get(stage, {})

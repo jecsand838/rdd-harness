@@ -5,8 +5,6 @@ description: Convert frozen RDD specifications and acceptance scenarios into a v
 
 # Preparation workflow
 
-Enter with `./rdd workflow preparation`. The runner resumes the accepted specification run and activates native Goal execution; preparation is headless. Do not request routine conversational answers, a manual prompt or Goal activation. Missing approval or external evidence stops recoverably. Follow `AGENTS.md` for the read-only review/research bridge and writable planner dispatch; only the coordinator records returned review JSON in the existing ledger.
-
 Read `AGENTS.md`, `docs/harness/workflow-guide.md`, and `docs/harness/artifact-guide.md`. Run `./rdd status` and `./rdd doctor`; verify that specification is frozen and its digests still match. Read the exact frozen manifests and only the solution sections required for planning.
 
 Register every actual artifact author with `./rdd author record --stage plan --session-id ID` and keep the manifest author inventory consistent. Registration records provenance; it does not authenticate a session or replace independent work.

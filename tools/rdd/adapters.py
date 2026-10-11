@@ -662,6 +662,27 @@ class CodexAdapter:
         self.binary = binary
         self.runner = runner
 
+    def native_argv(self, prompt: str, session_id: str | None = None) -> list[str]:
+        """Build a native coordinator launch or exact-session resume without executing it."""
+        if not isinstance(prompt, str) or not prompt.strip() or "\0" in prompt:
+            raise RddAdapterError("empty-prompt", "A native prompt must contain a concrete target without NUL.")
+        if session_id is not None and (not isinstance(session_id, str) or not re.fullmatch(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", session_id
+        )):
+            raise RddAdapterError("invalid-session-id", "Native resume requires the exact canonical session UUID.")
+        try:
+            profile = load_profiles(self.repo)["rdd_coordinator"]
+        except RddError as exc:
+            raise RddAdapterError("invalid-profile", str(exc)) from exc
+        argv = [self.binary]
+        if session_id is not None:
+            argv.extend(["resume", session_id])
+        argv.extend(["--cd", str(self.repo), "--model", profile["model"],
+                     "--config", "model_reasoning_effort=" + codex_config_string(profile["effort"]),
+                     "--config", "developer_instructions=" + codex_config_string(profile["developer_instructions"]),
+                     "--sandbox", profile["sandbox"], "--", prompt])
+        return argv
+
     def doctor(self, models: Sequence[tuple[str, str]], *, refresh_catalog: bool = False,
                roles: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any]:
         """Read client capabilities and authentication; never execute a model turn."""
@@ -671,10 +692,19 @@ class CodexAdapter:
                 raise RddAdapterError("missing-model-policy", "Doctor requires the explicit profile model/effort inventory.")
             version = _checked(self.runner([self.binary, "--version"], cwd=self.repo, timeout=15), "Read Codex version")
             report["version"] = version.stdout.strip()
-            help_result = _checked(self.runner([self.binary, "exec", "--help"], cwd=self.repo, timeout=15), "Read Codex exec flags")
-            for flag in ("--json", "--config", "--output-schema", "--output-last-message"):
-                if flag not in help_result.stdout:
-                    report["blockers"].append(f"Installed Codex lacks {flag}")
+            capabilities = (
+                ([], "interactive", ("--config", "--model", "--sandbox", "--cd")),
+                (["resume"], "resume", ("SESSION_ID", "--config", "--model", "--sandbox", "--cd")),
+                (["exec"], "exec", ("--json", "--config", "--model", "--sandbox", "--cd", "--color",
+                                     "--output-schema", "--output-last-message")),
+                (["debug", "models"], "model catalog", ("--bundled",)),
+            )
+            for command, label, flags in capabilities:
+                help_result = _checked(self.runner([self.binary, *command, "--help"], cwd=self.repo, timeout=15),
+                                       f"Read Codex {label} flags")
+                for flag in flags:
+                    if flag not in help_result.stdout:
+                        report["blockers"].append(f"Installed Codex {label} lacks {flag}")
             args = [self.binary, "debug", "models"] + ([] if refresh_catalog else ["--bundled"])
             catalog = _json_output(self.runner(args, cwd=self.repo, timeout=45), "Read Codex model catalog")
             rows = catalog.get("models", []) if isinstance(catalog, dict) else catalog
@@ -707,8 +737,8 @@ class CodexAdapter:
              validator: Callable[[Any, Mapping[str, Any]], None] = validate_structured_output) -> dict[str, Any]:
         """Run one bounded worker turn, saving JSONL, stderr, output, and receipt.
 
-        The App Server workflow runner owns persistent coordination and native
-        Goals; this adapter serves optional bounded workers only.
+        This does not implement native Goals. Use interactive /goal for the
+        persistent coordinator and this adapter for optional bounded workers.
         The caller supplies a fresh run_dir under the repository's runtime path.
         """
         if not isinstance(prompt, str) or not prompt.strip():

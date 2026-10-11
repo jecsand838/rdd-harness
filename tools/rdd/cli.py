@@ -5,6 +5,7 @@ import argparse
 import contextlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -12,10 +13,9 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rdd.adapters import RddAdapterError
-from rdd.common import RddError, operation_lock, require_source_branch
+from rdd.common import RddError, RddStorageError, operation_lock, require_source_branch
 from rdd.engine import Controller
 from rdd.profiles import IMPLEMENTOR_ROLES, WORKFLOW_AUTHOR_ROLES, profile_policy_digest
-from rdd.storage_failure import check_failure
 
 
 def parser() -> argparse.ArgumentParser:
@@ -90,7 +90,7 @@ def parser() -> argparse.ArgumentParser:
     for field in ("requirement", "element", "task", "evidence"):
         block.add_argument("--" + field, action="append", default=[])
     commands.add_parser("goal", help="Print only the native /goal objective, guaranteed below 4,000 characters")
-    wf = commands.add_parser("workflow", help="Run a workflow through verified acceptance, inspect nodes, or print its launch packet")
+    wf = commands.add_parser("workflow", help="Open an interactive Codex workflow, or print its launch packet")
     wf.add_argument("stage", choices=("specification", "preparation", "implementation", "nodes", "next", "claim", "record", "release"))
     wf.add_argument("target", nargs="?")
     wf.add_argument("--session-id")
@@ -99,7 +99,7 @@ def parser() -> argparse.ArgumentParser:
     wf.add_argument("--reason")
     wf.add_argument("--finding", help="Unresolved live finding authorizing a scoped corrective retry")
     wf.add_argument("--mode", choices=("amend", "regenerate"))
-    wf.add_argument("--print", action="store_true", dest="print_only", help="Read-only launch packet, including with --mode")
+    wf.add_argument("--print", action="store_true", dest="print_only", help="Show the launch packet; does not start Codex (an explicit --mode starts the requested run)")
     contract = commands.add_parser("contracts")
     contract.add_argument("action", choices=("check", "generate"))
     contract.add_argument("--bootstrap-lock", action="store_true", help="First qualification only: resolve missing Cargo.lock files")
@@ -265,17 +265,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     controller = None
     try:
-        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"}:
-            controller = Controller(args.root)
-            if args.print_only:
-                result = controller.workflow(args.stage, args.mode, print_only=True)
-            else:
-                from rdd.workflow import WorkflowRunner
-                result = WorkflowRunner(controller).run(args.stage, args.mode)
-            print(json.dumps(result, indent=2, ensure_ascii=False))
-            if result.get("interrupted"):
-                return 130
-            return 0 if args.print_only or result.get("status") == "passed" else (1 if result.get("status") == "failed" else 2)
         source_write = args.command in {"start", "prepare", "resume", "phase"} or (
             args.command in {"spec", "plan"} and args.action in {"init", "freeze"}) or (
             args.command == "contracts" and args.action == "generate") or (
@@ -287,10 +276,12 @@ def main(argv: list[str] | None = None) -> int:
             require_source_branch(args.root)
         controller = Controller(args.root)
         legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run", "selftest"} or (
-            args.command == "workflow" and args.stage == "nodes")
+            args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage == "nodes"))
         if not legacy_readonly:
             controller.guard_v2()
-        if args.command == "resume":
+        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"}:
+            controller.guard_workflow(args.stage, args.mode, print_only=args.print_only)
+        elif args.command == "resume":
             controller.guard_resume(args.file)
         elif args.command == "export-run":
             controller.guard_export(args.file)
@@ -298,9 +289,8 @@ def main(argv: list[str] | None = None) -> int:
             controller.guard_source_write(baseline=args.command in {"spec", "plan", "prepare", "contracts"})
         readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "selftest", "ci"} or (
             args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
-            args.command == "workflow" and args.stage in {"nodes", "next"})
+            args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage in {"nodes", "next"}))
         if args.command in {"start", "init"}:
-            check_failure(controller.root)
             profile_policy_digest(controller.root)
             if args.command == "init":
                 controller.guard_run_policy()
@@ -312,46 +302,48 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "goal":
             print(result)
             return 0
+        if args.command == "workflow" and args.stage in {"specification", "preparation", "implementation"} and not args.print_only:
+            if not shutil.which("codex"):
+                raise RddError("codex is not on PATH. Install/authenticate the Codex CLI; use workflow --print to inspect the launch packet.", "environment")
+            if not sys.stdin.isatty():
+                raise RddError("Interactive Codex needs a terminal; use workflow --print to inspect the prompt and invoke it in your terminal.", "environment")
+            if result["native_goal"]:
+                print("After Codex opens, activate native goal mode with /goal and the output of ./rdd goal.\n")
+            return subprocess.call(result["argv"], cwd=controller.root)
         displayed = workflow_display(result) if args.command == "status" or (
             args.command == "workflow" and args.stage in {"nodes", "claim"}) else result
         print(json.dumps(displayed, indent=2, ensure_ascii=False))
         if isinstance(result, dict):
-            if result.get("restart_required"):
-                return 2
             if result.get("outcome") == "fail" or result.get("status") == "failed":
                 return 1
             if result.get("status") == "blocked" or result.get("ready") is False:
                 return 2
         return 0
     except (RddError, RddAdapterError) as exc:
-        terminal = getattr(exc, "restart_required", False)
-        kind = "environment" if terminal else getattr(exc, "kind", getattr(exc, "code", "environment"))
+        kind = getattr(exc, "kind", getattr(exc, "code", "environment"))
+        storage_error = exc if isinstance(exc, RddStorageError) else getattr(exc, "rdd_storage_error", None)
         # Frozen authority/phase drift cannot be silently repaired by an implementation agent.
-        if controller and kind in {"specification", "planning", "closure"} and args.command != "workflow":
+        if not storage_error and controller and kind in {"specification", "planning", "closure"}:
             try:
                 state = controller.state(allow_blocked=True)
                 if state["status"] in {"specified", "planned", "preparing", "prepared", "implementation", "complete"} and (
                         kind != "planning" or state.get("plan_digest")):
                     controller.block(kind, str(exc))
-            except (RddError, OSError):
-                pass
-        extra = {"severity": "critical", "restart_required": True,
-                 "failure_path": getattr(exc, "failure_path", None)} if terminal else {}
-        if getattr(exc, "persistence_error", None):
-            extra["persistence_error"] = exc.persistence_error
-        print(json.dumps({"status": "failed" if terminal or kind == "validation" else "blocked",
-                          "kind": kind, "error": str(exc), **extra}, ensure_ascii=False))
+            except (RddError, OSError) as blocker_error:
+                storage_error = (blocker_error if isinstance(blocker_error, RddStorageError)
+                                 else getattr(blocker_error, "rdd_storage_error", None))
+        detail = str(exc)
+        if storage_error:
+            kind = "environment"
+            if storage_error is not exc:
+                detail += "; " + str(storage_error)
+        print(json.dumps({"status": "blocked" if kind != "validation" else "failed", "kind": kind, "error": detail}, ensure_ascii=False))
         return 1 if kind == "validation" else 2
-    except (OSError, ValueError, KeyError, TypeError, KeyboardInterrupt) as exc:
-        terminal = getattr(exc, "restart_required", False)
-        if isinstance(exc, KeyboardInterrupt) and not terminal:
-            raise
-        extra = {"severity": "critical", "restart_required": True,
-                 "failure_path": getattr(exc, "failure_path", None)} if terminal else {}
-        if getattr(exc, "persistence_error", None):
-            extra["persistence_error"] = exc.persistence_error
-        print(json.dumps({"status": "failed" if terminal else "blocked", "kind": "environment",
-                          "error": str(exc), **extra}, ensure_ascii=False))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        detail = str(exc)
+        if getattr(exc, "rdd_storage_error", None) is not None:
+            detail += "; " + str(exc.rdd_storage_error)
+        print(json.dumps({"status": "blocked", "kind": "environment", "error": detail}, ensure_ascii=False))
         return 2
     finally:
         if controller:

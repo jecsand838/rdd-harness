@@ -61,7 +61,7 @@ The controller uses the Python standard library; no Python package installation 
 | Prerequisite | Purpose |
 | --- | --- |
 | Python 3.11+ and Git | Controller, regression suite, exact source identities, branches, and isolated worktrees |
-| Qualified Codex CLI 0.161.0 or 0.162.1 with App Server, native Goals and custom subagents | Workflow execution and configured agent roles |
+| Codex CLI with native Goals and custom subagents | Interactive workflows and configured agent roles |
 | Model/account access | The Astra/ultra, Sol/xhigh, and Luna/xhigh settings listed above; no silent model downgrade |
 | GitHub CLI `gh` and a writable GitHub `origin` remote | Phase PR publication, required checks, and stack verification |
 | Rustup with the [pinned Rust toolchain](rust-toolchain.toml) | Rust compiler, `rustfmt`, `clippy`, and `wasm32-unknown-unknown` for native and Rust/WASM work |
@@ -74,38 +74,81 @@ The [runtime guide](docs/harness/codex-runtime.md) links installation references
 
 ## Get started
 
-Clone your repository or fork using its actual URL and enter a clean checkout. Authenticate Codex and GitHub locally, configure your Git author identity and writable `origin`, and provide the [required tools and evidence access](#prerequisites). Then run these commands in order, allowing each to finish:
+### Initialize and inspect without starting development
+
+Clone your repository or fork using its actual URL, then initialize local state:
 
 ```sh
-./rdd workflow specification
-./rdd workflow preparation
-./rdd workflow implementation
+git clone YOUR_GITHUB_REPOSITORY_URL rdd-harness
+cd rdd-harness
+git switch -c codex/todo-baseline origin/main
+./rdd init
+./rdd status
+./rdd --help
+./rdd selftest
+./rdd doctor --full
 ```
 
-Specification starts a fresh regenerate run when none exists. After read-only runtime preflight, a fresh checkout on `main` gets a dedicated `codex/*-baseline` branch and local run state. A clean existing authoring branch is retained. The coordinator qualifies and freezes the solution, with typed questions only when actual specification answers are needed. Preparation and implementation run headlessly with native Goals. The runner activates and resumes those Goals; it supplies the workflow instructions and objective.
+Run `init` before `status` on a fresh clone: Git does not carry the ignored local run locator. These commands initialize or inspect the harness and run its isolated regression fixtures; **they do not start an RDD development run**.
 
-Each command returns success only after the controller verifies that stage's acceptance. Preparation still requires committed and pushed materialization, actual preparation CI, required external evidence, and both final review perspectives before `gate preparation`. Implementation still requires every phase gate, verified PR and seal, then `gate project`. Missing permissions, approvals, tools, evidence or backend sessions leave the command incomplete. Follow the [workflow guide](docs/harness/workflow-guide.md) for detailed obligations and the [short playbook](docs/harness/blog-demo.md) for a fresh checkout.
-
-| Exit | Meaning |
+| Command | Purpose and expected result |
 | --- | --- |
-| `0` | Controller-accepted stage; for `--print`, successful inspection only |
-| `1` | Invalid request or failed validation |
-| `2` | Incomplete or blocked workflow; preserve diagnostics and resolve the cause |
-| `130` | Interrupted workflow; preserve the recorded session and rerun the same command |
+| `./rdd init` | Creates local directories and the run locator; reports `status: initialized` |
+| `./rdd status` | Reports authoritative state and source identity; a fresh harness remains `not_started` with no active run |
+| `./rdd --help` | Lists controller commands; use a subcommand's `--help` for its arguments |
+| `./rdd selftest` | Runs offline controller/adapter regressions, including real subprocess and Git fixtures; success is harness verification, not Todo acceptance |
+| `./rdd doctor --full` | Reports tools, authentication, and advertised client capabilities; resolve reported blockers before workflow execution |
 
-Repeating a workflow command resumes its recorded run and backend sessions. An already accepted stage is checked and returned without another launch. The runner never resets an uncertain session or Goal accounting to imply progress. An explicit workflow `--mode` must match the existing run. Use the explicit new-run procedure below for an intentional amendment or replacement.
+On Windows, replace `./rdd` with `python tools/rdd/cli.py`, `rdd.cmd` in Command Prompt, or `./rdd.ps1` in PowerShell, keeping the same arguments. On Unix, `python3 tools/rdd/cli.py` also works if a file extractor did not preserve executable permissions.
 
-To inspect a launch packet without starting Codex or changing branch, run state, Goals or files:
+If starting from an archive rather than a clone, extract it into its own directory, initialize Git on a named authoring branch with `git init -b codex/todo-baseline`, and run `./rdd init` there. After configuring your Git identity, make the initial source commit and connect a writable `origin` remote if one does not already exist. Clones already have history and a remote; they do not need an extra initialization commit.
+
+To inspect the specification launch prompt without opening Codex or starting a run:
 
 ```sh
 ./rdd workflow specification --print
 ```
 
-`--print` is pure for all three stages, including when `--mode` is supplied. Use `./rdd --help`, `./rdd selftest` and `./rdd doctor --full` for inspection. `./rdd init` remains available for initializing local state before standalone `status` commands; a workflow command handles fresh-run initialization itself. Harness selftests do not prove Todo acceptance.
+Use that command **without `--mode`**. Supplying an explicit mode can start a new run and archive prior artifacts even when `--print` is present.
 
-On Windows, replace `./rdd` with `python tools/rdd/cli.py`, `rdd.cmd` in Command Prompt, or `./rdd.ps1` in PowerShell, keeping the same arguments. On Unix, `python3 tools/rdd/cli.py` also works if executable permissions were not preserved. Archives require their own Git repository, initial committed source and a named authoring branch before workflow execution.
+### Start development deliberately
 
-`main` remains the merge-only release branch. The shipped CI verifies pushes to `codex/*-baseline` and phase PRs targeting those branches or `rdd/**`. Other branch naming patterns need a reviewed CI filter change before specification freeze. Source authoring on detached HEAD or a branch other than the recorded baseline/phase is refused. Configure the exact trusted preparation policy pin and required checks as described in the [runtime guide](docs/harness/codex-runtime.md#stacked-pr-policy).
+`main` is the merge-only release branch. Begin on a clean, dedicated baseline such as `codex/todo-baseline`; use that branch for all specification and preparation commits. In the examples below, replace `YOUR_BASELINE_BRANCH` with its actual name. The shipped CI verifies pushes to `codex/*-baseline` and phase PRs targeting those branches or `rdd/**`. Other naming patterns require a reviewed CI filter change before specification freeze. The controller rejects source authoring on `main`, detached HEAD, or a branch other than the recorded baseline/phase. Complete each workflow and commit its accepted output before continuing; these are separate interactive sessions, not a batch script.
+
+1. **Specify the solution.** For a first full solution, start a regenerate run:
+
+   ```sh
+   ./rdd workflow specification --mode regenerate
+   ```
+
+   Resolve architectural questions in the Codex session. The workflow qualifies the solution and freezes the specification and contracts. Commit the accepted baseline before preparation.
+
+2. **Prepare the work.** From the frozen specification:
+
+   ```sh
+   ./rdd workflow preparation
+   ```
+
+   The workflow reviews and freezes the task graph, then materializes the approved shells, task packets, and matrix. This enters `preparing`; commit the materialized handoff before final review. A frozen specification defect stops affected work and is recorded as a critical harness regression.
+
+3. **Publish and accept preparation.** Push the committed materialization outside `main`:
+
+   ```sh
+   git push origin YOUR_BASELINE_BRANCH
+   ```
+
+   Obtain successful preparation CI for that exact commit using the pinned `RDD_PREPARATION_HARNESS_SHA`, import any required external evidence, and run `./rdd readiness preparation`. Both independent final reviewers must inspect the committed handoff and current evidence; record their reports, then run `./rdd gate preparation`. Only a passing gate grants `prepared` and permits P01. See the [preparation protocol](docs/harness/workflow-guide.md#stage-two-preparation) for the exact sequence.
+
+   The first phase PR uses this accepted remote baseline. Require `verify` on it; later phase bases need the same required check only after they are sealed. Do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for setup commands.
+
+4. **Open implementation and activate native Goal mode.** Obtain the objective, then launch the implementation session:
+
+   ```sh
+   ./rdd goal
+   ./rdd workflow implementation
+   ```
+
+   In Codex, submit `/goal` followed by the exact objective printed by `./rdd goal`. The launcher provides the handoff; it does not activate native Goal mode itself. The objective is under 4,000 characters. Follow the [official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex) for the Goal lifecycle and the [workflow guide](docs/harness/workflow-guide.md#stage-three-implementation) for controller operations.
 
 ## Follow progress and recover
 
@@ -115,13 +158,13 @@ Use `./rdd status` for the current run, active phase, tasks, blockers, and exact
 ./rdd export-run .rdd/evidence/run-checkpoint.json
 ```
 
-After resolving an interruption, return to the recorded baseline or phase branch and rerun the same workflow command. It reconciles resumable controller state and resumes the recorded backend session. Standalone controller recovery remains available with:
+After resolving an interruption, return to the run's recorded baseline or phase branch and resume local controller state with:
 
 ```sh
 ./rdd resume
 ```
 
-Worker branches and worktrees survive release and lease expiry. Interrupted integration is reconciled against the submitted commit; unresolved cherry-pick conflicts require deliberate resolution or abort before resume. An environment or review blocker can resume after its cause is fixed. Authority, planning, sealed-phase, and controller-limit blockers require a new specification run.
+Worker branches and worktrees survive release and lease expiry. Interrupted integration is reconciled against the submitted commit; unresolved cherry-pick conflicts require deliberate resolution or abort before resume. An environment or review blocker can resume after its cause is fixed. Authority, planning, sealed-phase, and exhausted-budget blockers require a new specification run.
 
 To restore on another machine, transfer the Git repository at the checkpoint's exact revision and source contents plus the exported checkpoint. Preserve outstanding worker branches separately, then run:
 
@@ -129,11 +172,11 @@ To restore on another machine, transfer the Git repository at the checkpoint's e
 ./rdd resume --from PATH_TO_RUN_CHECKPOINT.json
 ```
 
-Backend sessions belong to the configured local runtime; a checkpoint does not create or transfer those sessions. A missing or uncertain session stops recoverably instead of being replaced. Runtime state and evidence are ignored by Git, so pushing source alone does not transfer them. The checkpoint carries run state and raw check logs; imports verify source/lock identity and log hashes. See [recovery procedures](docs/harness/workflow-guide.md#repairs-and-interruptions) and the [evidence guide](docs/harness/evidence-guide.md) for the full process.
+Runtime state and evidence are ignored by Git, so pushing source alone does not transfer them. The checkpoint carries run state and raw check logs; imports verify source/lock identity and log hashes. See [recovery procedures](docs/harness/workflow-guide.md#repairs-and-interruptions) and the [evidence guide](docs/harness/evidence-guide.md) for the full process.
 
 An older run whose baseline was recorded as `main` remains inspectable/exportable. Preserve its source and checkpoint, then start a fresh run on a dedicated baseline; do not edit recorded branch identities to move it. Branch refusals preserve dirty work and do not automatically switch, stash, reset, or rewrite artifacts.
 
-For an intentional requirements change or a sealed design/implementation defect, preserve the prior checkpoint, commit authorized requirements edits and use `./rdd start --mode amend` from the selected baseline. Then run the three workflow commands on that new run. The amendment records impact and preserves unaffected work and history. Use explicit `start --mode regenerate` for a new full solution when a run already exists: it archives prior active artifacts, while replacement application work remains explicitly planned. Repeating a workflow command never starts that replacement run. An open-phase repair can use existing scoped tasks; a sealed phase cannot be reopened. See [amendment and regeneration](docs/harness/workflow-guide.md#amendment-and-regeneration).
+For a bounded change to requirements or a sealed design/implementation defect, use `./rdd workflow specification --mode amend` from the selected baseline, then repeat preparation and implementation. Commit any authorized requirements edits first. The amendment must record impact and preserve unaffected work and history. Use `--mode regenerate` for a fresh full solution: it archives prior active artifacts, but replacement of existing application code remains explicit planned work. A repair within an open phase can use existing scoped tasks; a sealed phase cannot be reopened. See [amendment and regeneration](docs/harness/workflow-guide.md#amendment-and-regeneration).
 
 ## What counts as complete?
 
@@ -153,7 +196,7 @@ A paused Goal, a worker's prose, or passing harness tests cannot establish proje
 
 ### Release into main
 
-After project acceptance, archive the reports/checkpoint and keep the phase stack intact. Create one `codex/rdd-release/<run-id>` branch at the accepted application commit and open a PR into `main`. The operator sets `RDD_RELEASE_POLICY_SHA` to the first phase's recorded prepared-base commit and `RDD_RELEASE_SOURCE_SHA` to the project-accepted head through repository Actions variables. Release CI requires both exact pins, uses the verifier from `main` with the separately pinned prepared policy, and rejects incomplete or changed source. Only merge after successful checks and normal review. No specification/preparation-only PR is needed on `main`. Use the delivered build/install/run instructions to launch the accepted package.
+After project acceptance, archive the reports/checkpoint and keep the phase stack intact. Create one `codex/rdd-release/<run-id>` branch at the accepted application commit and open a PR into `main`. The operator sets `RDD_RELEASE_POLICY_SHA` to the first phase's recorded prepared-base commit and `RDD_RELEASE_SOURCE_SHA` to the project-accepted head through repository Actions variables. Release CI requires both exact pins, uses the verifier from `main` with the separately pinned prepared policy, and rejects incomplete or changed source. Only merge after successful checks and normal review. No specification/preparation-only PR is needed on `main`. The [manual demo runbook](docs/harness/blog-demo.md#8-verify-and-merge-one-complete-release-pr-into-main) contains the full pin, publish, merge and launch commands.
 
 ### What CI proves
 
@@ -185,7 +228,7 @@ Protect the verification workflow and policy through repository rules and review
 For deeper work, use the existing guides:
 
 - [Workflow guide](docs/harness/workflow-guide.md): stage procedures, task integration, review, repair, and recovery.
-- [Fresh local playbook](docs/harness/blog-demo.md): setup, the three workflows, acceptance and packaged-app handoff.
+- [Manual blog demo](docs/harness/blog-demo.md): complete generation, progress, verification, release PR and packaged-app walkthrough.
 - [Artifact guide](docs/harness/artifact-guide.md): manifests, schemas, frozen identities, and authoring boundaries.
 - [Evidence guide](docs/harness/evidence-guide.md): real check receipts, native/manual imports, metrics, and provenance.
 - [Codex runtime guide](docs/harness/codex-runtime.md): client setup, Goals, adapters, PR policy, and CI.

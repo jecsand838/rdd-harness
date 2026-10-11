@@ -6,9 +6,14 @@ and their primary sources are recorded in `.rdd/sources/runtime.json`; run
 
 ## Runtime contract
 
-The three workflow commands execute through the repository's Python stdlib App Server runner. Codex produces and reviews artifacts; the deterministic controller owns durable state, task leases, evidence and acceptance. The coordinator is a canonical profile-applied session. Writable specialists use exact registered `agent_type` values, `fork_turns="none"` and bounded packets. Let profiles supply model and effort without overrides; changed profiles require a fresh runtime session.
+The normal execution surface is an interactive local Codex session opened in the
+repository. Repository skills perform specification, preparation, and
+implementation in sequence. The Python controller supplies validation, durable
+state, task ownership, evidence, and PR lifecycle operations. Model reasoning is
+responsible for producing and reviewing artifacts; the controller decides whether
+the evidence permits a transition.
 
-The canonical roster is:
+The primary thread normally coordinates directly; `rdd_coordinator` is also an explicit role. Native delegation selects the exact `agent_type` with `fork_turns="none"` and a bounded packet, keeping child context limited to its assignment. Let the registered profile supply model and effort without overrides. Reload changed profiles in a fresh Codex session. The canonical roster is:
 
 | Profile | Model / effort | Responsibility |
 |---|---|---|
@@ -23,65 +28,81 @@ The canonical roster is:
 | `rdd_researcher` | `gpt-6.1-sol` / `xhigh` | Read-only evidence gathering and advice |
 | `rdd_reviewer` | `gpt-6.1-sol` / `xhigh` | Read-only live review and independent final perspectives |
 
-Keep at most two writable authors alongside one continuous reviewer. A distinct final execution reviewer or bounded researcher uses a released author slot. Read-only sessions are separate App Server threads managed by the runner; they do not add author capacity. Use bounded node/task packets and disjoint write ownership.
+Three child slots permit two authors and a continuous reviewer; the primary coordinator is outside that child limit. A second final reviewer uses a released author slot. More profiles do not increase concurrency. Use bounded node/task packets and disjoint write ownership.
 
 Canonical `.codex/agents/` TOMLs are the single authority for each role's instructions, model, effort and sandbox. The shared loader validates names, paths, required settings and read-only research/review permissions. `.codex/config.toml` retains native defaults checked against the coordinator and default complex implementor, plus the three-slot limit. Unrelated custom profiles receive no controller claim authority. Procedures stay in the existing skills.
 
-Request exact named `agent_type` values for writable specialists. For every reviewer/researcher use the coordinator-only `rdd_readonly_agent` dynamic tool: `live` retains the continuous reviewer, `execution` supplies a distinct final reviewer, and `research` supplies bounded advice. Canonical profile instructions/model/effort are applied explicitly with read-only isolation. Native children inherit live parent permissions; the observed native reviewer child did not retain read-only policy. Profile-applied sessions are not native `agent_type` or backend-model attestation. The tool is not exposed recursively. Reviewers return source-linked JSON; only the coordinator writes and records it through the existing controller ledger. Read-only sessions cannot write files or execute writing controller commands. Do not treat the CLI's `--profile` option as custom-agent selection. Consult [custom-subagent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents) and the [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) when changing the installed client.
+Profile sandbox settings describe requested configuration. Native children inherit
+the parent's current sandbox and approval policy; Codex reapplies live runtime
+overrides even when a custom profile requests a different default. A read-only
+profile therefore does not establish isolated reviewer permissions. Inspect the
+effective runtime permissions before delegation and keep the reviewer's work
+read-only. See the [subagent permission rules](https://learn.chatgpt.com/docs/agent-configuration/subagents#approvals-and-sandbox-controls).
+
+Request the exact named `agent_type` during native delegation and verify discovery in a fresh session after profile changes. An already running session may retain the previous roster. Do not treat the CLI's `--profile` option as custom-agent selection. Consult [custom-subagent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents) and the [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) when changing the installed client.
 
 ### Capability checks
 
-`CodexAdapter.doctor()` checks executable/version, required flags, login and every distinct configured model/effort pair, with affected roles in its output. Catalog availability is advertised client support; it does not prove account entitlement. `account_access_verified` remains false until supported actual evidence exists. A model-access error blocks the role; the harness never silently substitutes a model or effort.
+`CodexAdapter.doctor()` checks executable/version, native launch/resume flags,
+bounded exec flags, bundled-catalog support, login and every distinct configured
+model/effort pair, with affected roles in its output. Catalog availability is
+advertised client support; it does not prove account entitlement or sandbox
+isolation. `account_access_verified` remains false until supported actual evidence
+exists. A model-access error blocks the role; the harness never silently
+substitutes a model or effort.
 
 `requested_runtime` records the role, profile identity/hash, model, effort and sandbox requested by the controller. Keep these declarations distinct from observed session events, exit status and captured results. The JSONL stream supplies actual thread/turn events, not authenticated backend-model or effort attestation. A submitted `verified: true` or remembered session label cannot establish those observations.
 
-Use qualified Codex CLI **0.161.0 or 0.162.1**. The runner rejects other versions, including prereleases, with an environment error until their protocol is qualified. This is an exact allowlist, not a minimum version. Authenticate and complete normal project trust setup locally. The stdio server inherits the environment, config and credentials unchanged; it supplies no approval-policy or approval-reviewer overrides. Startup has a 60-second deadline, UTF-8 reader/writer threads work without platform-specific pipe selectors, and shutdown has a separate bounded deadline for owned processes/groups. Diagnostics are capped and stderr is separate; `logs_truncated` identifies incomplete raw captures. Supported permission requests use the one-time terminal flow below; unsupported scope or unavailable input stops recoverably.
+Install or update Codex using its official installation instructions, authenticate
+locally, then run the repository doctor. A current client compatible with the
+configuration above is required. The measured reference client is 0.162.1; the older
+minimum version that introduced Goals does not establish support for all current
+role/configuration features. Follow normal local project-trust prompts rather
+than bypassing them.
 
-## Workflow execution and native Goals
+## Native Goal execution
 
-```sh
-./rdd workflow specification
-./rdd workflow preparation
-./rdd workflow implementation
-```
+`CodexAdapter.native_argv(prompt, session_id=None)` supplies the launcher's
+canonical coordinator model, effort, sandbox and developer instructions. It
+encodes configuration as TOML and passes the prompt as one positional argument
+after `--`. It leaves approval policy to the runtime and does not create a second
+workflow loop or session ledger.
 
-Specification uses ordinary turns with typed `questions`, `progress` and `stopped` envelopes. Only necessary specification questions are presented for actual answers. Preparation and implementation activate native Goals through App Server and execute headlessly. Native Goals own continuation; a client turn loop does not substitute for it. The implementation objective in `.rdd/goals/implementation.txt` stays under 4,000 characters; the skill supplies the detailed procedure. `./rdd goal` remains inspection of that objective.
+1. Complete `$specification-workflow` and `$preparation-workflow` in sequence, including both independent review perspectives and `gate preparation` for the exact committed handoff.
+2. Run `./rdd goal` to print `.rdd/goals/implementation.txt`.
+3. Open Codex in the repository, or use `./rdd workflow implementation`.
+4. Set the native Goal by entering `/goal ` followed by the printed objective.
+5. Inspect progress with the controller and Codex subagent views. Resume an
+   interrupted Goal with the native `/goal resume` command after checking state.
 
-Repeating a command resumes its recorded run and backend sessions. Accepted stages are rechecked and return without a new launch. An uncertain or missing session/Goal acknowledgement stops for diagnosis; recovery never replaces identities or resets accounting. Inherited approval settings remain unchanged on start/resume. Missing external evidence or permissions remains incomplete. `--print` is pure inspection for every stage, including an explicit `--mode`.
+To reopen the recorded native session, use `codex resume SESSION_UUID --cd
+REPOSITORY`, then inspect the Goal before continuing it. The argv builder accepts
+only a canonical UUID for explicit resume, reapplies the coordinator settings and
+never selects `--last`. The [CLI reference](https://learn.chatgpt.com/docs/cli/reference#codex-resume)
+documents this native command. `./rdd resume` recovers controller state; it does
+not select a native session. Keep the actual session identity for recovery.
 
-An incomplete run retains its recorded graph/profile policy and executable path, SHA-256 and version. Adding another qualified version permits fresh runs; it does not migrate an existing session or its Goal accounting. Apply a harness repair to an existing run only when its policy and source guards still pass. Changed profiles, frozen source locks or a terminal storage-failure record require the corresponding recovery rules; never backfill pins to make an update pass.
+The 0.162.1 qualification exercised a native launch and exact-session resumption
+in a disposable harness worktree. Both turns ran local Python, retained the same
+`CODEX_THREAD_ID`, and recorded the inherited approval settings; the session
+evidence contained the supplied coordinator instructions. No Goal was activated
+and no application workflow ran. This establishes launch/resume compatibility,
+not end-to-end acceptance or native reviewer isolation. These measured limits
+are recorded in `.rdd/sources/runtime.json`.
 
-New sessions explicitly select `historyMode=legacy`. The runner uses the history returned by `thread/start` or `thread/resume`: a new thread cannot reliably serve `thread/read` with `includeTurns=true` before its first user message. On qualified CLI 0.161.0 this can return `-32600` (not materialized) or `-32601` (unsupported `list_turns`). Existing saved paginated sessions are preserved and may resume when the runtime supplies complete history; missing or partial history stops recovery without replacing the session. Local qualification verified same-ID recovery of an interrupted coordinator and empty reviewer, plus full-history reads after completed turns in both modes. This is a measured compatibility boundary, not a guarantee for other runtime versions; see the [App Server history contract](https://learn.chatgpt.com/docs/app-server#start-or-resume-a-thread).
-
-Exit codes are `0` for controller-accepted stage (or successful print), `1` for invalid request/validation, `2` for incomplete/blocked, and `130` for interruption. Preparation still needs actual readiness/CI and both final reviews before `gate preparation`; implementation still needs all phase gates/seals/PRs and `gate project`. The [workflow guide](workflow-guide.md) keeps those procedures, and the [official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex) describes native Goal lifecycle.
-
-### Qualification scope
-
-The retained [Goal and Q&A findings](../../.rdd/evidence/runtime-qualification-20261009/live/FINAL_FINDINGS.json) independently observed typed answers, native automatic continuation, pause/interruption and same-thread accounting recovery. Its recovery included a client kickoff. That probe also found native reviewer child isolation failed under inherited parent permissions; its failure remains preserved.
-
-The separate [read-only resolution findings](../../.rdd/evidence/runtime-qualification-20261009/reviewer-isolation/FINAL_FINDINGS.json) passed actual sandbox write denial, continuous snapshots across reconnect, a distinct final reviewer, and correlated coordinator dynamic-tool callbacks before and after resume. Its experimental registration uses `experimentalApi=true`, as described in the [App Server reference](https://learn.chatgpt.com/docs/app-server). Approval policy remained inherited on-request/user. Researcher inference and the execution/research callback purpose branches were not run. These are local ignored qualification receipts, with concise scope recorded in [runtime sources](../../.rdd/sources/runtime.json).
-
-The subsequent [production transport and recovery probe](../../.rdd/evidence/runtime-qualification-20261009/production-smoke/FINAL_FINDINGS.json) exercised the shipped transport, runtime preflight and canonical coordinator session settings. Resuming the same paused Goal with a status-only activation started native work with zero client continuation turns, followed by another autonomous turn. Real local checks, stable objective/accounting, and bounded paused shutdown passed.
-
-Codex **0.162.1** was separately qualified on macOS arm64 against its generated schema and the production transport/runner: typed specification questions and answers, native specialist delegation, explicit read-only reviewer write denial, correlated reviewer callbacks across reconnect, complete legacy/paginated history, and same-Goal automatic continuation with zero client continuation turns. Pause, interruption and accounting checks passed. An unused legacy thread was not persisted before its first message; recovery correctly returned an environment error without replacing its recorded identity. The matching regression preserves that refusal. Raw probes and failed diagnostic attempts remain local under `.rdd/evidence/runtime-qualification-01621/`; the concise version, executable identity and limits are recorded in [runtime sources](../../.rdd/sources/runtime.json).
-
-These disposable probes qualify individual capabilities on the recorded host; they do not establish native end-to-end acceptance of the three public workflow commands or Todo behavior. Offline runner tests simulate external Codex/GitHub results, while stdio transport tests run deterministic local fake subprocesses. Required native, CI and product evidence remains separate. Requested model settings and catalog availability are not backend attestation.
-
-## One-time permissions
-
-The runner presents command-execution and file-change requests in an attached terminal during any workflow. It shows the requesting coordinator or runtime-verified writable specialist, thread/turn/item identities, working directory, reason, complete command or correlated file paths/operations/patch, and any network destination. Terminal control characters are escaped. Missing, mismatched, oversized or ambiguous context cannot be approved.
-
-Only request-specific `accept`, `decline` and `cancel` responses are supported. The menu respects `availableDecisions`; its absence uses the qualified protocol defaults. A runtime may omit denial, as with some command escalations. Enter `a` for **Approve once**, `d` for **Deny and continue** only when offered, or `s`/Enter for **Stop workflow**. EOF stops; Ctrl-C interrupts. The runner never selects session approval or a policy amendment. Network approval can release already queued connections for the displayed destination, but the runner does not install a future rule. This distinction follows the [App Server approval protocol](https://learn.chatgpt.com/docs/app-server#approvals).
-
-File `grantRoot`, nonempty additional permission grants, terminal input, generic permission requests and MCP elicitation remain unsupported. Read-only reviewers/researchers and unverified sessions cannot receive escalation. Effective approval policy and reviewer settings are inherited unchanged. Without terminal input/output, the pending action is reported and the command stops with exit 2; rerun that same command in a terminal. Never pipe an answer to grant permission.
-
-The event pump remains active while waiting. Resolved requests, finished items/turns, changed patches and disconnected transports invalidate earlier input. Replies are admitted once against the exact live request and displayed content. Expired unsent frames are cancelled; uncertain delivery stops the connection without automatic replay. A retry must receive a new live request and decision. Diagnostics preserve context as evidence only. Shutdown preserves the same session and native Goal accounting; genuine user pauses and terminal storage-failure rules remain unchanged.
-
-A bounded macOS qualification on Codex 0.162.1 observed an actual command approval, displayed its offered choices in a PTY, received an explicit human one-time decision, and completed the harmless hardware read with exit 0 in the same turn. Policy remained inherited `on-request` with the user as reviewer. File approvals, concurrency races and Windows console behavior are covered by deterministic tests; they are not claimed as native Windows or end-to-end application acceptance. Raw evidence stays in ignored local diagnostics.
+The file is a distribution convenience. The goal text itself is under 4,000
+characters and is pasted as the native objective. The workflow skill contains
+the detailed procedure and reads the canonical plan and state as needed. Do not
+inline every requirement, specification, skill or task into the goal. The
+[official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex)
+describes the lifecycle and completion-evidence model. A budget stop or pause is
+not success. Missing benchmarks, model access, unresolved specs, and unavailable
+PR evidence must remain visible blockers.
 
 ## Bounded worker adapter
 
-`CodexAdapter.exec()` remains an optional one-turn worker adapter, separate from the coordinator's App Server transport and native Goal execution. It resolves a canonical role, loads its developer instructions and builds an argv list equivalent to:
+`CodexAdapter.exec()` is an optional one-turn adapter for automation. It is not an
+emulation of native Goals. It resolves a canonical role, loads its developer instructions and builds an argv list equivalent to:
 
 ```text
 codex -a never exec --json --color never --model MODEL
@@ -94,6 +115,11 @@ The adapter applies the profile’s supported model, effort, sandbox and `develo
 an action that needs unavailable permission fails instead of prompting from a
 headless subprocess. It never uses a shell to interpolate prompts, file names,
 model IDs or PR text.
+
+The existing bounded-exec `-a never` restriction suppresses fresh approval
+prompts for that one-turn subprocess. The native interactive launcher does not
+set this approval override. Neither interface bypasses sandbox enforcement, and
+profile requests alone are not evidence of a child's effective permissions.
 
 Every attempt uses a new directory below `.rdd/runtime/`. It contains the prompt,
 schema snapshot, streaming `events.jsonl`, `stderr.log`, final `answer.json`, and a
@@ -111,7 +137,7 @@ A remembered session ID cannot override the repository baseline. Claims and repo
 
 ### Python adapter interface
 
-The external adapters in `tools/rdd/adapters.py` use only the Python standard library. They accept an injected
+All adapters use only the Python standard library. They accept an injected
 `runner(argv, cwd=..., timeout=..., **kwargs)` returning `CommandResult` for offline
 testing. `RddAdapterError.code` distinguishes capability, malformed-evidence,
 timeout, revision-mismatch and safety failures.
@@ -170,8 +196,9 @@ The configured required-check list must be nonempty. The supplied workflow expos
 the aggregate check **`verify`**. Configure GitHub branch rules to require this
 check for `main`, the prepared baseline, and each exact sealed phase branch before
 it becomes a successor's base. Do not protect active or future phase branches
-with a wildcard rule that prevents their publication or repair. See
-[protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+with a wildcard rule that prevents their publication or repair. See the
+[demo runbook](blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline)
+and [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 If `gh pr checks --required` cannot establish the server-required checks, inspect
 the repository rules and CLI response; do not waive the controller check.
 
@@ -342,6 +369,11 @@ python -m unittest discover -s tests/harness -p test_adapters.py
 ```
 
 Run `./rdd selftest` for controller regressions. `RDD_CODEX_SMOKE` may point to the installed binary for the optional client-support smoke check; this exercises syntax/catalog support, not paid account entitlement. Compiler proofs and workflow evaluations remain separate from that smoke. Use system temporary directories normally; `RDD_TEST_TMPDIR` may select a private writable test directory when workspace synchronization would race with clean-tree checks. Preserve strict verification instead of weakening it for a synchronization layer.
+
+The installed 0.162.1 smoke also parses the coordinator launch and exact-UUID
+resume options with `--help`, without starting an inference session. This does
+not qualify actual session resumption, native Goal execution or reviewer
+isolation; those observations require separate live evidence.
 
 Runs pin the exact workflow graph and canonical profile/native configuration digest. The controller checks both before continuing mutations, including checks, reviews, recovery and publication, before recording state or evidence. A mismatch is a policy compatibility failure, not a new historical blocker to write automatically. `status` and `export-run` preserve original role names and evidence. Continue historical work with its recorded harness revision, or start an explicit fresh baseline; no role aliases, pin backfills or approval migrations are applied.
 

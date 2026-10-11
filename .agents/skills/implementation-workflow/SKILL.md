@@ -5,11 +5,9 @@ description: Execute a frozen RDD phased backlog using TDD, strict task-category
 
 # Implementation workflow
 
-Enter or resume with `./rdd workflow implementation`. The runner owns native Goal activation, continuation and same-session recovery; implementation is headless. Do not request a manual orchestration prompt or Goal command. Missing approvals, external evidence or backend sessions remains incomplete. Follow `AGENTS.md` for the read-only review/research bridge, exact writable `agent_type` dispatch and author-slot limits. Only the coordinator records returned review JSON through the existing ledger.
-
 Inspect I0–I5 through `workflow nodes`; their progress derives from the existing native goal, task leases, category barriers, phase gates, PRs and seals. Do not create a second task ledger or submit a caller-authored passed flag. The continuous reviewer compares each coherent integration snapshot and significant check result against the frozen plan and contracts, records live findings and verifies corrections; batch review cannot substitute for ongoing steering.
 
-Read `AGENTS.md`, `docs/harness/workflow-guide.md`, `docs/harness/artifact-guide.md`, and the configured Goal objective. The short Goal is the orchestration objective; this skill is its procedure. Do not expand the objective by pasting all requirements or this skill into it. The workflow command supplies it to the native runtime.
+Read `AGENTS.md`, `docs/harness/workflow-guide.md`, `docs/harness/artifact-guide.md`, and the configured goal prompt. The short goal is the orchestration objective; this skill is its procedure. Do not expand the objective by pasting all requirements or this skill into it. Use the repository's launcher and command reference for supported goal-mode invocation.
 
 ## Establish the active baseline
 
@@ -19,7 +17,7 @@ Requirements and frozen specifications are immutable in this workflow. The task/
 
 ## Allocate roles and write ownership
 
-The runner applies `rdd_coordinator` to its coordinator session. Dispatch exact native `rdd_complex_implementor` or `rdd_light_implementor` profiles for writable tasks with `fork_turns="none"`; request `rdd_reviewer` through `rdd_readonly_agent`. Large tasks require the complex implementor; small tasks permit either, with light work bounded and unambiguous. Canonical profile TOMLs own instructions, model, effort and permissions. The optional bounded worker adapter applies those instructions too; it is separate from the workflow transport. Use `doctor` for advertised availability; requested settings are not backend attestation or account entitlement. If a required role is unavailable, report the capability blocker without silent substitution.
+Request exact named profiles: `rdd_coordinator`, `rdd_complex_implementor`, `rdd_light_implementor` and `rdd_reviewer`. Large tasks require the complex implementor; small tasks permit either, with light work bounded and unambiguous. Canonical profile TOMLs own instructions, model, effort and permissions. The bounded adapter must apply those instructions too. Use `doctor` for advertised availability; requested settings are not backend attestation or account entitlement. If a required role is unavailable, report the capability blocker without silent substitution.
 
 Delegate a coherent large target to the large implementor. Use the smaller implementor for bounded edits with a clear oracle, such as a narrowly defined documentation or mapping change. Choose by dependency surface and ambiguity, not just line count. Each worker receives the already groomed full primary task packet, all local work sites, allowed write paths, predecessor capabilities, relevant contract/spec slices, expected evidence, category, phase and verticals. Do not ask an implementor to discover missing scope or refine an unfinished plan.
 
@@ -43,7 +41,7 @@ Use isolated branches/worktrees or the runtime's equivalent. Never assign overla
 - **Frozen specification/planning defect:** Record a critical harness regression with origin/detection stage, affected IDs, exact candidate and evidence. Stop affected execution; repair the preventive control and add a reproducing regression before a fresh trial. Do not normalize repeated amendments or edit contracts to fit convenient code. Intentional user requirement changes retain the amendment workflow.
 - **Sealed-phase defect:** Use `./rdd block --kind closure --reason TEXT`. Preserve the stack and evidence. Start an amendment through specification; never conceal the fix in a later phase.
 - **Environment/credentials/required hardware unavailable:** Record a resumable environment blocker with the exact failing command and needed capability. Do not convert missing evidence to success.
-- **No progress, controller-limit exhaustion, worker failure:** Save checkpoints, release or expire leases, preserve worktree/PR identities, and resume safely. Do not spin indefinitely or silently drop tasks.
+- **No progress, budget exhaustion, worker failure:** Save checkpoints, release or expire leases, preserve worktree/PR identities, and resume safely. Do not spin indefinitely or silently drop tasks.
 
 ## Final goal
 

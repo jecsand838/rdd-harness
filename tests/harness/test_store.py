@@ -31,13 +31,15 @@ finally:
 
 class FaultConnection:
     """Inject at SQL/close boundaries while retaining real transaction semantics."""
-    def __init__(self, db, statement=None, error=None, *, rollback_error=None, close_error=None, fetch_error=None):
+    def __init__(self, db, statement=None, error=None, *, rollback_error=None, close_error=None,
+                 fetch_error=None, close_before_error=True):
         self.db = db
         self.statement = statement
         self.error = error
         self.rollback_error = rollback_error
         self.close_error = close_error
         self.fetch_error = fetch_error
+        self.close_before_error = close_before_error
         self.statements = []
         self.closes = 0
         self.transaction_at_close = None
@@ -63,6 +65,8 @@ class FaultConnection:
     def close(self):
         self.closes += 1
         self.transaction_at_close = self.db.in_transaction
+        if self.close_error is not None and not self.close_before_error:
+            raise self.close_error
         self.db.close()
         if self.close_error is not None:
             raise self.close_error
@@ -70,6 +74,11 @@ class FaultConnection:
 
 class StoreTests(unittest.TestCase):
     def setUp(self):
+        # Storage faults are isolated test invocations; production never resets
+        # the process-local guard after a close whose release is unconfirmed.
+        guard = patch.object(common, "_STORE_CLOSE_FAILURE", None, create=True)
+        guard.start()
+        self.addCleanup(guard.stop)
         directory = tempfile.TemporaryDirectory(prefix="rdd-store-test-")
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
@@ -94,6 +103,28 @@ class StoreTests(unittest.TestCase):
         with contextlib.closing(sqlite3.connect(self.path)) as db:
             self.assertEqual(db.execute("PRAGMA integrity_check").fetchone(), ("ok",))
             return json.loads(db.execute("SELECT value FROM runs WHERE id='fixture'").fetchone()[0])
+
+    @contextlib.contextmanager
+    def close_fault_fixture(self, connect):
+        with patch.object(common, "_STORE_CLOSE_FAILURE", None, create=True), \
+             patch.object(common.sqlite3, "connect", side_effect=connect):
+            yield
+
+    def assert_storage_blocked_before_io(self, expected):
+        other = common.Store(self.root / "other")
+        operations = (lambda: common.Store.read(self.root, "fixture"), lambda: self.store.get("fixture"),
+                      lambda: self.store.exists("fixture"), lambda: self.store.put(dict(id="other")),
+                      lambda: self.enter_edit(self.store), lambda: other.get("fixture"),
+                      lambda: other.exists("fixture"), lambda: other.put(dict(id="other")),
+                      lambda: self.enter_edit(other))
+        with patch.object(common, "file_hash", side_effect=AssertionError("Must refuse before source reads")), \
+             patch.object(Path, "exists", side_effect=AssertionError("Must refuse before source inspection")), \
+             patch.object(Path, "mkdir", side_effect=AssertionError("Must refuse before filesystem writes")), \
+             patch.object(common.sqlite3, "connect", side_effect=AssertionError("Must refuse before connect")):
+            for operation in operations:
+                with self.assertRaises(common.RddStorageError) as caught:
+                    operation()
+                self.assertIs(caught.exception, expected, "Retain the first uncertain-close diagnostic")
 
     def test_snapshot_between_growing_child_writes_preserves_next_parent_edit(self):
         self.seed()
@@ -120,15 +151,15 @@ class StoreTests(unittest.TestCase):
         self.store.get("fixture")
         with self.store.edit("fixture") as state:
             state["parent_writes"] += 1
-        for _ in range(4):
+        for _ in range(2):
             common.Store.read(self.root, "fixture")
             self.child_edit(0)
             with self.store.edit("fixture") as state:
                 state["parent_writes"] += 1
         self.store.close()
         state = self.fresh_state()
-        self.assertEqual(state["child_writes"], 4, "All committed child increments must survive")
-        self.assertEqual(state["parent_writes"], 5)
+        self.assertEqual(state["child_writes"], 2, "All committed child increments must survive")
+        self.assertEqual(state["parent_writes"], 3)
         self.assertEqual(state["payload"], "x" * 10)
 
     def test_constructor_and_close_own_no_connection_or_files(self):
@@ -231,12 +262,17 @@ class StoreTests(unittest.TestCase):
                                          close_error=sqlite3.OperationalError("close failed"))
                     opened.append(db)
                     return db
-                with patch.object(common.sqlite3, "connect", side_effect=connect):
+                with self.close_fault_fixture(connect):
                     with self.assertRaises(type(failure)) as caught:
                         with self.store.edit("fixture") as state:
                             state["parent_writes"] = 8
                             raise failure
                 self.assertIs(caught.exception, failure)
+                cleanup = failure.rdd_storage_error
+                self.assertIsInstance(cleanup, common.RddStorageError)
+                self.assertEqual(cleanup.kind, "environment")
+                self.assertIn("rollback failed", str(cleanup))
+                self.assertNotIn("close failed", str(cleanup), "Keep the first cleanup diagnostic")
                 self.assertEqual(opened[0].closes, 1)
                 self.assertEqual(self.store.get("fixture")["parent_writes"], 0)
 
@@ -251,13 +287,42 @@ class StoreTests(unittest.TestCase):
                                  close_error=sqlite3.OperationalError("close failed"))
             opened.append(db)
             return db
-        with patch.object(common.sqlite3, "connect", side_effect=connect):
+        with self.close_fault_fixture(connect):
             with self.assertRaises(common.RddError) as caught:
                 with self.store.edit("fixture") as state:
                     state["parent_writes"] = 8
         self.assertIs(caught.exception.__cause__, failure)
         self.assertEqual(opened[0].closes, 1)
         self.assertEqual(self.store.get("fixture")["parent_writes"], 0)
+
+    def test_cleanup_signal_preserves_existing_diagnostic_and_successful_rollback(self):
+        self.seed()
+        real_connect = sqlite3.connect
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                primary = ValueError("caller failure")
+                if existing:
+                    previous = common.RddStorageError("prior cleanup", self.path, OSError("first cleanup"))
+                    primary.rdd_storage_error = previous
+                opened = []
+                close_error = sqlite3.OperationalError("close failed")
+                def connect(*args, **kwargs):
+                    db = FaultConnection(real_connect(*args, **kwargs), close_error=close_error)
+                    opened.append(db)
+                    return db
+                with self.close_fault_fixture(connect):
+                    with self.assertRaises(ValueError) as caught:
+                        with self.store.edit("fixture") as state:
+                            state["parent_writes"] = 8
+                            raise primary
+                self.assertIs(caught.exception, primary)
+                if existing:
+                    self.assertIs(primary.rdd_storage_error, previous)
+                else:
+                    self.assertIs(primary.rdd_storage_error.__cause__, close_error)
+                self.assertEqual(opened[0].closes, 1)
+                self.assertFalse(opened[0].transaction_at_close)
+                self.assertEqual(self.store.get("fixture")["parent_writes"], 0)
 
     def test_missing_row_rolls_back_without_becoming_storage_error(self):
         self.seed()
@@ -294,7 +359,7 @@ class StoreTests(unittest.TestCase):
             db = FaultConnection(real_connect(*args, **kwargs), close_error=failure)
             opened.append(db)
             return db
-        with patch.object(common.sqlite3, "connect", side_effect=connect):
+        with self.close_fault_fixture(connect):
             with self.assertRaises(common.RddError) as caught:
                 self.seed()
         self.assertIsInstance(caught.exception, common.RddStorageError)
@@ -302,6 +367,94 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(len(opened), 1)
         self.assertEqual(opened[0].closes, 1)
         self.assertEqual(self.store.get("fixture")["id"], "fixture")
+
+    def test_failed_close_blocks_all_storage_until_new_process(self):
+        real_connect = sqlite3.connect
+        for release_first in (False, True):
+            with self.subTest(release_first=release_first):
+                failure = sqlite3.OperationalError("unconfirmed handle release")
+                opened = []
+                def connect(*args, **kwargs):
+                    db = FaultConnection(real_connect(*args, **kwargs), close_error=failure,
+                                         close_before_error=release_first)
+                    opened.append(db)
+                    return db
+                try:
+                    with self.close_fault_fixture(connect):
+                        with self.assertRaises(common.RddStorageError) as caught:
+                            self.seed()
+                        self.assertIs(caught.exception.__cause__, failure)
+                        self.assertEqual(len(opened), 1)
+                        self.assertEqual(opened[0].closes, 1)
+                        if release_first:
+                            with self.assertRaises(sqlite3.ProgrammingError):
+                                opened[0].db.execute("SELECT 1")
+                        else:
+                            self.assertEqual(opened[0].db.execute("SELECT 1").fetchone(), (1,))
+                        self.assert_storage_blocked_before_io(caught.exception)
+                        child = """from pathlib import Path
+import json, sys
+from tools.rdd.common import Store
+print(json.dumps(Store.read(Path(sys.argv[1]), 'fixture')))
+"""
+                        result = subprocess.run([sys.executable, "-c", child, str(self.root)],
+                                                cwd=Path(__file__).resolve().parents[2], capture_output=True,
+                                                text=True, timeout=15, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(json.loads(result.stdout),
+                                         dict(id="fixture", child_writes=0, parent_writes=0, payload="x" * 10))
+                finally:
+                    for db in opened:
+                        db.db.close()  # Test fixture owns the deliberately retained real handle.
+
+    def test_close_before_release_preserves_body_failure_and_cleanup_signal(self):
+        self.seed()
+        real_connect = sqlite3.connect
+        for primary in (ValueError("body failed"), KeyboardInterrupt("body interrupted")):
+            with self.subTest(primary=type(primary).__name__):
+                close_error = sqlite3.OperationalError("close failed before release")
+                opened = []
+                def connect(*args, **kwargs):
+                    db = FaultConnection(real_connect(*args, **kwargs), close_error=close_error,
+                                         close_before_error=False)
+                    opened.append(db)
+                    return db
+                with self.close_fault_fixture(connect):
+                    try:
+                        with self.assertRaises(type(primary)) as caught:
+                            with self.store.edit("fixture") as state:
+                                state["parent_writes"] = 8
+                                raise primary
+                        self.assertIs(caught.exception, primary)
+                        self.assertIs(primary.rdd_storage_error.__cause__, close_error)
+                        self.assertEqual(opened[0].db.execute("SELECT 1").fetchone(), (1,))
+                        self.assertFalse(opened[0].transaction_at_close, "Rollback completed before failed close")
+                        self.assert_storage_blocked_before_io(primary.rdd_storage_error)
+                    finally:
+                        for db in opened:
+                            db.db.close()
+                self.assertEqual(self.store.get("fixture")["parent_writes"], 0)
+
+    def test_close_interrupt_preserves_interrupt_and_blocks_storage(self):
+        real_connect = sqlite3.connect
+        interrupt = KeyboardInterrupt("close interrupted before release")
+        opened = []
+        def connect(*args, **kwargs):
+            db = FaultConnection(real_connect(*args, **kwargs), close_error=interrupt,
+                                 close_before_error=False)
+            opened.append(db)
+            return db
+        with self.close_fault_fixture(connect):
+            try:
+                with self.assertRaises(KeyboardInterrupt) as caught:
+                    self.seed()
+                self.assertIs(caught.exception, interrupt)
+                self.assertIs(interrupt.rdd_storage_error.__cause__, interrupt)
+                self.assertEqual(opened[0].db.execute("SELECT 1").fetchone(), (1,))
+                self.assert_storage_blocked_before_io(interrupt.rdd_storage_error)
+            finally:
+                for db in opened:
+                    db.db.close()
 
     def test_filesystem_initialization_failure_is_structured(self):
         failure = PermissionError("cannot create runtime directory")
@@ -462,9 +615,77 @@ os._exit(0)
                     self.assertIs(caught.exception.__cause__, failure)
                 else:
                     self.assertIs(caught.exception, failure)
-                self.assertTrue(opened)
+                self.assertEqual(len(opened), 1, "Do not retry SQLite read failures")
                 self.assertTrue(all(db.closes == 1 for db in opened))
                 self.assertEqual(self.store.get("fixture")["id"], "fixture")
+
+    def test_snapshot_close_failure_is_not_retried(self):
+        self.seed()
+        before = self.source_files()
+        failure = sqlite3.OperationalError("snapshot close failed")
+        real_connect = sqlite3.connect
+        opened = []
+        def connect(*args, **kwargs):
+            db = FaultConnection(real_connect(*args, **kwargs), close_error=failure)
+            opened.append(db)
+            return db
+        with self.close_fault_fixture(connect):
+            with self.assertRaises(common.RddStorageError) as caught:
+                self.store.get("fixture")
+        self.assertIs(caught.exception.__cause__, failure)
+        self.assertEqual(len(opened), 1, "Close uncertainty must not open another handle")
+        self.assertEqual(opened[0].closes, 1)
+        self.assertEqual(self.source_files(), before)
+
+    def test_unstable_snapshot_is_bounded_and_never_queries_mixed_bytes(self):
+        self.seed()
+        before = self.source_files()
+        real_hash = common.file_hash
+        source_hashes = []
+        def changing_hash(path):
+            if path == self.path:
+                source_hashes.append(path)
+                return str(len(source_hashes))
+            return real_hash(path)
+        with patch.object(common, "file_hash", side_effect=changing_hash), \
+             patch.object(common.sqlite3, "connect", side_effect=AssertionError("Never query an unstable copy")):
+            with self.assertRaises(common.RddStorageError) as caught:
+                self.store.get("fixture")
+        self.assertIn("database changed during preflight", str(caught.exception))
+        self.assertEqual(len(source_hashes), 6, "Three before/after comparisons bound copy retries")
+        self.assertEqual(self.source_files(), before)
+
+    def test_reader_waits_through_writer_connection_close(self):
+        started = threading.Event()
+        finished = threading.Event()
+        results = []
+        threads = []
+        real_connect = sqlite3.connect
+        def reader():
+            started.set()
+            try:
+                results.append(self.store.get("fixture"))
+            except BaseException as exc:
+                results.append(exc)
+            finally:
+                finished.set()
+        case = self
+        class WaitingClose(FaultConnection):
+            def close(self):
+                thread = threading.Thread(target=reader)
+                threads.append(thread)
+                thread.start()
+                case.assertTrue(started.wait(2))
+                case.assertFalse(finished.wait(0.1), "Read must wait while close still owns the handle")
+                super().close()
+        def connect(*args, **kwargs):
+            db = real_connect(*args, **kwargs)
+            return WaitingClose(db) if Path(args[0]) == self.path else db
+        with patch.object(common.sqlite3, "connect", side_effect=connect):
+            self.seed()
+            threads[0].join(5)
+        self.assertFalse(threads[0].is_alive())
+        self.assertEqual(results, [dict(id="fixture", child_writes=0, parent_writes=0, payload="x" * 10)])
 
     def assert_snapshot_cleanup_preserves(self, failure):
         self.seed()
@@ -491,6 +712,7 @@ os._exit(0)
             self.assertIs(caught.exception.__cause__, failure)
         else:
             self.assertIs(caught.exception, failure)
+            self.assertIn("snapshot cleanup failed", str(failure.rdd_storage_error))
         self.assertEqual(len(cleanup_calls), 1)
         self.assertTrue(opened)
         self.assertTrue(all(db.closes == 1 for db in opened))
@@ -504,371 +726,6 @@ os._exit(0)
 
     def test_snapshot_cleanup_failure_preserves_interrupt(self):
         self.assert_snapshot_cleanup_preserves(KeyboardInterrupt("snapshot interrupted"))
-
-
-class TerminalStorageTests(unittest.TestCase):
-    def setUp(self):
-        directory = tempfile.TemporaryDirectory(prefix="rdd-terminal-store-")
-        self.addCleanup(directory.cleanup)
-        self.root = Path(directory.name)
-        self.store = common.Store(self.root)
-        self.store.put(dict(id="fixture", value=1))
-        self.failure_path = self.root / ".rdd/runtime/failures/fixture.json"
-
-    def context(self, *, context_id="fixture", locator_id="fixture"):
-        common.write_json(self.root / ".rdd/run.json", dict(run_id=locator_id))
-        common.write_json(self.root / ".rdd/runtime/headless.json",
-                          dict(run_id=context_id, stage="implementation", thread_id="thread-fixture"))
-
-    def record(self, **changes):
-        record = dict(schema_version=1, run_id="fixture", stage="implementation", thread_id="thread-fixture",
-                      created_at="2026-10-10T00:00:00Z", operation="edit", database_path=str(self.store.path),
-                      sqlite_errorcode=sqlite3.SQLITE_CORRUPT, sqlite_errorname="SQLITE_CORRUPT",
-                      error="first corrupt state")
-        return {**record, **changes}
-
-    def test_headless_storage_failure_records_terminal_diagnostic(self):
-        self.context()
-        failure = sqlite3.DatabaseError("corrupt state")
-        failure.sqlite_errorcode = sqlite3.SQLITE_CORRUPT
-        failure.sqlite_errorname = "SQLITE_CORRUPT"
-        with patch.object(common.sqlite3, "connect", side_effect=failure):
-            with self.assertRaises(common.RddStorageError) as caught:
-                self.store.put(dict(id="fixture", value=2))
-        error = caught.exception
-        self.assertIs(error.__cause__, failure)
-        self.assertTrue(getattr(error, "restart_required", False), "Headless storage failure must require a new run")
-        self.assertEqual(Path(error.failure_path), self.failure_path)
-        self.assertIn("critical", str(error).lower())
-        self.assertIn("new run", str(error).lower())
-        record = common.read_json(self.failure_path)
-        self.assertEqual(record["sqlite_errorcode"], sqlite3.SQLITE_CORRUPT)
-        self.assertEqual(record["thread_id"], "thread-fixture")
-
-    def test_terminal_marker_rejects_mutations_before_sqlite(self):
-        common.write_json(self.failure_path, self.record())
-        with patch.object(common.sqlite3, "connect", side_effect=AssertionError("Mutation reached SQLite")):
-            for operation in (lambda: self.store.put(dict(id="fixture", value=2)),
-                              lambda: StoreTests.enter_edit(self.store)):
-                with self.assertRaises(common.RddError) as caught:
-                    operation()
-                self.assertTrue(getattr(caught.exception, "restart_required", False))
-                self.assertEqual(caught.exception.kind, "environment")
-
-    def test_child_terminal_marker_rolls_back_already_open_parent_edit(self):
-        from tools.rdd import storage_failure
-        self.context()
-        child = """from pathlib import Path
-import sqlite3, sys
-from tools.rdd.common import RddStorageError
-from tools.rdd.storage_failure import record_failure
-root = Path(sys.argv[1])
-error = RddStorageError('read', root / '.rdd/runtime/state.sqlite3', sqlite3.DatabaseError('child failure'))
-assert record_failure(root, error) is not None
-"""
-        with self.assertRaises(storage_failure.TerminalStorageFailure):
-            with self.store.edit("fixture") as state:
-                result = subprocess.run([sys.executable, "-c", child, str(self.root)],
-                                        cwd=Path(__file__).resolve().parents[2], capture_output=True, text=True,
-                                        timeout=10, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                state.update(id="unexpected", value=2)
-        self.assertEqual(self.store.get("fixture"), dict(id="fixture", value=1))
-        self.assertFalse(self.store.exists("unexpected"))
-
-    def test_terminal_marker_after_put_write_rolls_back_before_commit(self):
-        from tools.rdd import storage_failure
-        self.context()
-        real_connect = sqlite3.connect
-        root, path = self.root, self.store.path
-        opened = []
-        class MarkingConnection(FaultConnection):
-            def execute(self, sql, *args):
-                cursor = super().execute(sql, *args)
-                if sql.startswith("INSERT"):
-                    error = common.RddStorageError("read", path, sqlite3.DatabaseError("concurrent child failure"))
-                    storage_failure.record_failure(root, error)
-                return cursor
-        def connect(*args, **kwargs):
-            db = MarkingConnection(real_connect(*args, **kwargs))
-            opened.append(db)
-            return db
-        with patch.object(common.sqlite3, "connect", side_effect=connect):
-            with self.assertRaises(storage_failure.TerminalStorageFailure):
-                self.store.put(dict(id="fixture", value=2))
-        self.assertEqual(len(opened), 1)
-        self.assertIn("ROLLBACK", opened[0].statements)
-        self.assertNotIn("COMMIT", opened[0].statements)
-        self.assertEqual(opened[0].closes, 1)
-        self.assertEqual(self.store.get("fixture"), dict(id="fixture", value=1))
-
-    def test_no_context_or_mismatched_context_does_not_make_failure_terminal(self):
-        for context_id in (None, "other"):
-            with self.subTest(context_id=context_id):
-                if context_id:
-                    self.context(context_id=context_id)
-                failure = sqlite3.OperationalError("write failed")
-                with patch.object(common.sqlite3, "connect", side_effect=failure):
-                    with self.assertRaises(common.RddStorageError) as caught:
-                        self.store.put(dict(id="fixture", value=2))
-                self.assertFalse(getattr(caught.exception, "restart_required", False))
-                self.assertFalse(self.failure_path.exists())
-        self.store.put(dict(id="fixture", value=3))
-
-    def test_headless_snapshot_first_sqlite_error_cannot_disappear_on_retry(self):
-        self.context()
-        real_connect = sqlite3.connect
-        failure = sqlite3.DatabaseError("first snapshot is corrupt")
-        opened = []
-        def connect(*args, **kwargs):
-            db = FaultConnection(real_connect(*args, **kwargs), "SELECT" if not opened else None, failure)
-            opened.append(db)
-            return db
-        with patch.object(common.sqlite3, "connect", side_effect=connect):
-            with self.assertRaises(common.RddStorageError) as caught:
-                self.store.get("fixture")
-        self.assertIs(caught.exception.__cause__, failure)
-        self.assertEqual(len(opened), 1)
-        self.assertTrue(caught.exception.restart_required)
-
-    def test_early_headless_scope_detects_first_failure_without_registering_context(self):
-        from tools.rdd import storage_failure
-        common.write_json(self.root / ".rdd/run.json", dict(run_id="fixture"))
-        context = self.root / ".rdd/runtime/headless.json"
-        real_connect = sqlite3.connect
-        failure = sqlite3.DatabaseError("early snapshot failed")
-        opened = []
-        def connect(*args, **kwargs):
-            db = FaultConnection(real_connect(*args, **kwargs), "SELECT" if not opened else None, failure)
-            opened.append(db)
-            return db
-        with storage_failure.headless_scope(self.root, "preparation"):
-            self.assertEqual(self.store.get("fixture")["value"], 1)
-            self.assertFalse(context.exists())
-            self.assertFalse(self.failure_path.exists())
-            with patch.object(common.sqlite3, "connect", side_effect=connect):
-                with self.assertRaises(common.RddStorageError) as caught:
-                    self.store.get("fixture")
-        self.assertIs(caught.exception.__cause__, failure)
-        self.assertTrue(caught.exception.restart_required)
-        self.assertEqual(len(opened), 1)
-        self.assertEqual(common.read_json(self.failure_path)["stage"], "preparation")
-        self.assertFalse(context.exists())
-
-    def test_specification_scope_suppresses_stale_headless_context(self):
-        from tools.rdd import storage_failure
-        self.context()
-        failure = sqlite3.OperationalError("specification storage failed")
-        with storage_failure.headless_scope(self.root, "specification"), \
-             patch.object(common.sqlite3, "connect", side_effect=failure):
-            with self.assertRaises(common.RddStorageError) as caught:
-                self.store.get("fixture")
-        self.assertFalse(getattr(caught.exception, "restart_required", False))
-        self.assertFalse(self.failure_path.exists())
-
-    def test_headless_sqlite_cleanup_failure_preserves_primary_exception_and_marks_run(self):
-        real_connect = sqlite3.connect
-        for boundary, primary in ((boundary, kind("primary body failure"))
-                                  for boundary in ("rollback", "close", "rollback+close")
-                                  for kind in (ValueError, common.RddError)):
-            with self.subTest(boundary=boundary, primary=type(primary).__name__):
-                self.failure_path.unlink(missing_ok=True)
-                self.context()
-                diagnostic = "rollback failed" if boundary == "rollback+close" else boundary + " failed"
-                failure = sqlite3.OperationalError(diagnostic)
-                cause = RuntimeError("original cause")
-                primary.__cause__ = cause
-                def connect(*args, **kwargs):
-                    options = ({"rollback_error": failure, "close_error": sqlite3.OperationalError("close failed")}
-                               if boundary == "rollback+close" else {boundary + "_error": failure})
-                    return FaultConnection(real_connect(*args, **kwargs), **options)
-                with patch.object(common.sqlite3, "connect", side_effect=connect):
-                    with self.assertRaises(type(primary)) as caught:
-                        with self.store.edit("fixture"):
-                            raise primary
-                self.assertIs(caught.exception, primary)
-                self.assertIs(caught.exception.__cause__, cause)
-                self.assertTrue(getattr(primary, "restart_required", False), "Original error must retain terminal classification")
-                self.assertEqual(primary.failure_path, str(self.failure_path))
-                self.assertIn("primary body failure", str(primary))
-                self.assertIn(diagnostic, str(primary))
-                self.assertIn("new run", str(primary))
-                if boundary == "rollback+close":
-                    self.assertNotIn("close failed", str(primary), "First cleanup diagnostic must remain authoritative")
-                self.assertTrue(self.failure_path.exists(), "SQLite cleanup failure must mark the headless run")
-                self.assertIn(diagnostic, common.read_json(self.failure_path)["error"])
-
-    def test_nonheadless_sqlite_cleanup_failure_does_not_annotate_primary(self):
-        real_connect = sqlite3.connect
-        primary = common.RddError("ordinary validation")
-        def connect(*args, **kwargs):
-            return FaultConnection(real_connect(*args, **kwargs),
-                                   rollback_error=sqlite3.OperationalError("rollback failed"),
-                                   close_error=sqlite3.OperationalError("close failed"))
-        with patch.object(common.sqlite3, "connect", side_effect=connect):
-            with self.assertRaises(common.RddError) as caught:
-                with self.store.edit("fixture"):
-                    raise primary
-        self.assertIs(caught.exception, primary)
-        self.assertFalse(getattr(primary, "restart_required", False))
-        self.assertEqual(str(primary), "ordinary validation")
-        self.assertFalse(self.failure_path.exists())
-
-    def test_clean_headless_interrupt_remains_ordinary(self):
-        self.context()
-        failure = KeyboardInterrupt("ordinary interruption")
-        with self.assertRaises(KeyboardInterrupt) as caught:
-            with self.store.edit("fixture"):
-                raise failure
-        self.assertIs(caught.exception, failure)
-        self.assertFalse(self.failure_path.exists())
-
-    def test_reentrant_write_rejects_before_marker_file_io(self):
-        from tools.rdd import storage_failure
-        with self.store.edit("fixture"):
-            with patch.object(storage_failure, "read_failure", side_effect=AssertionError("Reentrant marker IO")):
-                with self.assertRaises(common.RddError) as caught:
-                    self.store.put(dict(id="fixture", value=2))
-        self.assertIn("reentrant", str(caught.exception).lower())
-
-    def test_forensic_reads_and_separate_run_writes_remain_available(self):
-        self.context()
-        common.write_json(self.failure_path, self.record())
-        before = self.store.path.read_bytes()
-        self.assertEqual(self.store.get("fixture"), dict(id="fixture", value=1))
-        self.assertTrue(self.store.exists("fixture"))
-        self.assertEqual(self.store.path.read_bytes(), before)
-        self.store.put(dict(id="separate", value=3))
-        with self.store.edit("separate") as state:
-            state["value"] = 4
-        self.assertEqual(self.store.get("separate")["value"], 4)
-
-    def test_registration_is_explicit_minimal_and_run_bound(self):
-        from tools.rdd import storage_failure
-        context = self.root / ".rdd/runtime/headless.json"
-        self.assertFalse(context.exists(), "Ordinary Store calls must not register context")
-        storage_failure.register_headless(self.root, "fixture", "preparation")
-        self.assertEqual(common.read_json(context), dict(run_id="fixture", stage="preparation", thread_id=None))
-        for run_id, stage in (("../escape", "preparation"), ("fixture", "specification")):
-            with self.assertRaises(common.RddError):
-                storage_failure.register_headless(self.root, run_id, stage)
-        self.assertEqual(common.read_json(context)["stage"], "preparation")
-
-    def test_explicit_failure_registration_needs_no_database_or_context(self):
-        from tools.rdd import storage_failure
-        root = self.root / "empty"
-        error = common.RddStorageError("read", root / ".rdd/runtime/state.sqlite3", sqlite3.OperationalError("open failed"))
-        with patch.object(common.sqlite3, "connect", side_effect=AssertionError("Must not access DB")):
-            record = storage_failure.record_failure(root, error, run_id="fixture", stage="preparation")
-            self.assertEqual(record, storage_failure.read_failure(root, "fixture"))
-            with self.assertRaises(common.RddError) as caught:
-                storage_failure.check_failure(root, "fixture")
-        self.assertTrue(caught.exception.restart_required)
-        self.assertFalse((root / ".rdd/runtime/state.sqlite3").exists())
-
-    def test_first_record_is_preserved_and_shared_with_child_process(self):
-        from tools.rdd import storage_failure
-        self.context()
-        first = common.RddStorageError("edit", self.store.path, sqlite3.OperationalError("first failure"))
-        expected = storage_failure.record_failure(self.root, first)
-        saved = self.failure_path.read_bytes()
-        second = common.RddStorageError("put", self.store.path, sqlite3.OperationalError("second failure"))
-        self.assertEqual(storage_failure.record_failure(self.root, second), expected)
-        self.assertEqual(self.failure_path.read_bytes(), saved)
-        child = """from pathlib import Path
-import sys
-from tools.rdd.storage_failure import check_failure
-from tools.rdd.common import RddError
-try:
-    check_failure(Path(sys.argv[1]), 'fixture')
-except RddError as error:
-    assert error.restart_required
-    assert 'new run' in str(error).lower()
-else:
-    raise AssertionError('Child did not see terminal marker')
-"""
-        result = subprocess.run([sys.executable, "-c", child, str(self.root)],
-                                cwd=Path(__file__).resolve().parents[2], capture_output=True, text=True,
-                                timeout=10, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_concurrent_first_records_publish_one_complete_diagnostic(self):
-        from tools.rdd import storage_failure
-        self.context()
-        barrier = threading.Barrier(4)
-        outcomes = []
-        def writer(index):
-            error = common.RddStorageError("edit", self.store.path, sqlite3.OperationalError(f"failure {index}"))
-            barrier.wait(timeout=5)
-            outcomes.append(storage_failure.record_failure(self.root, error))
-        threads = [threading.Thread(target=writer, args=(index,)) for index in range(4)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join(5)
-            self.assertFalse(thread.is_alive())
-        self.assertEqual(len(outcomes), 4)
-        record = storage_failure.read_failure(self.root, "fixture")
-        self.assertTrue(all(outcome == record for outcome in outcomes))
-        self.assertIn(record["error"].split(": ")[-1], {f"failure {index}" for index in range(4)})
-
-    def test_marker_write_failure_preserves_original_and_reports_persistence(self):
-        from tools.rdd import storage_failure
-        self.context()
-        failure = sqlite3.OperationalError("original write failure")
-        with patch.object(common.sqlite3, "connect", side_effect=failure), \
-             patch.object(storage_failure, "atomic_write", side_effect=PermissionError("cannot persist marker")):
-            with self.assertRaises(common.RddStorageError) as caught:
-                self.store.put(dict(id="fixture", value=2))
-        self.assertIs(caught.exception.__cause__, failure)
-        self.assertTrue(caught.exception.restart_required)
-        self.assertIn("cannot persist marker", caught.exception.persistence_error)
-        self.assertIn("cannot persist marker", str(caught.exception))
-
-    def test_repeated_recording_preserves_runtime_diagnostic_and_does_not_retry_write(self):
-        from tools.rdd import storage_failure
-        self.context()
-        error = common.RddStorageError("edit", self.store.path, sqlite3.OperationalError("write failed"))
-        with patch.object(storage_failure, "atomic_write", side_effect=PermissionError("marker failed")) as write:
-            storage_failure.record_failure(self.root, error)
-            error.args = (str(error) + "\nRuntime shutdown diagnostic",)
-            storage_failure.record_failure(self.root, error, run_id="fixture", stage="implementation")
-        self.assertEqual(write.call_count, 1)
-        self.assertIn("Runtime shutdown diagnostic", str(error))
-
-    def test_nonheadless_attempt_can_later_receive_explicit_headless_context(self):
-        from tools.rdd import storage_failure
-        error = common.RddStorageError("read", self.store.path, sqlite3.OperationalError("read failed"))
-        self.assertIsNone(storage_failure.record_failure(self.root, error, stage="specification"))
-        self.assertFalse(hasattr(error, "persistence_error"))
-        self.assertIsNone(storage_failure.record_failure(self.root, error))
-        self.assertFalse(getattr(error, "restart_required", False))
-        self.assertIsNotNone(storage_failure.record_failure(self.root, error, run_id="fixture", stage="preparation"))
-        self.assertTrue(error.restart_required)
-
-    def test_invalid_or_partial_marker_fails_closed_without_writes(self):
-        from tools.rdd import storage_failure
-        self.failure_path.parent.mkdir(parents=True)
-        for content in (b'{"schema_version":', common.canonical(self.record(run_id="other")),
-                        common.canonical(self.record(sqlite_errorcode=True))):
-            with self.subTest(content=content):
-                self.failure_path.write_bytes(content)
-                with patch.object(common.sqlite3, "connect", side_effect=AssertionError("Must not access DB")):
-                    with self.assertRaises(common.RddError) as caught:
-                        storage_failure.check_failure(self.root, "fixture")
-                self.assertTrue(caught.exception.restart_required)
-                self.assertEqual(self.failure_path.read_bytes(), content)
-
-    def test_checkpoint_failure_validation_and_path_are_pure(self):
-        from tools.rdd import storage_failure
-        record = self.record()
-        self.assertEqual(storage_failure.validate_failure(record, "fixture"), record)
-        self.assertEqual(storage_failure.checkpoint_evidence_path("fixture"), ".rdd/evidence/storage-failures/fixture.json")
-        for run_id in ("../escape", "", "a/b"):
-            with self.assertRaises(common.RddError):
-                storage_failure.checkpoint_evidence_path(run_id)
-        with self.assertRaises(common.RddError):
-            storage_failure.validate_failure({**record, "extra": True}, "fixture")
 
 
 if __name__ == "__main__":
