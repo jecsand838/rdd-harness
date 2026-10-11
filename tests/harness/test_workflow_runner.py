@@ -641,6 +641,11 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.assertEqual(result["status"], "incomplete")
         self.assertFalse(any(m in {"thread/goal/set", "turn/start"} for m, _ in self.server.calls))
         self.assertEqual(self.server.goals[tid]["tokensUsed"], 37)
+        calls = len(self.server.calls)
+        self.assertEqual(self.runner.run("preparation")["status"], "incomplete")
+        self.assertFalse(any(m in {"thread/goal/set", "turn/start"} for m, _ in self.server.calls[calls:]))
+        self.assertEqual(self.server.goals[tid], goal)
+        self.assertFalse((self.f.root / ".rdd/runtime/failures/fixture-run.json").exists())
 
     def test_corrupt_prerequisite_evidence_stops_before_runtime_and_mutation(self):
         from tools.rdd.common import RddError
@@ -781,6 +786,358 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.assertEqual([m for m, _ in self.server.calls],
                          ["thread/goal/get", "thread/goal/set", "turn/interrupt"])
 
+    def terminal_headless_failure(self, stage, *, cleanup=None):
+        """Fail after activation, when native Goal accounting is already durable."""
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddError, RddStorageError
+        if stage == "preparation":
+            self.accepted_spec()
+        else:
+            self.f.prepared()
+        original_rpc, original_result = self.server.rpc, self.runner.result
+        error = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("terminal fixture fault"))
+        observed = {}
+
+        def accounted_rpc(method, params, timeout=60):
+            if self.runner.storage_failed and cleanup == "missing-goal" and method == "thread/goal/get":
+                self.server.calls.append((method, copy.deepcopy(params)))
+                return dict(goal=None)
+            if self.runner.storage_failed and cleanup == "pause-failure" and method == "thread/goal/set":
+                self.server.calls.append((method, copy.deepcopy(params)))
+                raise RddError("secondary Goal cleanup failure", "environment")
+            value = original_rpc(method, params, timeout)
+            if method == "thread/goal/set" and "objective" in params:
+                self.server.goals[params["threadId"]].update(tokensUsed=123, timeUsedSeconds=45)
+            return value
+
+        def failed_result():
+            if self.runner.thread_id in self.server.goals:
+                observed["state"] = copy.deepcopy(self.c.state())
+                observed["goal"] = copy.deepcopy(self.server.goals[self.runner.thread_id])
+                raise error
+            return original_result()
+
+        self.server.rpc = accounted_rpc
+        checkpoint = self.f.root / f".rdd/evidence/workflow-{stage}-checkpoint.json"
+        checkpoint.write_bytes(b"preserved prior checkpoint\n")
+        with patch.object(self.runner, "result", side_effect=failed_result), \
+                patch.object(self.c, "export_run") as export:
+            with self.assertRaises(RddStorageError) as caught:
+                self.runner.run(stage)
+        self.assertIs(caught.exception, error)
+        export.assert_not_called()
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        expected_status = "paused" if cleanup is None else "active"
+        self.assertEqual(self.server.goals[self.runner.thread_id], {**observed["goal"], "status": expected_status})
+        self.assertEqual(checkpoint.read_bytes(), b"preserved prior checkpoint\n")
+        self.assertTrue(self.server.closed)
+        observed["error"] = error
+        return observed
+
+    def assert_terminal_retry(self, stage, observed):
+        from unittest.mock import patch
+        from tools.rdd.common import RddError, read_json
+        from tools.rdd.engine import Controller
+        from tools.rdd.workflow import WorkflowRunner
+        run_id = observed["state"]["id"]
+        marker = self.f.root / f".rdd/runtime/failures/{run_id}.json"
+        self.assertTrue(marker.is_file(), "A storage abort must survive a new process outside SQLite")
+        saved = read_json(marker)
+        self.assertEqual(saved["run_id"], run_id)
+        self.assertEqual(saved["stage"], stage)
+        self.assertEqual(saved["thread_id"], self.runner.thread_id)
+        before = self.snapshot()
+        marker_bytes = marker.read_bytes()
+        fresh = Controller(self.f.root)
+        self.addCleanup(fresh.close)
+        with patch.object(fresh, "save") as save, patch.object(fresh, "export_run") as export, \
+                patch.object(fresh, "workflow_result") as acceptance:
+            factory = unittest.mock.Mock(side_effect=AssertionError("Terminal retry must stop before runtime"))
+            runner = WorkflowRunner(fresh, server_factory=factory, emit=lambda text: None)
+            with self.assertRaises(RddError) as caught:
+                runner.run(stage)
+            self.assertEqual(caught.exception.kind, "environment")
+            self.assertRegex(str(caught.exception), "fresh|new|terminal")
+            factory.assert_not_called()
+            save.assert_not_called()
+            export.assert_not_called()
+            acceptance.assert_not_called()
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(marker.read_bytes(), marker_bytes)
+        if "goal" in observed:
+            self.assertEqual(self.server.goals[self.runner.thread_id], {**observed["goal"], "status": "paused"})
+
+    def test_preparation_storage_abort_survives_shutdown_and_fresh_runner_retry(self):
+        self.assert_terminal_retry("preparation", self.terminal_headless_failure("preparation"))
+
+    def test_implementation_storage_abort_survives_shutdown_and_fresh_runner_retry(self):
+        self.assert_terminal_retry("implementation", self.terminal_headless_failure("implementation"))
+
+    def test_storage_abort_preserves_primary_when_goal_disappears_during_cleanup(self):
+        observed = self.terminal_headless_failure("preparation", cleanup="missing-goal")
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertTrue((self.f.root / ".rdd/runtime/failures/fixture-run.json").is_file())
+        self.assertEqual(len([p for m, p in self.server.calls if m == "thread/goal/set"]), 1)
+
+    def test_storage_abort_preserves_primary_when_goal_pause_fails(self):
+        observed = self.terminal_headless_failure("preparation", cleanup="pause-failure")
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertTrue((self.f.root / ".rdd/runtime/failures/fixture-run.json").is_file())
+
+    def test_storage_abort_preserves_primary_when_terminal_marker_write_fails(self):
+        from unittest.mock import patch
+        from tools.rdd.storage_failure import atomic_write
+        def marker_fault(path, data):
+            if path.parent.name == "failures":
+                raise OSError("marker disk full")
+            return atomic_write(path, data)
+        with patch("tools.rdd.storage_failure.atomic_write", side_effect=marker_fault):
+            observed = self.terminal_headless_failure("preparation")
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertTrue(observed["error"].restart_required)
+        self.assertIn("marker disk full", str(observed["error"]))
+        self.assertFalse((self.f.root / ".rdd/runtime/failures/fixture-run.json").exists())
+
+    def test_early_storage_abort_prevents_runtime_and_persists_terminal_identity(self):
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddStorageError
+        self.accepted_spec()
+        before = self.snapshot()
+        error = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("early fixture fault"))
+        with patch.object(self.c, "guard_workflow", side_effect=error):
+            with self.assertRaises(RddStorageError) as caught:
+                self.runner.run("preparation")
+        self.assertIs(caught.exception, error)
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(self.server.calls, [])
+        self.assert_terminal_retry("preparation", dict(state=before[0]))
+
+    def test_real_child_controller_storage_failure_stops_parent_before_goal_activation(self):
+        from pathlib import Path
+        import subprocess
+        import sys
+        from tools.rdd.common import RddError, read_json
+        self.accepted_spec()
+        observed = {}
+        script = """from pathlib import Path
+import sqlite3, sys
+from unittest.mock import patch
+from tools.rdd.engine import Controller
+from tools.rdd.common import RddStorageError
+c = Controller(Path(sys.argv[1]))
+try:
+    with patch('tools.rdd.common.sqlite3.connect', side_effect=sqlite3.DatabaseError('child fixture fault')):
+        c.state()
+except RddStorageError as error:
+    print(str(error))
+    sys.exit(2)
+sys.exit(0)
+"""
+
+        def child_failure(thread, prompt):
+            observed["state"] = copy.deepcopy(self.c.state())
+            child = subprocess.run([sys.executable, "-B", "-c", script, str(self.f.root)],
+                cwd=Path(__file__).resolve().parents[2], capture_output=True, text=True, timeout=30)
+            self.assertEqual(child.returncode, 2, child.stdout + child.stderr)
+            self.assertIn("child fixture fault", child.stdout)
+            marker = self.f.root / ".rdd/runtime/failures/fixture-run.json"
+            self.assertTrue(marker.is_file(), "A real child must communicate the terminal failure through shared evidence")
+            self.assertEqual(read_json(marker)["stage"], "preparation")
+            return dict(kind="stopped", message="Child storage failure", questions=[])
+
+        self.server.on_turn = child_failure
+        with self.assertRaises(RddError) as caught:
+            self.runner.run("preparation")
+        self.assertEqual(caught.exception.kind, "environment")
+        self.assertTrue(getattr(caught.exception, "restart_required", False))
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertFalse(any(m == "thread/goal/set" for m, _ in self.server.calls))
+        self.assertTrue(self.server.closed)
+
+    def shutdown_child_failure_race(self, primary=None, *, publication="pause-journal"):
+        """Publish after shutdown's first guard at a deterministic cleanup cut."""
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd.common import RddError, RddStorageError
+        from tools.rdd.storage_failure import TerminalStorageFailure, record_failure
+        self.accepted_spec()
+        original_update = self.runner.update
+        original_close = self.server.close
+        observed = {}
+
+        def goal_then_stop(packet):
+            status = "paused" if publication == "close" else "active"
+            goal = dict(threadId=self.runner.thread_id, objective=packet["objective"], status=status,
+                tokensUsed=123, timeUsedSeconds=45, createdAt=1, tokenBudget=None)
+            self.server.goals[self.runner.thread_id] = copy.deepcopy(goal)
+            self.runner.active[self.runner.thread_id] = "cleanup-active-turn"
+            self.runner.update(goal=goal)
+            observed["goal"] = goal
+            if primary is not None:
+                raise primary
+            return self.c.workflow_result("preparation")
+
+        def publish_child_marker():
+            self.assertFalse(self.runner.storage_failed)
+            observed["state"] = copy.deepcopy(self.c.state(allow_blocked=True))
+            observed["edits"] = edit.call_count
+            fault = RddStorageError("read", self.c.store.path, sqlite3.DatabaseError("child shutdown race"))
+            record_failure(self.f.root, fault, run_id=observed["state"]["id"],
+                stage="preparation", thread_id=self.runner.thread_id)
+            marker = self.f.root / ".rdd/runtime/failures/fixture-run.json"
+            observed["marker"] = marker.read_bytes()
+
+        def publish_before_pause_journal(**changes):
+            if publication == "pause-journal" and changes.get("driver_paused"):
+                publish_child_marker()
+            return original_update(**changes)
+
+        def close():
+            original_close()
+            if publication == "close" and "marker" not in observed:
+                publish_child_marker()
+
+        with patch.object(self.runner, "goal", side_effect=goal_then_stop), \
+                patch.object(self.runner, "update", side_effect=publish_before_pause_journal), \
+                patch.object(self.server, "close", side_effect=close), \
+                patch.object(self.c.store, "edit", wraps=self.c.store.edit) as edit, \
+                patch.object(self.c, "export_run") as export:
+            with self.assertRaises(RddError) as caught:
+                self.runner.run("preparation")
+            export.assert_not_called()
+            self.assertEqual(edit.call_count, observed["edits"])
+        if primary is None:
+            self.assertIsInstance(caught.exception, TerminalStorageFailure)
+        else:
+            self.assertIs(caught.exception, primary)
+            self.assertIn("primary ordinary failure", str(caught.exception))
+        self.assertTrue(caught.exception.restart_required)
+        self.assertTrue(self.runner.storage_failed)
+        self.assertTrue(self.server.closed)
+        self.assertTrue(any(m == "turn/interrupt" for m, _ in self.server.calls))
+        self.assertEqual(self.server.goals[self.runner.thread_id], {**observed["goal"], "status": "paused"})
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertEqual((self.f.root / ".rdd/runtime/failures/fixture-run.json").read_bytes(), observed["marker"])
+
+    def test_shutdown_propagates_child_marker_published_after_initial_guard(self):
+        self.shutdown_child_failure_race()
+
+    def test_shutdown_child_marker_preserves_primary_nonstorage_error_as_terminal(self):
+        from tools.rdd.common import RddError
+        self.shutdown_child_failure_race(RddError("primary ordinary failure", "environment"))
+
+    def test_shutdown_propagates_child_marker_during_close_without_active_goal(self):
+        self.shutdown_child_failure_race(publication="close")
+
+    def tagged_cleanup_failure(self, primary, *, stopped_update=False):
+        """Use real Store rollback/cleanup to tag an unrelated primary error."""
+        import sqlite3
+        from unittest.mock import patch
+        from tools.rdd import common, storage_failure
+        self.accepted_spec()
+        original_update = self.runner.update
+        original_connect = common.sqlite3.connect
+        original_write = storage_failure.atomic_write
+        cause = ValueError("original primary cause")
+        primary.__cause__ = cause
+        observed = {}
+        diagnostic = "fixture stopped journal SQLite fault" if stopped_update else "fixture SQLite cleanup fault"
+        checkpoint = self.f.root / ".rdd/evidence/workflow-preparation-checkpoint.json"
+        checkpoint.write_bytes(b"preserved tagged-error checkpoint\n")
+
+        class CloseFault:
+            def __init__(self, connection):
+                self.connection = connection
+
+            def __getattr__(self, name):
+                return getattr(self.connection, name)
+
+            def execute(self, sql, *args, **kwargs):
+                if stopped_update and sql == "BEGIN IMMEDIATE":
+                    raise sqlite3.DatabaseError(diagnostic)
+                return self.connection.execute(sql, *args, **kwargs)
+
+            def close(self):
+                self.connection.close()
+                if not stopped_update:
+                    raise sqlite3.DatabaseError(diagnostic)
+
+        def connect(*args, **kwargs):
+            return CloseFault(original_connect(*args, **kwargs))
+
+        def marker_write(path, data):
+            if path.parent.name == "failures":
+                raise OSError("fixture marker publication failed")
+            return original_write(path, data)
+
+        def fail_goal(packet):
+            goal = dict(threadId=self.runner.thread_id, objective=packet["objective"], status="active",
+                tokensUsed=123, timeUsedSeconds=45, createdAt=1, tokenBudget=None)
+            self.server.goals[self.runner.thread_id] = copy.deepcopy(goal)
+            self.runner.active[self.runner.thread_id] = "tagged-active-turn"
+            self.runner.update(goal=goal)
+            observed["state"] = copy.deepcopy(self.c.state(allow_blocked=True))
+            observed["goal"] = goal
+            if stopped_update:
+                self.assertFalse(getattr(primary, "restart_required", False))
+                raise primary
+            try:
+                with patch("tools.rdd.common.sqlite3.connect", side_effect=connect), \
+                        patch("tools.rdd.storage_failure.atomic_write", side_effect=marker_write):
+                    with self.c.store.edit(observed["state"]["id"]):
+                        raise primary
+            finally:
+                observed["edits"] = edit.call_count
+
+        def update(**changes):
+            if stopped_update and changes.get("connection") == "stopped":
+                try:
+                    with patch("tools.rdd.common.sqlite3.connect", side_effect=connect), \
+                            patch("tools.rdd.storage_failure.atomic_write", side_effect=marker_write):
+                        return original_update(**changes)
+                finally:
+                    observed["edits"] = edit.call_count
+            return original_update(**changes)
+
+        with patch.object(self.runner, "goal", side_effect=fail_goal), \
+                patch.object(self.runner, "update", side_effect=update), \
+                patch.object(self.c.store, "edit", wraps=self.c.store.edit) as edit, \
+                patch.object(self.c, "export_run") as export:
+            with self.assertRaises(type(primary)) as caught:
+                self.runner.run("preparation")
+            self.assertIs(caught.exception, primary)
+            self.assertTrue(primary.restart_required, "Real SQLite cleanup must tag the original primary")
+            self.assertIn("fixture marker publication failed", primary.persistence_error)
+            self.assertIn("tagged primary body failure", str(primary))
+            self.assertIn(diagnostic, str(primary))
+            self.assertIn("fixture marker publication failed", str(primary))
+            self.assertIs(primary.__cause__, cause)
+            self.assertEqual(edit.call_count, observed["edits"], "No journal write is safe after failed SQLite cleanup")
+            export.assert_not_called()
+        self.assertTrue(self.runner.storage_failed)
+        self.assertTrue(self.server.closed)
+        self.assertEqual(self.server.goals[self.runner.thread_id], {**observed["goal"], "status": "paused"})
+        self.assertTrue(any(m == "turn/interrupt" for m, _ in self.server.calls))
+        self.assertEqual(self.c.state(allow_blocked=True), observed["state"])
+        self.assertEqual(checkpoint.read_bytes(), b"preserved tagged-error checkpoint\n")
+        self.assertFalse((self.f.root / ".rdd/runtime/failures/fixture-run.json").exists())
+
+    def test_tagged_rdd_error_stops_storage_after_marker_publication_failure(self):
+        from tools.rdd.common import RddError
+        self.tagged_cleanup_failure(RddError("tagged primary body failure", "environment"))
+
+    def test_tagged_value_error_stops_storage_after_marker_publication_failure(self):
+        self.tagged_cleanup_failure(ValueError("tagged primary body failure"))
+
+    def test_tagged_keyboard_interrupt_stops_storage_after_marker_publication_failure(self):
+        self.tagged_cleanup_failure(KeyboardInterrupt("tagged primary body failure"))
+
+    def test_stopped_update_storage_failure_tags_original_rdd_error_without_marker(self):
+        from tools.rdd.common import RddError
+        self.tagged_cleanup_failure(RddError("tagged primary body failure", "environment"), stopped_update=True)
+
     def test_storage_failure_cannot_be_reported_as_failed_acceptance(self):
         import sqlite3
         from unittest.mock import patch
@@ -809,6 +1166,7 @@ class WorkflowExecutionTests(WorkflowResultTests):
         self.assertTrue(self.server.closed)
         self.assertEqual(self.server.goals["saved-thread"]["status"], "paused")
         self.assertTrue(any(m == "turn/interrupt" for m, _ in self.server.calls))
+        self.assert_terminal_retry("preparation", dict(state=self.c.state(allow_blocked=True)))
 
     def test_storage_failure_in_checkpoint_export_is_not_silenced(self):
         import sqlite3

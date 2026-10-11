@@ -15,6 +15,7 @@ from rdd.adapters import RddAdapterError
 from rdd.common import RddError, operation_lock, require_source_branch
 from rdd.engine import Controller
 from rdd.profiles import IMPLEMENTOR_ROLES, WORKFLOW_AUTHOR_ROLES, profile_policy_digest
+from rdd.storage_failure import check_failure
 
 
 def parser() -> argparse.ArgumentParser:
@@ -299,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
             args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
             args.command == "workflow" and args.stage in {"nodes", "next"})
         if args.command in {"start", "init"}:
+            check_failure(controller.root)
             profile_policy_digest(controller.root)
             if args.command == "init":
                 controller.guard_run_policy()
@@ -314,13 +316,16 @@ def main(argv: list[str] | None = None) -> int:
             args.command == "workflow" and args.stage in {"nodes", "claim"}) else result
         print(json.dumps(displayed, indent=2, ensure_ascii=False))
         if isinstance(result, dict):
+            if result.get("restart_required"):
+                return 2
             if result.get("outcome") == "fail" or result.get("status") == "failed":
                 return 1
             if result.get("status") == "blocked" or result.get("ready") is False:
                 return 2
         return 0
     except (RddError, RddAdapterError) as exc:
-        kind = getattr(exc, "kind", getattr(exc, "code", "environment"))
+        terminal = getattr(exc, "restart_required", False)
+        kind = "environment" if terminal else getattr(exc, "kind", getattr(exc, "code", "environment"))
         # Frozen authority/phase drift cannot be silently repaired by an implementation agent.
         if controller and kind in {"specification", "planning", "closure"} and args.command != "workflow":
             try:
@@ -330,10 +335,23 @@ def main(argv: list[str] | None = None) -> int:
                     controller.block(kind, str(exc))
             except (RddError, OSError):
                 pass
-        print(json.dumps({"status": "blocked" if kind != "validation" else "failed", "kind": kind, "error": str(exc)}, ensure_ascii=False))
+        extra = {"severity": "critical", "restart_required": True,
+                 "failure_path": getattr(exc, "failure_path", None)} if terminal else {}
+        if getattr(exc, "persistence_error", None):
+            extra["persistence_error"] = exc.persistence_error
+        print(json.dumps({"status": "failed" if terminal or kind == "validation" else "blocked",
+                          "kind": kind, "error": str(exc), **extra}, ensure_ascii=False))
         return 1 if kind == "validation" else 2
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        print(json.dumps({"status": "blocked", "kind": "environment", "error": str(exc)}, ensure_ascii=False))
+    except (OSError, ValueError, KeyError, TypeError, KeyboardInterrupt) as exc:
+        terminal = getattr(exc, "restart_required", False)
+        if isinstance(exc, KeyboardInterrupt) and not terminal:
+            raise
+        extra = {"severity": "critical", "restart_required": True,
+                 "failure_path": getattr(exc, "failure_path", None)} if terminal else {}
+        if getattr(exc, "persistence_error", None):
+            extra["persistence_error"] = exc.persistence_error
+        print(json.dumps({"status": "failed" if terminal else "blocked", "kind": "environment",
+                          "error": str(exc), **extra}, ensure_ascii=False))
         return 2
     finally:
         if controller:

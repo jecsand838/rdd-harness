@@ -196,27 +196,45 @@ def _store_access(operation: str) -> Iterator[None]:
 
 
 @contextlib.contextmanager
-def _store_connection(path: Path | str, database_path: Path, operation: str, **options) -> Iterator[sqlite3.Connection]:
+def _store_connection(path: Path | str, database_path: Path, operation: str,
+                      *, run_id: str | None = None, **options) -> Iterator[sqlite3.Connection]:
     db = None
     failed = False
+    primary = None
     try:
         try:
             db = sqlite3.connect(path, timeout=30, **options)
         except (OSError, sqlite3.Error) as exc:
             raise RddStorageError(operation, database_path, exc) from exc
         yield db
-    except BaseException:
+    except BaseException as exc:
         failed = True
+        primary = exc
         raise
     finally:
         if db is not None:
             try:
                 db.close()
             except BaseException as exc:
-                if not failed:
-                    if isinstance(exc, (OSError, sqlite3.Error)):
-                        raise RddStorageError(operation, database_path, exc) from exc
+                if isinstance(exc, (OSError, sqlite3.Error)):
+                    cleanup_error = RddStorageError(operation, database_path, exc)
+                    if failed:
+                        if isinstance(primary, RddStorageError):
+                            _record_store_failure(database_path, primary, run_id)
+                        _record_store_failure(database_path, cleanup_error, run_id, primary=primary)
+                    else:
+                        raise cleanup_error from exc
+                elif not failed:
                     raise
+
+
+def _record_store_failure(path: Path, error: RddStorageError, run_id: str | None,
+                          *, primary: BaseException | None = None) -> None:
+    if path.parts[-3:] == (".rdd", "runtime", "state.sqlite3"):
+        from .storage_failure import preserve_primary_error, record_failure
+        record_failure(path.parents[2], error, run_id=run_id)
+        if primary is not None:
+            preserve_primary_error(primary, error, "SQLite cleanup")
 
 
 class Store:
@@ -241,13 +259,15 @@ class Store:
             raise RddStorageError(operation, path, exc) from exc
 
     @contextlib.contextmanager
-    def _writer(self, operation: str) -> Iterator[sqlite3.Connection]:
+    def _writer(self, operation: str, run_id: str) -> Iterator[sqlite3.Connection]:
         with _store_access(operation):
+            from .storage_failure import check_failure
+            check_failure(self.root, run_id)
             try:
                 self.path.parent.mkdir(parents=True, exist_ok=True)
             except OSError as exc:
                 raise RddStorageError(operation, self.path, exc) from exc
-            with _store_connection(self.path, self.path, operation, isolation_level=None) as db:
+            with _store_connection(self.path, self.path, operation, run_id=run_id, isolation_level=None) as db:
                 for sql in ("PRAGMA journal_mode=WAL", "PRAGMA synchronous=FULL",
                             "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, value TEXT NOT NULL)"):
                     self._execute(db, sql, (), self.path, operation)
@@ -287,9 +307,15 @@ class Store:
                         if before != inputs() or any(file_hash(snapshot / name) != value for name, value in before.items()):
                             failure = OSError("database changed during preflight")
                             continue
-                        with _store_connection((snapshot / path.name).as_uri() + "?mode=ro", path, operation, uri=True) as db:
+                        with _store_connection((snapshot / path.name).as_uri() + "?mode=ro", path, operation,
+                                               run_id=run_id, uri=True) as db:
                             return Store._row(db, run_id, path, operation, existence=existence)
-                    except (OSError, RddStorageError) as exc:
+                    except RddStorageError as exc:
+                        _record_store_failure(path, exc, run_id)
+                        if getattr(exc, "restart_required", False):
+                            raise
+                        failure = exc
+                    except OSError as exc:
                         failure = exc
                 if isinstance(failure, RddStorageError):
                     raise failure
@@ -312,44 +338,78 @@ class Store:
     @staticmethod
     def read(root: Path, run_id: str) -> dict:
         """Read a stable DB/WAL copy without creating source auxiliary files."""
-        with _store_access("read"):
-            row = Store._snapshot_row(root / ".rdd/runtime/state.sqlite3", run_id, "read")
-            return Store._state(row, run_id)
+        try:
+            with _store_access("read"):
+                row = Store._snapshot_row(root / ".rdd/runtime/state.sqlite3", run_id, "read")
+                return Store._state(row, run_id)
+        except RddStorageError as exc:
+            from .storage_failure import record_failure
+            record_failure(root, exc, run_id=run_id)
+            raise
 
     def exists(self, run_id: str) -> bool:
-        with _store_access("exists"):
-            try:
-                if not self.path.exists():
-                    return False
-            except OSError as exc:
-                raise RddStorageError("exists", self.path, exc) from exc
-            return self._snapshot_row(self.path, run_id, "exists", existence=True) is not None
+        try:
+            with _store_access("exists"):
+                try:
+                    if not self.path.exists():
+                        return False
+                except OSError as exc:
+                    raise RddStorageError("exists", self.path, exc) from exc
+                return self._snapshot_row(self.path, run_id, "exists", existence=True) is not None
+        except RddStorageError as exc:
+            from .storage_failure import record_failure
+            record_failure(self.root, exc, run_id=run_id)
+            raise
 
     def _put(self, db, state: dict, operation: str) -> None:
+        from .storage_failure import check_failure
+        check_failure(self.root, state["id"])
         self._execute(db, "INSERT INTO runs VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",
                       (state["id"], canonical(state).decode()), self.path, operation)
 
+    @contextlib.contextmanager
+    def _transaction(self, db, run_id: str, operation: str) -> Iterator[None]:
+        from .storage_failure import check_failure
+        try:
+            self._execute(db, "BEGIN IMMEDIATE", (), self.path, operation)
+            yield
+            check_failure(self.root, run_id)
+            self._execute(db, "COMMIT", (), self.path, operation)
+        except BaseException as primary:
+            try:
+                if db.in_transaction:
+                    db.execute("ROLLBACK")
+            except BaseException as exc:
+                if isinstance(exc, (OSError, sqlite3.Error)):
+                    if isinstance(primary, RddStorageError):
+                        _record_store_failure(self.path, primary, run_id)
+                    _record_store_failure(self.path, RddStorageError(operation, self.path, exc), run_id, primary=primary)
+            raise
+
     def put(self, state: dict) -> None:
-        with self._writer("put") as db:
-            self._put(db, state, "put")
+        from .storage_failure import record_failure
+        try:
+            with self._writer("put", state["id"]) as db:
+                with self._transaction(db, state["id"], "put"):
+                    self._put(db, state, "put")
+        except RddStorageError as exc:
+            record_failure(self.root, exc, run_id=state["id"])
+            raise
 
     @contextlib.contextmanager
     def edit(self, run_id: str) -> Iterator[dict]:
-        with self._writer("edit") as db:
-            try:
-                self._execute(db, "BEGIN IMMEDIATE", (), self.path, "edit")
-                row = self._row(db, run_id, self.path, "edit")
-                state = self._state(row, run_id)
-                yield state
-                self._put(db, state, "edit")
-                self._execute(db, "COMMIT", (), self.path, "edit")
-            except BaseException:
-                try:
-                    if db.in_transaction:
-                        db.execute("ROLLBACK")
-                except BaseException:
-                    pass  # Cleanup must preserve the original failure or interrupt.
-                raise
+        from .storage_failure import check_failure, record_failure
+        try:
+            with self._writer("edit", run_id) as db:
+                with self._transaction(db, run_id, "edit"):
+                    row = self._row(db, run_id, self.path, "edit")
+                    state = self._state(row, run_id)
+                    yield state
+                    check_failure(self.root, run_id)
+                    self._put(db, state, "edit")
+        except RddStorageError as exc:
+            record_failure(self.root, exc, run_id=run_id)
+            raise
 
     def close(self):
         """Compatibility no-op: no operation leaves a connection on this object."""

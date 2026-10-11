@@ -19,6 +19,8 @@ from .profiles import IMPLEMENTOR_SCOPES, load_profiles, profile_policy_digest, 
 from .readiness import validate_resources, validate_producers, required_probe_ids
 from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
 from .checks import execute_check, platform_name, verify_receipt
+from .storage_failure import (TerminalStorageFailure, check_failure, read_failure,
+                              checkpoint_evidence_path, validate_failure)
 from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, RddStorageError, Store, assert_inventory, atomic_write, clean, digest, event,
                      file_hash, git, head, inventory, now, read_json, safe_path,
                      require_source_branch, source_digest, validate_artifact, write_json)
@@ -78,6 +80,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
 
     def guard_run_policy(self, state: dict | None = None) -> None:
         """Refuse historical continuation before any write, without migrating history."""
+        check_failure(self.root, state.get("id") if isinstance(state, dict) else None)
         if state is None:
             locator = self.root / ".rdd/run.json"
             run_id = read_json(locator).get("run_id") if locator.is_file() else None
@@ -94,6 +97,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
 
     def guard_source_write(self, state: dict | None = None, *, baseline: bool = False) -> str:
         """Admit only the recorded authoring/implementation checkout before writes."""
+        check_failure(self.root, state.get("id") if isinstance(state, dict) else None)
         require_source_branch(self.root)
         if state is None:
             locator = read_json(self.root / ".rdd/run.json")
@@ -128,6 +132,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         locator = read_json(self.root / ".rdd/run.json")
         if not locator.get("run_id"):
             raise RddError("No active run. Start with ./rdd start --mode regenerate.")
+        if not allow_blocked:
+            check_failure(self.root, locator["run_id"])
         state = Store.read(self.root, locator["run_id"])
         if not allow_blocked and any(not b["resolved"] for b in state["blockers"]):
             raise RddError("Run is blocked. Read ./rdd status; resolve environment/review issues with resume, or start a new specification run for authority/closure changes.", "environment")
@@ -216,6 +222,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         return result
 
     def start(self, mode: str, run_id: str | None = None) -> dict:
+        check_failure(self.root)
         self.guard_v2()
         baseline_branch = require_source_branch(self.root)
         profiles_digest = profile_policy_digest(self.root)
@@ -472,13 +479,15 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             return {"status": "not_started", "next": "./rdd workflow specification"}
         state = self.state(allow_blocked=True)
         counts = {s: sum(t["status"] == s for t in state["tasks"].values()) for s in ("todo", "claimed", "integrated", "done")}
-        return {"run_id": state["id"], "mode": state["mode"], "status": state["status"],
+        failure = read_failure(self.root, state["id"])
+        return {"run_id": state["id"], "mode": state["mode"], "status": "failed" if failure else state["status"],
                 "source_commit": head(self.root), "source_digest": source_digest(self.root),
                 "active_phase": state["active_phase"], "tasks": counts, "phases": state["phases"],
                 "blockers": [b for b in state["blockers"] if not b["resolved"]],
                 "spec_digest": state.get("spec_digest"), "plan_digest": state.get("plan_digest"),
                 "workflow_nodes": self.workflow_nodes(), "review_cursor": len(state.get("live_reviews", [])),
-                "last_events": state["events"][-8:]}
+                "last_events": state["events"][-8:],
+                **({"restart_required": True, "storage_failure": failure} if failure else {})}
 
     def active(self, state: dict) -> str:
         pid = state["active_phase"]
@@ -1207,11 +1216,19 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                          if escaped else "Return to specification for authority/closure issues; fix external environment then resume for environment/review issues.")}
 
     def guard_export(self, path: Path) -> None:
-        """Source-visible export destinations need the same branch preflight."""
+        """Protect run controls and evidence before resolving an export."""
         if path.resolve().is_relative_to(self.root):
             rel = path.resolve().relative_to(self.root).as_posix()
+            if rel in {".rdd/run.json", ".rdd/runtime/headless.json", ".rdd/runtime/failures",
+                       ".rdd/runtime/controller.lock", ".rdd/runtime/workflow.lock"} or rel.startswith(
+                           (".rdd/runtime/failures/", ".rdd/runtime/state.sqlite3")):
+                raise RddError("Export cannot replace reserved run controls, SQLite files or terminal failure evidence")
             if not rel.startswith(EXCLUDED_PREFIXES) and rel not in EXCLUDED_FILES:
                 self.guard_source_write()
+        if path.exists():
+            # A forensic export may add evidence, never replace the failed
+            # run's prior checkpoint, logs or any other existing destination.
+            check_failure(self.root)
 
     def export_run(self, path: Path) -> dict:
         self.guard_export(path)
@@ -1229,6 +1246,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         for rel in reports:
             if (self.root / rel).is_file():
                 evidence[rel] = (self.root / rel).read_text(encoding="utf-8")
+        failure = read_failure(self.root, state["id"])
+        if failure:
+            evidence[checkpoint_evidence_path(state["id"])] = json.dumps(failure, sort_keys=True)
         checkpoint = {"schema_version": 1, "source_commit": head(self.root), "source_digest": source_digest(self.root),
                       "state": state, "evidence": evidence,
                       "baseline": {"spec_digest": state.get("spec_digest"), "plan_digest": state.get("plan_digest"),
@@ -1242,6 +1262,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
 
     def guard_resume(self, file: Path | None = None) -> dict | None:
         """Bound and validate checkpoint identity before runtime/lock creation."""
+        check_failure(self.root)
         require_source_branch(self.root)
         if not file:
             self.guard_source_write()
@@ -1251,8 +1272,19 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         self.guard_run_policy()
         checkpoint = read_json(file)
         validate_artifact(self.root, "checkpoint", checkpoint)
+        self.guard_checkpoint_failure(checkpoint)
         self.guard_source_write(checkpoint["state"])
         return checkpoint
+
+    def guard_checkpoint_failure(self, checkpoint: dict) -> None:
+        run_id = checkpoint["state"].get("id")
+        check_failure(self.root, run_id)
+        for rel, content in checkpoint["evidence"].items():
+            if rel.startswith(".rdd/evidence/storage-failures/"):
+                if rel != checkpoint_evidence_path(run_id):
+                    raise RddError("Checkpoint terminal storage failure belongs to a different run")
+                validate_failure(json.loads(content), run_id)
+                raise TerminalStorageFailure(run_id, rel)
 
     def resume(self, file: Path | None = None) -> dict:
         checkpoint = self.guard_resume(file)
@@ -1315,6 +1347,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         return self.status()
 
     def validate_checkpoint_state(self, state: dict, checkpoint: dict) -> None:
+        self.guard_checkpoint_failure(checkpoint)
         self.guard_run_policy(state)
         required = {"id", "mode", "status", "tasks", "phases", "checks", "reviews", "blockers", "events",
                     "requirements_digest", "policy_inventory", "active_phase"}
@@ -1411,6 +1444,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         locator = self.root / ".rdd/run.json"
         if not locator.is_file() or not read_json(locator).get("run_id"):
             return result
+        # A terminal failure is not ordinary incomplete acceptance, even when
+        # the database or an older acceptance receipt is readable again.
+        check_failure(self.root)
         try:
             state = self.state(allow_blocked=True)
             result["run_id"] = state["id"]
