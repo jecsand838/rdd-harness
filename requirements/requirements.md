@@ -1,11 +1,11 @@
 ---
 document_id: TODO-REQ
 title: Todo Application Requirements
-version: 0.2.0
+version: 0.3.0
 status: draft
-date: 2026-10-08
+date: 2026-10-11
 canonical_path: requirements/requirements.md
-requirement_revision: 2
+requirement_revision: 3
 requirement_priority: must
 ---
 
@@ -15,7 +15,7 @@ requirement_priority: must
 
 This document defines release one of a personal desktop Todo application built with Rust, Tauri 2, and an embedded Turso database. The application helps one person capture work, identify outstanding tasks, record completion, and retain control of their data while working offline.
 
-**Status:** Draft 0.2.0, developer-amended example baseline. Every identified requirement has revision 2 and priority Must under the single-Mac scope in Section 6. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
+**Status:** Draft 0.3.0, developer-amended example baseline. Every identified requirement has revision 3 and priority Must under the macOS scope in Section 6. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
 
 Rust, Tauri 2, and embedded Turso are the requested technology constraints. The desktop platform matrix, Rust UI scope, feature boundaries, field limits, and performance budgets are explicit choices for this example. They can be amended before the requirements baseline is accepted.
 
@@ -285,9 +285,9 @@ Acceptance: The architecture inventory and review find no unreferenced speculati
 
 **NFR-PLAT-001 Supported desktop packages**
 
-The application shall install and execute on the Mac configuration in Section 6 without requiring a Rust compiler, development server, Turso CLI, or standalone database service at runtime.
+The application shall install and execute on the supported macOS environments in Section 6 without requiring a Rust compiler, development server, Turso CLI, or standalone database service at runtime.
 
-Acceptance: Installation into a clean local account or application-data profile and the packaged functional suite pass on the supported Mac with development tools unavailable to the application process. Normal application use requires no administrator privileges. Documented operating-system WebView prerequisites may be installed as part of setup.
+Acceptance: Installation into a clean local account or application-data profile and the packaged functional suite pass on the selected acceptance environment with development tools unavailable to the application process. Normal application use requires no administrator privileges. Documented operating-system WebView prerequisites may be installed as part of setup.
 
 **NFR-OFF-001 Offline operation**
 
@@ -419,15 +419,15 @@ Acceptance: Another developer can build and run verification from a clean checko
 
 ## 6 Reference platforms and performance protocols
 
-This section is normative through NFR-PLAT-001 and NFR-PERF-001 through NFR-PERF-005. The exact operating-system patch, WebView build, tool versions, machine identity, fixture digest, and instrumentation are recorded in the approved specification before implementation. This permits reproducibility without treating a moving dependency version as an unstated requirement.
+This section is normative through NFR-PLAT-001 and NFR-PERF-001 through NFR-PERF-005. The approved specification selects one acceptance environment meeting the platform matrix below and records its actual operating-system patch/build, WebView build, tool versions, hardware model, available RAM, virtualization details when applicable, fixture digest, and instrumentation before implementation. These details make the evidence reproducible; they do not restrict support to one OS patch, chip generation, or machine identity.
 
 ### Supported platform matrix
 
 | Platform | Supported release and architecture | Reference hardware | Assistive technology |
 |---|---|---|---|
-| macOS | macOS 26.7 (build 25G229), arm64 | Developer's current Mac: Apple M3 Max, 128 GiB unified memory, local SSD | VoiceOver with the packaged application |
+| macOS | macOS 26.x, arm64 (Apple silicon) | Apple silicon Mac with 32 GB RAM or greater and local SSD storage; a macOS VM must have at least 32 GB RAM allocated to the guest | VoiceOver with the packaged application |
 
-Only this Mac configuration is required for release one. Windows, Linux (including Ubuntu), other macOS releases, and other Mac hardware are outside this baseline; their absence is not an application acceptance blocker. Native qualification, packaged functional tests, accessibility checks, and benchmarks are required on this Mac. Installer format is selected in specification. Each benchmark uses the release package, an active 1280 by 720 logical-pixel window, AC power, normal performance mode, at least 20 GiB free local storage, and no concurrent build or benchmark workload. Application data and backup destinations are on the same local SSD. No network filesystem is supported for live database storage.
+A physical Mac or a macOS VM on Apple silicon meeting this matrix is eligible for acceptance. Windows, Linux (including Ubuntu), macOS releases outside 26.x, Intel Macs, and environments below the RAM minimum are outside this baseline; their absence is not an application acceptance blocker. Native qualification, packaged functional tests, accessibility checks, and benchmarks are required on the selected acceptance environment. Installer format is selected in specification. Each benchmark uses the release package, an active 1280 by 720 logical-pixel window, AC power and normal performance mode on the physical host, at least 20 GiB free local storage, and no concurrent build or benchmark workload. Application data and backup destinations are on the same local SSD, including the backing storage for a VM. No network filesystem is supported for live database storage.
 
 ### Representative dataset D1
 
@@ -453,10 +453,10 @@ The following verification families define minimum coverage to expand into detai
 |---|---|---|
 | V1 Task lifecycle | FR-001 through FR-009, FR-016 through FR-018 | Fresh profile, complete lifecycle, identical task content with distinct identities, exact limits, invalid data, discarded and retained drafts, repeated activation, confirmed and uncertain write outcomes. |
 | V2 Query and calendar | FR-010 through FR-015 | Exact identity sets and sort order, AND combinations, notes-only search, Unicode and punctuation, null due dates, timestamp ties, midnight, leap day, time-zone change, suspend and resume. |
-| V3 Backup and lifecycle | FR-019 through FR-025 | Export with active filters, round trip into a fresh profile on the supported Mac, overwrite cancellation and failure, invalid and empty backup, confirmation, atomic replacement, double launch, and offline help. |
+| V3 Backup and lifecycle | FR-019 through FR-025 | Export with active filters, round trip into a fresh profile on the selected acceptance environment, overwrite cancellation and failure, invalid and empty backup, confirmation, atomic replacement, double launch, and offline help. |
 | V4 Architecture and environment | NFR-TECH-001 through NFR-TECH-004, NFR-ARCH-001 through NFR-ARCH-002, NFR-MAINT-001, NFR-PLAT-001 | Source and dependency inspection, contract generation and boundary checks, clean builds, actual embedded database, justified module ownership, clean platform installation. |
 | V5 Data and privacy | NFR-OFF-001, NFR-PRIV-001 through NFR-PRIV-002, NFR-DATA-001 through NFR-DATA-004, NFR-SEC-001 through NFR-SEC-002, NFR-OBS-001 | Network isolation and observation, account isolation, command abuse, untrusted text, abrupt termination, storage failure, unsupported format, applicable migration, and diagnostic redaction. |
-| V6 Capacity and performance | NFR-PERF-001 through NFR-PERF-005 | Capacity and maximum-length correctness, P1 through P3 on the supported Mac, delayed-operation responsiveness, and full raw results. |
+| V6 Capacity and performance | NFR-PERF-001 through NFR-PERF-005 | Capacity and maximum-length correctness, P1 through P3 on the selected acceptance environment, delayed-operation responsiveness, and full raw results. |
 | V7 Accessibility and handoff | NFR-A11Y-001 through NFR-A11Y-003, NFR-QUAL-001 through NFR-QUAL-002 | Keyboard journeys, screen-reader journeys, specified contrast and resizing checks, complete requirement mapping, reproducible commands, and artifact identity. |
 
 For NFR-DATA-001 and NFR-DATA-002, the required process-failure model is abrupt termination of the application while the operating system, local filesystem, and storage device remain functioning. The harness records an independent acknowledgment ledger and forces termination before commit, while commit is pending, and after acknowledgment. For each mutation class and whole-collection restore, exercise each cut point 20 times per supported platform; all reopened states must satisfy the stated atomicity and durability rules. Use controlled fault injection and deterministic checkpoints to make cut points meaningful.
@@ -491,3 +491,4 @@ These references explain the selected technology constraints and verification gu
 |---|---|---|
 | 0.1.0 | 2026-10-07 | First proposed requirements baseline for the local Rust and Tauri Todo application with embedded Turso. |
 | 0.2.0 | 2026-10-08 | Developer-authorized revision 2: restrict support and verification to the current macOS 26.7 / M3 Max / 128 GiB Mac; replace cross-platform backup verification with a fresh-profile round trip on that Mac. All 53 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this platform scope. |
+| 0.3.0 | 2026-10-11 | Developer-authorized revision 3: broaden support and acceptance to macOS 26.x on Apple silicon with at least 32 GB RAM, including qualifying macOS VMs. Specification records the selected acceptance environment for reproducibility. All 53 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this broader platform scope. |
