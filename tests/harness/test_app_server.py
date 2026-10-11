@@ -123,7 +123,7 @@ for line in sys.stdin.buffer:
 class TransportProbe:
     """Run the real reader/writer over controllable byte streams."""
 
-    def __init__(self, root, partial_size=None, pause_log=False, reply_timeout=None):
+    def __init__(self, root, partial_size=None, pause_log=False, reply_timeout=None, pause_write=1):
         self.log_started = threading.Event()
         self.release_log = threading.Event()
         self.partial_size = partial_size
@@ -132,6 +132,8 @@ class TransportProbe:
         self.started = threading.Event()
         self.release = threading.Event()
         self.frames = []
+        self.write_count = 0
+        self.pause_write = pause_write
         probe = self
         class LoggedServer(AppServer):
             def _log(server, name, data):
@@ -148,7 +150,9 @@ class TransportProbe:
         self.server = LoggedServer(root)
         self.server._logs = {name: io.BytesIO() for name in ("stdin", "stdout", "stderr")}
         self.server._log_sizes = {name: 0 for name in self.server._logs}
-        self.server.process = SimpleNamespace(stdin=self, stdout=self)
+        # Stdout EOF must not release a blocked stdin write in disconnect tests.
+        self.server.process = SimpleNamespace(stdin=self, stdout=SimpleNamespace(
+            readline=self.readline, close=lambda: None))
         self.threads = [threading.Thread(target=target, daemon=True)
                         for target in (self.server._read_stdout, self.server._write_stdin)]
         for thread in self.threads:
@@ -158,7 +162,8 @@ class TransportProbe:
         return self.incoming.get(timeout=3)
 
     def write(self, data):
-        if not self.started.is_set():
+        self.write_count += 1
+        if self.write_count == self.pause_write:
             self.started.set()
             if not self.release.wait(3):
                 raise OSError("test writer was not released")
@@ -648,6 +653,155 @@ class AppServerTests(unittest.TestCase):
             with self.assertRaises(RddError) as resolved:
                 server.reply(request["id"], {"decision": "accept"}, expected=request)
             self.assertEqual(type(resolved.exception).__name__, "StaleRequestError")
+
+    def test_final_write_retirement_is_uncertain_and_never_retried(self):
+        request = self.approval()
+        response = {"id": request["id"], "result": {"decision": "accept"}}
+        for last_chunk in (False, True):
+            for invalidation in ("resolved", "item", "turn", "reused-id", "patch"):
+                with self.subTest(last_chunk=last_chunk, invalidation=invalidation):
+                    probe = self.probe(partial_size=len(AppServer._encode(response)) - 1 if last_chunk else None,
+                                       pause_write=2 if last_chunk else 1)
+                    probe.feed(request)
+                    replying, errors = self.run_background(lambda: probe.server.reply(
+                        request["id"], response["result"], expected=request))
+                    self.assertTrue(probe.started.wait(1))
+                    with probe.server._condition:
+                        entry = probe.server._server_requests[request["id"]].write
+                    if invalidation in {"resolved", "reused-id"}:
+                        probe.feed({"method": "serverRequest/resolved", "params": {
+                            "threadId": "thread-a", "requestId": request["id"]}})
+                        if invalidation == "reused-id":
+                            probe.feed(self.approval(itemId="replacement-item"))
+                    elif invalidation == "item":
+                        probe.feed({"method": "item/completed", "params": {
+                            "threadId": "thread-a", "turnId": "turn-a", "item": {"id": "item-a"}}})
+                    elif invalidation == "turn":
+                        probe.feed({"method": "turn/completed", "params": {
+                            "threadId": "thread-a", "turn": {"id": "turn-a"}}})
+                    else:
+                        probe.feed({"method": "item/fileChange/patchUpdated", "params": {
+                            "threadId": "thread-a", "turnId": "turn-a", "itemId": "item-a"}})
+                    probe.release.set()
+                    replying.join(timeout=1)
+                    self.wait_writes(probe.server, 0)
+                    self.assertFalse(replying.is_alive())
+                    self.assertEqual(len(errors), 1, "retirement during the final write cannot establish delivery")
+                    self.assertEqual(type(errors[0]), RddError, "uncertain delivery is not safely stale input")
+                    self.assertEqual(errors[0].kind, "environment")
+                    self.assertEqual(entry.state, "failed")
+                    self.assertIsNotNone(probe.server._failure)
+                    self.assertEqual(probe.frames, [response], "an in-flight frame may already have reached the peer")
+                    with self.assertRaises(RddError):
+                        probe.server.reply(request["id"], response["result"], expected=request)
+                    with self.assertRaises(RddError):
+                        probe.server._send({"method": "must-not-send"}, time.monotonic() + 1)
+                    self.assertEqual(probe.frames, [response])
+
+    def test_final_write_disconnect_cannot_report_delivery(self):
+        for disconnect in ("eof", "close"):
+            with self.subTest(disconnect=disconnect):
+                probe = self.probe()
+                request = self.approval()
+                probe.feed(request)
+                replying, errors = self.run_background(lambda: probe.server.reply(
+                    request["id"], {"decision": "accept"}, expected=request))
+                self.assertTrue(probe.started.wait(1))
+                if disconnect == "eof":
+                    probe.incoming.put(b"")
+                    probe.threads[0].join(timeout=1)
+                    self.assertFalse(probe.threads[0].is_alive())
+                    self.assertTrue(probe.server._eof)
+                else:
+                    with probe.server._condition:
+                        probe.server._closed = True
+                        probe.server._retire_all_requests()
+                        probe.server._condition.notify_all()
+                # EOF/close must wake the waiting caller, even if stdin is still blocked.
+                replying.join(timeout=.5)
+                stopped_before_release = not replying.is_alive()
+                probe.release.set()
+                replying.join(timeout=1)
+                self.wait_writes(probe.server, 0)
+                self.assertTrue(stopped_before_release, "disconnect cannot wait for the blocked writer's deadline")
+                self.assertEqual(len(errors), 1)
+                self.assertEqual(type(errors[0]), RddError)
+                self.assertEqual(errors[0].kind, "environment")
+                self.assertEqual(len(probe.frames), 1)
+                with self.assertRaises(RddError):
+                    probe.server.reply(request["id"], {"decision": "accept"}, expected=request)
+
+    def test_final_write_deadline_keeps_primary_error_without_retry(self):
+        probe = self.probe(reply_timeout=.05)
+        request = self.approval()
+        probe.feed(request)
+        replying, errors = self.run_background(lambda: probe.server.reply(
+            request["id"], {"decision": "accept"}, expected=request))
+        self.assertTrue(probe.started.wait(1))
+        replying.join(timeout=1)
+        self.assertFalse(replying.is_alive())
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(type(errors[0]), RddError)
+        self.assertRegex(str(errors[0]), "timed out after delivery started")
+        primary = probe.server._failure
+        probe.release.set()
+        self.wait_writes(probe.server, 0)
+        self.assertEqual(probe.server._failure, primary)
+        self.assertEqual(len(probe.frames), 1)
+
+    def test_reply_waiter_distinguishes_completed_resolution_from_disconnect(self):
+        for after_write in ("resolved", "eof", "closed"):
+            with self.subTest(after_write=after_write):
+                probe = self.probe()
+                request = self.approval()
+                probe.feed(request)
+                notify = probe.server._condition.notify_all
+                applied = []
+                def before_waiter_wakes():
+                    record = probe.server._server_requests.get(request["id"])
+                    if not applied and record and record.write and record.write.state == "finished":
+                        # The writer owns the condition until this returns, so
+                        # the reply waiter cannot observe completion beforehand.
+                        applied.append(after_write)
+                        if after_write == "resolved":
+                            probe.server._notification_context({"method": "serverRequest/resolved", "params": {
+                                "threadId": "thread-a", "requestId": request["id"]}})
+                        else:
+                            setattr(probe.server, "_eof" if after_write == "eof" else "_closed", True)
+                            probe.server._retire_all_requests()
+                    notify()
+                with patch.object(probe.server._condition, "notify_all", before_waiter_wakes):
+                    replying, errors = self.run_background(lambda: probe.server.reply(
+                        request["id"], {"decision": "accept"}, expected=request))
+                    self.assertTrue(probe.started.wait(1))
+                    probe.release.set()
+                    replying.join(timeout=1)
+                self.assertFalse(replying.is_alive())
+                self.assertEqual(applied, [after_write])
+                self.assertEqual(len(probe.frames), 1)
+                if after_write == "resolved":
+                    self.assertEqual(errors, [])
+                    self.assertIsNone(probe.server._failure)
+                else:
+                    self.assertEqual(len(errors), 1)
+                    self.assertEqual(type(errors[0]), RddError)
+                    self.assertEqual(errors[0].kind, "environment")
+
+    def test_completed_reply_allows_later_resolution_and_new_request_generation(self):
+        probe = self.probe()
+        request = self.approval()
+        probe.feed(request)
+        probe.release.set()
+        probe.server.reply(request["id"], {"decision": "accept"}, expected=request)
+        probe.feed({"method": "serverRequest/resolved", "params": {
+            "threadId": "thread-a", "requestId": request["id"]}})
+        replacement = self.approval(itemId="new-item")
+        probe.feed(replacement)
+        probe.server.reply(request["id"], {"decision": "decline"}, expected=replacement)
+        self.assertIsNone(probe.server._failure)
+        self.assertEqual(probe.frames, [
+            {"id": request["id"], "result": {"decision": "accept"}},
+            {"id": request["id"], "result": {"decision": "decline"}}])
 
     def test_queued_reply_timeout_is_fatal_error_not_safely_stale(self):
         probe = self.probe(reply_timeout=.03)

@@ -553,6 +553,14 @@ class AppServer:
                         raise BrokenPipeError
                     data = data[written:]
                 with self._condition:
+                    # The last OS write can yield just like a partial write.
+                    # Retirement is not proof of acknowledgement: the server
+                    # also resolves requests when clearing interrupted work.
+                    if entry.request is not None and not self._failure and not self._closed:
+                        if self._eof:
+                            self._fail("App Server stdout EOF after reply delivery started; delivery uncertain; stop and reconnect")
+                        elif not self._write_request_current(entry):
+                            self._fail("App Server outstanding request or context changed after reply delivery started; stop and reconnect")
                     if not self._failure and not self._closed and time.monotonic() >= entry.deadline:
                         self._fail("App Server write timed out after delivery started; stop and reconnect")
                     entry.state = "failed" if self._failure or self._closed else "finished"
@@ -596,6 +604,8 @@ class AppServer:
             self._write_bytes += len(data)
             self._writes.put_nowait(entry)
             while entry.state in {"queued", "started"}:
+                if request is not None and self._eof and not self._failure:
+                    self._fail("App Server stdout EOF during reply delivery; delivery uncertain; stop and reconnect")
                 if self._failure or self._closed:
                     self._cancel_write(entry, self._failure or "App Server is not running")
                     raise RddError(self._failure or "App Server is not running", "environment")
@@ -613,8 +623,13 @@ class AppServer:
                 self._check()
                 error = StaleRequestError if entry.stale else RddError
                 raise error(entry.reason or "App Server write cancelled", "environment")
-            # Correlated responses and admitted events remain readable after EOF.
-            if self._failure:
+            if request is not None:
+                # Normal resolution after local completion may retire the
+                # request before this waiter wakes. Only recheck connection
+                # health here, not outstanding-request membership.
+                self._check()
+            # Correlated client RPC responses remain readable after EOF.
+            elif self._failure:
                 raise RddError(self._failure, "environment")
 
     def rpc(self, method: str, params: dict, timeout: float = 60):

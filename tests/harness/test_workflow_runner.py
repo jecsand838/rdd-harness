@@ -1107,6 +1107,146 @@ class WorkflowApprovalTests(unittest.TestCase):
         self.assertFalse(any(method == "thread/goal/set" and "objective" in params for method, params in resumed.calls))
         self.assertEqual(terminal.polls, 0)
 
+    def uncertain_delivery_recovery(self, lifetime, *, user_paused=False, through_cli=False):
+        """Simulate the transport failure explicitly; no real inference/delivery claim."""
+        from tools.rdd.common import RddError
+        from tools.rdd.workflow import WorkflowRunner
+        self.f.stage_ready("specification")
+        self.c.spec_freeze()
+        self.f.commit("Accepted fixture specification for uncertain approval recovery")
+        before = copy.deepcopy(self.c.state())
+        self.install_pending_turn()
+        observed, attempts, cleanup, closes = {}, [], [], []
+        original = self.server.rpc
+        def rpc(method, params, timeout=60):
+            if observed.get("failed"):
+                cleanup.append((method, copy.deepcopy(params), timeout))
+                self.server.calls.append((method, copy.deepcopy(params)))
+                raise delivery_error
+            result = original(method, params, timeout)
+            if method == "thread/goal/set" and "objective" in params:
+                self.server.goals[params["threadId"]]["tokenBudget"] = 1000
+            return result
+        self.server.rpc = rpc
+        error_type = RddError
+        if through_cli:
+            import sys
+            from pathlib import Path
+            from unittest.mock import patch
+            # The CLI imports the entry-point package name, while these fixture
+            # tests normally import tools.rdd. Use its real runner/error pair.
+            with patch.object(sys, "path", [str(Path(__file__).resolve().parents[2] / "tools"), *sys.path]):
+                from rdd import cli, common, workflow
+            error_type = common.RddError
+            self.runner = workflow.WorkflowRunner(self.c, server_factory=lambda *a, **k: self.server,
+                approval_terminal=self.terminal, emit=lambda _: None)
+        diagnostic = "Fixture uncertain approval reply delivery: " + lifetime
+        delivery_error = error_type(diagnostic, "environment")
+        def close():
+            closes.append(True)
+            self.server.closed = True
+        self.server.close = close
+        def fail_delivery(request_id, result, **kwargs):
+            attempts.append(dict(id=request_id, result=copy.deepcopy(result)))
+            tid = self.runner.thread_id
+            observed["goal"] = copy.deepcopy(self.server.goals[tid])
+            observed["failed"] = True
+            if lifetime == "retired":
+                self.server.pending_requests.pop(request_id)
+                self.server.retired_requests.add(request_id)
+            elif lifetime == "replaced":
+                request = copy.deepcopy(self.server.pending_requests[request_id])
+                request["params"]["command"] = "changed while reply was in flight"
+                self.server.pending_requests[request_id] = request
+            else:
+                self.assertEqual(lifetime, "eof")
+            if user_paused:
+                self.server.goals[tid]["status"] = "paused"
+            raise delivery_error
+        self.server.reply = fail_delivery
+        self.terminal.answers = ["a", "a"]
+        if through_cli:
+            import contextlib
+            import io
+            import json
+            output = io.StringIO()
+            with patch.object(cli, "Controller", return_value=self.c), \
+                    patch.object(workflow, "WorkflowRunner", return_value=self.runner), \
+                    contextlib.redirect_stdout(output):
+                code = cli.main(["--root", str(self.f.root), "workflow", "preparation"])
+            self.assertEqual(code, 2, output.getvalue())
+            failure = json.loads(output.getvalue())
+            self.assertEqual((failure["status"], failure["kind"]), ("blocked", "environment"))
+            self.assertIn(diagnostic, failure["error"])
+        else:
+            with self.assertRaises(RddError) as error:
+                self.runner.run("preparation")
+            self.assertEqual(error.exception.kind, "environment")
+            self.assertIn(diagnostic, str(error.exception))
+            self.assertIs(error.exception.__cause__, delivery_error)
+        state = self.c.state()
+        row = copy.deepcopy(state["workflow_runtime"]["preparation"])
+        self.assertEqual(row["connection"], "stopped")
+        self.assertEqual(row["last_turn"], "live-approval-turn")
+        self.assertEqual(row["goal"], observed["goal"], "A poisoned transport cannot confirm Goal cleanup")
+        self.assertNotIn("driver_paused", row)
+        self.assertEqual(attempts, [dict(id=37, result=dict(decision="accept"))])
+        self.assertEqual(self.replies(), [], "An uncertain write is not a confirmed reply")
+        self.assertEqual((self.terminal.polls, len(self.terminal.prompts)), (1, 1))
+        self.assertEqual(self.terminal.answers, ["a"])
+        self.assertTrue(self.server.closed)
+        self.assertGreaterEqual(len(closes), 1)
+        self.assertLessEqual(len(closes), 2, "Owned cleanup must not retry a poisoned transport")
+        self.assertEqual(self.terminal.closes, 1)
+        self.assertEqual(self.runner.approvals, {})
+        self.assertEqual([(method, params) for method, params, _ in cleanup], [
+            ("thread/goal/get", dict(threadId=row["thread_id"])),
+            ("turn/interrupt", dict(threadId=row["thread_id"], turnId=row["last_turn"]))])
+        self.assertTrue(all(timeout <= 5 for _, _, timeout in cleanup))
+        self.assertEqual(self.server.goals[row["thread_id"]],
+            {**observed["goal"], "status": "paused" if user_paused else "active"})
+        self.assertEqual((observed["goal"]["tokenBudget"], observed["goal"]["tokensUsed"],
+                          observed["goal"]["timeUsedSeconds"]), (1000, 37, 8))
+        for key in ("id", "status", "spec_digest", "checks", "reviews"):
+            self.assertEqual(state[key], before[key], "Transport failure cannot create acceptance evidence")
+        self.assertNotIn("preparation_gate", state)
+        self.assertFalse((self.f.root / ".rdd/runtime/failures/fixture-run.json").exists())
+        resumed = FakeServer(self.f.root)
+        resumed.threads = copy.deepcopy(self.server.threads)
+        resumed.threads[row["thread_id"]]["turns"][-1]["status"] = "interrupted"
+        resumed.materialized = set(self.server.materialized)
+        resumed.goals = copy.deepcopy(self.server.goals)
+        # Explicit backend stop between connections; failed cleanup grants no
+        # authority to reactivate a user pause or assume native continuation.
+        resumed.goals[row["thread_id"]]["status"] = "paused" if user_paused else "blocked"
+        terminal = FakeApprovalTerminal("a")
+        runner = WorkflowRunner(self.c, server_factory=lambda *a, **k: resumed,
+                                approval_terminal=terminal, emit=lambda _: None)
+        result = runner.run("preparation")
+        self.assertEqual(result["status"], "incomplete")
+        after = self.c.state()["workflow_runtime"]["preparation"]
+        self.assertEqual((after["thread_id"], after["last_turn"]), (row["thread_id"], row["last_turn"]))
+        for key in ("threadId", "objective", "tokensUsed", "timeUsedSeconds", "createdAt", "tokenBudget"):
+            self.assertEqual(after["goal"][key], observed["goal"][key])
+        self.assertEqual(after["goal"]["status"], "paused" if user_paused else "blocked")
+        self.assertFalse(any(method in {"thread/start", "turn/start", "reply"} for method, _ in resumed.calls))
+        self.assertFalse(any(method == "thread/goal/set" for method, _ in resumed.calls))
+        self.assertEqual(terminal.polls, 0)
+        self.assertEqual(self.c.state()["id"], before["id"])
+        self.assertNotIn("preparation_gate", self.c.state())
+
+    def test_uncertain_reply_after_retirement_stops_and_recovers_same_goal(self):
+        self.uncertain_delivery_recovery("retired")
+
+    def test_uncertain_reply_after_replacement_stops_and_recovers_same_goal(self):
+        self.uncertain_delivery_recovery("replaced")
+
+    def test_uncertain_reply_eof_preserves_genuine_user_pause_on_recovery(self):
+        self.uncertain_delivery_recovery("eof", user_paused=True)
+
+    def test_uncertain_reply_delivery_returns_cli_exit_two_with_owned_cleanup(self):
+        self.uncertain_delivery_recovery("retired", through_cli=True)
+
     def test_approval_ctrl_c_returns_interrupted_result_and_closes_terminal(self):
         self.install_pending_turn()
         self.terminal.answers = [KeyboardInterrupt()]
