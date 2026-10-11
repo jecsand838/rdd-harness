@@ -20,7 +20,7 @@ from typing import Any
 from .common import RddError, file_hash
 
 
-QUALIFIED_VERSION = "0.161.0"
+QUALIFIED_VERSIONS = ("0.161.0", "0.162.1")
 STARTUP_TIMEOUT = 60.0
 SHUTDOWN_TIMEOUT = 6.0
 MAX_LOG_BYTES = 4 * 1024 * 1024
@@ -129,8 +129,8 @@ class AppServer:
             if probe.returncode:
                 raise RddError("Cannot determine Codex version; check the installed executable", "environment")
             match = re.fullmatch(rb"codex-cli ([0-9]+\.[0-9]+\.[0-9]+)\s*", output)
-            if not match or match[1].decode("ascii") != QUALIFIED_VERSION:
-                raise RddError(f"App Server requires qualified codex-cli {QUALIFIED_VERSION}; install that release or qualify the installed runtime before retrying", "environment")
+            if not match or match[1].decode("ascii") not in QUALIFIED_VERSIONS:
+                raise RddError(f"App Server requires qualified codex-cli {' or '.join(QUALIFIED_VERSIONS)}; install a qualified release or qualify the installed runtime before retrying", "environment")
             return match[1].decode("ascii")
         except subprocess.TimeoutExpired:
             communication_failed = True
@@ -163,7 +163,7 @@ class AppServer:
                 raise RddError("App Server requires a nonempty executable argv", "environment")
             executable = shutil.which(command[0])
             if executable is None:
-                raise RddError("Codex executable not found; install qualified codex-cli 0.161.0 or supply its path", "environment")
+                raise RddError(f"Codex executable not found; install qualified codex-cli {' or '.join(QUALIFIED_VERSIONS)} or supply its path", "environment")
             command[0] = str(Path(executable).resolve())
             if self.log_dir is None:
                 self.log_dir = Path(tempfile.mkdtemp(prefix="rdd-app-server-"))

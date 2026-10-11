@@ -31,8 +31,8 @@ distinct final rdd_reviewer, and research selects rdd_researcher for bounded
 advice. These explicitly read-only App Server threads apply canonical profiles;
 they are not native agent_type dispatch or backend-model attestation. Native
 children inherit live parent permissions, so never spawn reviewers/researchers
-as native children. The experimental dynamic-tool protocol is qualified for
-Codex CLI 0.161.0 only. Preserve inherited approval settings unchanged. Read-only
+as native children. Use only CLI versions qualified in docs/harness/codex-runtime.md
+for the experimental dynamic-tool protocol. Preserve inherited approval settings unchanged. Read-only
 sessions return source-linked JSON; record it through the existing controller
 ledger using actual session IDs. Reviewers/researchers cannot write files or run
 writing controller commands. Retain one read-only rdd_reviewer in all workflows:

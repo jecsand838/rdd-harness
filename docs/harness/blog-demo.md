@@ -1,6 +1,6 @@
 # Generate the Todo app from a fresh checkout
 
-Clone your fork and enter its clean checkout. Provide Python 3.11+, Git, qualified Codex CLI 0.161.0, the pinned Rust/Buf tools, authenticated Codex and `gh`, a writable `origin`, and the native/reference environments required by the solution. Configure Git identity, the trusted preparation CI pin and required checks using the [runtime guide](codex-runtime.md). Use the canonical [requirements](../../requirements/requirements.md).
+Clone your fork and enter its clean checkout. Provide Python 3.11+, Git, qualified Codex CLI 0.161.0 or 0.162.1, the pinned Rust/Buf tools, authenticated Codex and `gh`, a writable `origin`, and the native/reference environments required by the solution. Configure Git identity, the trusted preparation CI pin and required checks using the [runtime guide](codex-runtime.md). Use the canonical [requirements](../../requirements/requirements.md).
 
 Run each command to completion before the next:
 
