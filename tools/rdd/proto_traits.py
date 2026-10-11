@@ -22,10 +22,10 @@ from typing import Any
 if not __package__:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from tools.rdd.adapters import CommandResult, RddAdapterError, run_argv
-    from tools.rdd.common import RddError, Store, read_json, require_source_branch
+    from tools.rdd.common import RddError, RddStorageError, Store, read_json, require_source_branch
 else:
     from .adapters import CommandResult, RddAdapterError, run_argv
-    from .common import RddError, Store, read_json, require_source_branch
+    from .common import RddError, RddStorageError, Store, read_json, require_source_branch
 
 
 class ContractCheckError(RuntimeError):
@@ -194,7 +194,11 @@ def run_contracts(
                     raise RddError("Generated contracts are writable only during specification; preserve the frozen outputs and start a new specification run.", "environment")
             elif any((root / rel).exists() for rel in (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json")):
                 raise RddError("This checkout has frozen artifacts without an active run. Restore its checkpoint or start a new specification run before generating contracts; seed qualification requires an unfrozen checkout.", "environment")
+        except RddStorageError:
+            raise
         except RddError as error:
+            if getattr(error, "rdd_storage_error", None) is not None:
+                raise
             raise ContractCheckError(str(error), blocked=True) from error
     cargo = shutil.which("cargo")
     buf = shutil.which("buf")
@@ -420,6 +424,12 @@ def main() -> int:
     try:
         result = run_contracts(args.root, write=args.write, bootstrap_lock=args.bootstrap_lock,
                                targets=tuple(args.target), against=args.against)
+    except RddError as error:
+        detail = str(error)
+        if getattr(error, "rdd_storage_error", None) is not None:
+            detail += "; " + str(error.rdd_storage_error)
+        print(json.dumps({"status": "blocked", "kind": "environment", "error": detail}))
+        return 2
     except ContractCheckError as error:
         print(json.dumps({"status": "blocked" if error.blocked else "failed", "error": str(error)}))
         return 2 if error.blocked else 1

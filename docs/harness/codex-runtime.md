@@ -32,22 +32,41 @@ Three child slots permit two authors and a continuous reviewer; the primary coor
 
 Canonical `.codex/agents/` TOMLs are the single authority for each role's instructions, model, effort and sandbox. The shared loader validates names, paths, required settings and read-only research/review permissions. `.codex/config.toml` retains native defaults checked against the coordinator and default complex implementor, plus the three-slot limit. Unrelated custom profiles receive no controller claim authority. Procedures stay in the existing skills.
 
+Profile sandbox settings describe requested configuration. Native children inherit
+the parent's current sandbox and approval policy; Codex reapplies live runtime
+overrides even when a custom profile requests a different default. A read-only
+profile therefore does not establish isolated reviewer permissions. Inspect the
+effective runtime permissions before delegation and keep the reviewer's work
+read-only. See the [subagent permission rules](https://learn.chatgpt.com/docs/agent-configuration/subagents#approvals-and-sandbox-controls).
+
 Request the exact named `agent_type` during native delegation and verify discovery in a fresh session after profile changes. An already running session may retain the previous roster. Do not treat the CLI's `--profile` option as custom-agent selection. Consult [custom-subagent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents) and the [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) when changing the installed client.
 
 ### Capability checks
 
-`CodexAdapter.doctor()` checks executable/version, required flags, login and every distinct configured model/effort pair, with affected roles in its output. Catalog availability is advertised client support; it does not prove account entitlement. `account_access_verified` remains false until supported actual evidence exists. A model-access error blocks the role; the harness never silently substitutes a model or effort.
+`CodexAdapter.doctor()` checks executable/version, native launch/resume flags,
+bounded exec flags, bundled-catalog support, login and every distinct configured
+model/effort pair, with affected roles in its output. Catalog availability is
+advertised client support; it does not prove account entitlement or sandbox
+isolation. `account_access_verified` remains false until supported actual evidence
+exists. A model-access error blocks the role; the harness never silently
+substitutes a model or effort.
 
 `requested_runtime` records the role, profile identity/hash, model, effort and sandbox requested by the controller. Keep these declarations distinct from observed session events, exit status and captured results. The JSONL stream supplies actual thread/turn events, not authenticated backend-model or effort attestation. A submitted `verified: true` or remembered session label cannot establish those observations.
 
 Install or update Codex using its official installation instructions, authenticate
 locally, then run the repository doctor. A current client compatible with the
-configuration above is required. The reference client is 0.159.2; the older
+configuration above is required. The measured reference client is 0.162.1; the older
 minimum version that introduced Goals does not establish support for all current
 role/configuration features. Follow normal local project-trust prompts rather
 than bypassing them.
 
 ## Native Goal execution
+
+`CodexAdapter.native_argv(prompt, session_id=None)` supplies the launcher's
+canonical coordinator model, effort, sandbox and developer instructions. It
+encodes configuration as TOML and passes the prompt as one positional argument
+after `--`. It leaves approval policy to the runtime and does not create a second
+workflow loop or session ledger.
 
 1. Complete `$specification-workflow` and `$preparation-workflow` in sequence, including both independent review perspectives and `gate preparation` for the exact committed handoff.
 2. Run `./rdd goal` to print `.rdd/goals/implementation.txt`.
@@ -55,6 +74,21 @@ than bypassing them.
 4. Set the native Goal by entering `/goal ` followed by the printed objective.
 5. Inspect progress with the controller and Codex subagent views. Resume an
    interrupted Goal with the native `/goal resume` command after checking state.
+
+To reopen the recorded native session, use `codex resume SESSION_UUID --cd
+REPOSITORY`, then inspect the Goal before continuing it. The argv builder accepts
+only a canonical UUID for explicit resume, reapplies the coordinator settings and
+never selects `--last`. The [CLI reference](https://learn.chatgpt.com/docs/cli/reference#codex-resume)
+documents this native command. `./rdd resume` recovers controller state; it does
+not select a native session. Keep the actual session identity for recovery.
+
+The 0.162.1 qualification exercised a native launch and exact-session resumption
+in a disposable harness worktree. Both turns ran local Python, retained the same
+`CODEX_THREAD_ID`, and recorded the inherited approval settings; the session
+evidence contained the supplied coordinator instructions. No Goal was activated
+and no application workflow ran. This establishes launch/resume compatibility,
+not end-to-end acceptance or native reviewer isolation. These measured limits
+are recorded in `.rdd/sources/runtime.json`.
 
 The file is a distribution convenience. The goal text itself is under 4,000
 characters and is pasted as the native objective. The workflow skill contains
@@ -81,6 +115,11 @@ The adapter applies the profile’s supported model, effort, sandbox and `develo
 an action that needs unavailable permission fails instead of prompting from a
 headless subprocess. It never uses a shell to interpolate prompts, file names,
 model IDs or PR text.
+
+The existing bounded-exec `-a never` restriction suppresses fresh approval
+prompts for that one-turn subprocess. The native interactive launcher does not
+set this approval override. Neither interface bypasses sandbox enforcement, and
+profile requests alone are not evidence of a child's effective permissions.
 
 Every attempt uses a new directory below `.rdd/runtime/`. It contains the prompt,
 schema snapshot, streaming `events.jsonl`, `stderr.log`, final `answer.json`, and a
@@ -330,6 +369,11 @@ python -m unittest discover -s tests/harness -p test_adapters.py
 ```
 
 Run `./rdd selftest` for controller regressions. `RDD_CODEX_SMOKE` may point to the installed binary for the optional client-support smoke check; this exercises syntax/catalog support, not paid account entitlement. Compiler proofs and workflow evaluations remain separate from that smoke. Use system temporary directories normally; `RDD_TEST_TMPDIR` may select a private writable test directory when workspace synchronization would race with clean-tree checks. Preserve strict verification instead of weakening it for a synchronization layer.
+
+The installed 0.162.1 smoke also parses the coordinator launch and exact-UUID
+resume options with `--help`, without starting an inference session. This does
+not qualify actual session resumption, native Goal execution or reviewer
+isolation; those observations require separate live evidence.
 
 Runs pin the exact workflow graph and canonical profile/native configuration digest. The controller checks both before continuing mutations, including checks, reviews, recovery and publication, before recording state or evidence. A mismatch is a policy compatibility failure, not a new historical blocker to write automatically. `status` and `export-run` preserve original role names and evidence. Continue historical work with its recorded harness revision, or start an explicit fresh baseline; no role aliases, pin backfills or approval migrations are applied.
 

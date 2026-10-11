@@ -17,9 +17,9 @@ from .reviews import ReviewStream
 from .nodes import WorkflowNodes, NODES
 from .profiles import IMPLEMENTOR_SCOPES, load_profiles, profile_policy_digest, profile_settings
 from .readiness import validate_resources, validate_producers, required_probe_ids
-from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError, codex_config_string
+from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
 from .checks import execute_check, platform_name, verify_receipt
-from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, Store, assert_inventory, atomic_write, clean, digest, event,
+from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, RddStorageError, Store, assert_inventory, atomic_write, clean, digest, event,
                      file_hash, git, head, inventory, now, read_json, safe_path,
                      require_source_branch, source_digest, validate_artifact, write_json)
 
@@ -225,7 +225,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         run_id = run_id or time.strftime("R%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + uuid.uuid4().hex[:6]
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", run_id):
             raise RddError("Run ID must be 1-64 plain letters, digits, dots, underscores or hyphens")
-        existing = self.store.db.execute("SELECT 1 FROM runs WHERE id=?", (run_id,)).fetchone()
+        existing = self.store.exists(run_id)
         if existing or (self.root / f".rdd/baselines/{run_id}").exists():
             raise RddError("Run ID is already in use")
         locator = read_json(self.root / ".rdd/run.json")
@@ -923,7 +923,11 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                         self.save(state)
                         if receipt["outcome"] != "pass":
                             raise RddError(f"Check {cid} failed. Read {receipt['log_path']}")
+                    except RddStorageError:
+                        raise
                     except RddError as exc:
+                        if getattr(exc, "rdd_storage_error", None) is not None:
+                            raise
                         if exc.kind != "environment":
                             raise
                         missing.append({"check": cid, "platform": platform, "reason": str(exc)})
@@ -1452,11 +1456,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         else:
             prompt += ("This session will use native goal mode. Print the exact output of ./rdd goal and ask the developer to submit it with /goal. "
                        "Do not claim that a normal prompt activated native goal mode. Once the goal is active, follow implementation-workflow through project validation.")
-        profile = load_profiles(self.root)["rdd_coordinator"]
         return {"stage": stage, "prompt": prompt,
                 "requested_runtime": self.profile_settings("rdd_coordinator"),
-                "argv": ["codex", "--model", profile["model"], "-c", "model_reasoning_effort=" + codex_config_string(profile["effort"]),
-                         "--sandbox", profile["sandbox"], "-c", "developer_instructions=" + codex_config_string(profile["developer_instructions"]), prompt],
+                "argv": CodexAdapter(self.root).native_argv(prompt),
                 "native_goal": self.goal() if stage == "implementation" else None}
 
 

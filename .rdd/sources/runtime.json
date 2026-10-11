@@ -1,8 +1,8 @@
 {
   "format_version": 1,
   "scope": "Observed Codex runtime capabilities, bounded execution interfaces, and harness qualification tools",
-  "checked_date": "2026-10-08",
-  "observed_codex_cli": "0.161.0",
+  "checked_date": "2026-10-11",
+  "observed_codex_cli": "0.162.1",
   "model_catalog": {
     "source": "Installed CLI bundled catalog; canonical settings live in .codex/agents/*.toml",
     "advertised_pairs": [
@@ -26,11 +26,16 @@
   "verification_scope": {
     "adapter_protocols": "Offline injected GitHub/Codex protocols plus real subprocess argv delivery of profile instructions and Git-worktree lifecycle tests.",
     "ci_controller": "Real-Git trusted-policy/candidate fixtures and real check subprocesses; CI remains independent of candidate run locators.",
-    "codex_smoke": "Installed CLI 0.161.0 version, flags, bundled model/effort catalog and authenticated session observed. Requested settings are not backend-model attestation.",
+    "codex_smoke": "Installed CLI 0.162.1 version, interactive/exec/resume/debug-models help and bundled model/effort catalog observed. Coordinator launch and exact-UUID resume argv parse with --help. All 50 adapter tests pass with RDD_CODEX_SMOKE=codex. This smoke performs no inference and does not prove entitlement, actual resumption, Goals or native child isolation. Requested settings are not backend-model attestation.",
     "github_actions": "Hosted baseline 0f7e76f: Ubuntu, macOS and Windows candidate harness jobs passed; trusted-controller and aggregate verify jobs failed. Later candidate results belong in their exact-revision CI reports.",
-    "rust_and_buf_execution": "Actual multi-module native/WASM generator/compiler proof suite executed with Rust 1.99.0 and Buf 1.73.0. Raw results are retained under .rdd/evidence/harness-contracts/."
+    "rust_and_buf_execution": "Actual multi-module native/WASM generator/compiler proof suite executed with Rust 1.99.0 and Buf 1.73.0. Raw results are retained under .rdd/evidence/harness-contracts/.",
+    "native_cli": "Observed 0.162.1 interactive launch and exact-UUID resumption in a disposable harness worktree, using CodexAdapter.native_argv. Both bounded turns executed local Python and retained the same CODEX_THREAD_ID; serialized session evidence contains the exact coordinator developer instructions. Native turn context recorded on-request approval, user reviewer, workspace-write and the requested Astra/ultra settings on both turns. Both TUI exits returned zero. No Goal was activated and no application workflow ran. These observations do not establish backend-model attestation, native child isolation or project acceptance."
   },
   "sources": [
+    {
+      "title": "Codex CLI reference and native resume",
+      "url": "https://learn.chatgpt.com/docs/cli/reference"
+    },
     {
       "title": "Codex configuration reference",
       "url": "https://learn.chatgpt.com/docs/config-file/config-reference"

@@ -331,6 +331,81 @@ class CodexAdapterTests(unittest.TestCase):
             "Implement the leased target.", self.schema, self.root / ".rdd/runtime" / attempt,
             "rdd_complex_implementor", timeout=60)
 
+    def test_native_launch_applies_coordinator_instructions_without_approval_override(self):
+        prompt = '--last; $(touch INJECTED); `echo no`; $HOME\nUnicode 🧪'
+        argv = CodexAdapter(self.root, runner=self.runner).native_argv(prompt)
+        coordinator = load_profiles(self.root)["rdd_coordinator"]
+        self.assertEqual(argv[:3], ["codex", "--cd", str(self.root.resolve())])
+        self.assertEqual(argv[argv.index("--model") + 1], "gpt-6-astra")
+        self.assertEqual(argv[argv.index("--sandbox") + 1], "workspace-write")
+        config = {}
+        for index, argument in enumerate(argv):
+            if argument == "--config":
+                config.update(tomllib.loads(argv[index + 1]))
+        self.assertEqual(config, {"model_reasoning_effort": "ultra",
+                                 "developer_instructions": coordinator["developer_instructions"]})
+        self.assertEqual(argv[-2:], ["--", prompt])
+        for option in ("-a", "--ask-for-approval", "--approve-for-me", "--last",
+                       "--dangerously-bypass-approvals-and-sandbox", "--no-daemon", "--profile"):
+            self.assertNotIn(option, argv)
+        self.assertEqual(self.calls, [])
+        self.assertFalse((self.root / "INJECTED").exists())
+
+    def test_native_resume_selects_the_exact_uuid(self):
+        session_id = "01234567-89ab-4cde-8fab-0123456789ab"
+        adapter = CodexAdapter(self.root, runner=self.runner)
+        launch = adapter.native_argv("Continue the recorded workflow.")
+        resumed = adapter.native_argv("Continue the recorded workflow.", session_id=session_id)
+        self.assertEqual(resumed, ["codex", "resume", session_id, *launch[1:]])
+        self.assertNotIn("--last", resumed)
+
+    def test_native_resume_rejects_names_options_and_ambiguous_session_ids(self):
+        for session_id in ("", "friendly-name", "--last", "../session", "session-123", 42):
+            with self.subTest(session_id=session_id), self.assertRaises(RddAdapterError) as error:
+                CodexAdapter(self.root, runner=self.runner).native_argv("Continue", session_id=session_id)
+            self.assertEqual(error.exception.code, "invalid-session-id")
+        self.assertEqual(self.calls, [])
+
+    def test_native_launch_rejects_empty_or_nul_prompt(self):
+        for prompt in ("", "  ", "text\0more", None):
+            with self.subTest(prompt=prompt), self.assertRaises(RddAdapterError) as error:
+                CodexAdapter(self.root, runner=self.runner).native_argv(prompt)
+            self.assertEqual(error.exception.code, "empty-prompt")
+
+    def capability_runner(self, models, *, omitted=None):
+        help_text = {
+            (): "--config --model --sandbox --cd",
+            ("exec",): "--json --config --model --sandbox --cd --color --output-schema --output-last-message",
+            ("resume",): "Usage: codex resume [OPTIONS] [SESSION_ID] [PROMPT]\n--config --model --sandbox --cd",
+            ("debug", "models"): "--bundled",
+        }
+        if omitted:
+            command, flag = omitted
+            help_text[command] = help_text[command].replace(flag, "")
+
+        def runner(argv, **kwargs):
+            self.calls.append(list(argv))
+            if "--version" in argv:
+                return result(argv, "codex-cli 0.162.1")
+            if argv[-1] == "--help":
+                return result(argv, help_text[tuple(argv[1:-1])])
+            if argv[1:3] == ["debug", "models"]:
+                return result(argv, {"models": models})
+            if argv[1:] == ["login", "status"]:
+                return result(argv)
+            raise AssertionError(f"Unexpected Codex capability command: {argv}")
+        return runner
+
+    def test_doctor_rejects_missing_native_or_resume_capabilities(self):
+        models = [{"slug": "gpt-6-astra", "supported_reasoning_levels": [{"effort": "ultra"}]}]
+        for command, flag in (((), "--config"), ((), "--sandbox"), (("resume",), "SESSION_ID"),
+                              (("resume",), "--cd"), (("debug", "models"), "--bundled")):
+            with self.subTest(command=command, flag=flag):
+                runner = self.capability_runner(models, omitted=(command, flag))
+                report = CodexAdapter(self.root, runner=runner).doctor([("gpt-6-astra", "ultra")])
+                self.assertFalse(report["ready"], report)
+                self.assertTrue(any(flag in blocker for blocker in report["blockers"]), report)
+
     def test_bounded_exec_persists_session_and_schema_valid_answer(self):
         outcome = self.execute()
         self.assertEqual(outcome["session_id"], "session-123")
@@ -435,15 +510,10 @@ print(json.dumps({"type": "turn.completed"}))
     def test_doctor_reports_client_support_without_claiming_entitlement(self):
         profiles = load_profiles(self.root)
         pairs = [(settings["model"], settings["effort"]) for settings in profiles.values()]
-        def doctor_runner(argv, **kwargs):
-            if "--version" in argv:
-                return result(argv, "codex-cli 0.159.2")
-            if "--help" in argv:
-                return result(argv, "--json --config --output-schema --output-last-message")
-            if "models" in argv:
-                return result(argv, {"models": [{"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
-                                               for model, effort in dict.fromkeys(pairs)]})
-            return result(argv)
+        doctor_runner = self.capability_runner([
+            {"slug": model, "supported_reasoning_levels": [{"effort": effort}]}
+            for model, effort in dict.fromkeys(pairs)
+        ])
         report = CodexAdapter(self.root, runner=doctor_runner).doctor(pairs, roles=profiles)
         self.assertTrue(report["ready"])
         self.assertFalse(report["account_access_verified"])
@@ -458,20 +528,24 @@ print(json.dumps({"type": "turn.completed"}))
         self.assertEqual(self.calls, [])
 
     def test_doctor_reports_unsupported_pair_and_affected_roles(self):
-        def doctor_runner(argv, **kwargs):
-            if "--version" in argv:
-                return result(argv, "codex-cli 0.159.2")
-            if "--help" in argv:
-                return result(argv, "--json --config --output-schema --output-last-message")
-            if "models" in argv:
-                return result(argv, {"models": []})
-            return result(argv)
+        doctor_runner = self.capability_runner([])
         profiles = load_profiles(self.root)
         report = CodexAdapter(self.root, runner=doctor_runner).doctor(
             [("gpt-6.1-sol", "xhigh")], roles=profiles)
         self.assertFalse(report["ready"])
         self.assertIn("rdd_domain_analyst", report["blockers"][0])
         self.assertFalse(report["account_access_verified"])
+
+    def test_doctor_default_or_other_model_effort_cannot_replace_required_pair(self):
+        runner = self.capability_runner([
+            {"slug": "gpt-6-astra", "default_reasoning_level": "ultra",
+             "supported_reasoning_levels": [{"effort": "high"}]},
+            {"slug": "other-model", "supported_reasoning_levels": [{"effort": "ultra"}]},
+        ])
+        report = CodexAdapter(self.root, runner=runner).doctor([("gpt-6-astra", "ultra")])
+        self.assertFalse(report["ready"])
+        self.assertFalse(report["models"][0]["client_advertises"])
+        self.assertIn("gpt-6-astra with ultra", report["blockers"][0])
 
     def test_schema_unsupported_keywords_fail_closed(self):
         with self.assertRaises(RddAdapterError) as error:
@@ -498,6 +572,20 @@ class InstalledCodexSmokeTests(unittest.TestCase):
         for model, effort in {(settings["model"], settings["effort"]) for settings in load_profiles(root).values()}:
             self.assertIn(model, models)
             self.assertIn(effort, [item["effort"] for item in models[model]["supported_reasoning_levels"]])
+
+    def test_native_launch_and_resume_flags_parse_without_starting_a_session(self):
+        binary = os.environ["RDD_CODEX_SMOKE"]
+        root = Path(__file__).resolve().parents[2]
+        adapter = CodexAdapter(root, binary=binary)
+        for session_id in (None, "01234567-89ab-4cde-8fab-0123456789ab"):
+            with self.subTest(session_id=session_id):
+                argv = adapter.native_argv("Read-only syntax check", session_id=session_id)
+                help_result = run_argv([*argv[:-2], "--help"], root, timeout=15)
+                self.assertEqual(help_result.returncode, 0, help_result.stderr)
+                if session_id:
+                    self.assertIn("SESSION_ID", help_result.stdout)
+                for flag in ("--config", "--model", "--sandbox", "--cd"):
+                    self.assertIn(flag, help_result.stdout)
 
 
 if __name__ == "__main__":

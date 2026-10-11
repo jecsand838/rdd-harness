@@ -13,7 +13,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rdd.adapters import RddAdapterError
-from rdd.common import RddError, operation_lock, require_source_branch
+from rdd.common import RddError, RddStorageError, operation_lock, require_source_branch
 from rdd.engine import Controller
 from rdd.profiles import IMPLEMENTOR_ROLES, WORKFLOW_AUTHOR_ROLES, profile_policy_digest
 
@@ -321,19 +321,29 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except (RddError, RddAdapterError) as exc:
         kind = getattr(exc, "kind", getattr(exc, "code", "environment"))
+        storage_error = exc if isinstance(exc, RddStorageError) else getattr(exc, "rdd_storage_error", None)
         # Frozen authority/phase drift cannot be silently repaired by an implementation agent.
-        if controller and kind in {"specification", "planning", "closure"}:
+        if not storage_error and controller and kind in {"specification", "planning", "closure"}:
             try:
                 state = controller.state(allow_blocked=True)
                 if state["status"] in {"specified", "planned", "preparing", "prepared", "implementation", "complete"} and (
                         kind != "planning" or state.get("plan_digest")):
                     controller.block(kind, str(exc))
-            except (RddError, OSError):
-                pass
-        print(json.dumps({"status": "blocked" if kind != "validation" else "failed", "kind": kind, "error": str(exc)}, ensure_ascii=False))
+            except (RddError, OSError) as blocker_error:
+                storage_error = (blocker_error if isinstance(blocker_error, RddStorageError)
+                                 else getattr(blocker_error, "rdd_storage_error", None))
+        detail = str(exc)
+        if storage_error:
+            kind = "environment"
+            if storage_error is not exc:
+                detail += "; " + str(storage_error)
+        print(json.dumps({"status": "blocked" if kind != "validation" else "failed", "kind": kind, "error": detail}, ensure_ascii=False))
         return 1 if kind == "validation" else 2
     except (OSError, ValueError, KeyError, TypeError) as exc:
-        print(json.dumps({"status": "blocked", "kind": "environment", "error": str(exc)}, ensure_ascii=False))
+        detail = str(exc)
+        if getattr(exc, "rdd_storage_error", None) is not None:
+            detail += "; " + str(exc.rdd_storage_error)
+        print(json.dumps({"status": "blocked", "kind": "environment", "error": detail}, ensure_ascii=False))
         return 2
     finally:
         if controller:
