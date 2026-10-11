@@ -72,8 +72,11 @@ def parser() -> argparse.ArgumentParser:
     a = commands.add_parser("anchors")
     a.add_argument("action", choices=("reconcile", "verify"))
     r = commands.add_parser("review")
-    r.add_argument("action", choices=("record",))
-    r.add_argument("file", type=Path)
+    r.add_argument("action", choices=("record", "run"))
+    r.add_argument("file", type=Path, nargs="?")
+    r.add_argument("--stage", choices=("specification", "preparation", "implementation"))
+    r.add_argument("--purpose", choices=("live", "execution", "research"))
+    r.add_argument("--prompt-file", type=Path)
     g = commands.add_parser("gate")
     g.add_argument("level", choices=("preparation", "phase", "project"))
     g.add_argument("phase", nargs="?")
@@ -91,9 +94,10 @@ def parser() -> argparse.ArgumentParser:
         block.add_argument("--" + field, action="append", default=[])
     commands.add_parser("goal", help="Print only the native /goal objective, guaranteed below 4,000 characters")
     wf = commands.add_parser("workflow", help="Run a workflow through verified acceptance, inspect nodes, or print its launch packet")
-    wf.add_argument("stage", choices=("specification", "preparation", "implementation", "nodes", "next", "claim", "record", "release"))
+    wf.add_argument("stage", choices=("specification", "preparation", "implementation", "nodes", "next", "claim", "record", "release", "attach"))
     wf.add_argument("target", nargs="?")
     wf.add_argument("--session-id")
+    wf.add_argument("--launch-id")
     wf.add_argument("--role", choices=WORKFLOW_AUTHOR_ROLES)
     wf.add_argument("--write", action="append", default=[])
     wf.add_argument("--reason")
@@ -161,6 +165,8 @@ def dispatch(c: Controller, a: argparse.Namespace):
     if cmd == "anchors":
         return getattr(c, "anchors_" + a.action)()
     if cmd == "review":
+        if not a.file or a.stage or a.purpose or a.prompt_file:
+            raise RddError("review record requires only its JSON file")
         return c.review_record(a.file)
     if cmd == "gate":
         if a.level == "preparation":
@@ -276,6 +282,20 @@ def main(argv: list[str] | None = None) -> int:
             if result.get("interrupted"):
                 return 130
             return 0 if args.print_only or result.get("status") == "passed" else (1 if result.get("status") == "failed" else 2)
+        if args.command == "workflow" and args.stage == "attach":
+            from rdd.workflow import attach
+            controller = Controller(args.root)
+            result = attach(controller, args.target, args.launch_id)
+            print(json.dumps(result, indent=2))
+            return 0
+        if args.command == "review" and args.action == "run":
+            if not args.stage or not args.purpose or not args.prompt_file or args.file:
+                raise RddError("review run requires --stage, --purpose and --prompt-file")
+            from rdd.review_runner import ReadonlyRunner
+            controller = Controller(args.root)
+            result = ReadonlyRunner(controller).run(args.stage, args.purpose, args.prompt_file)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0
         source_write = args.command in {"start", "prepare", "resume", "phase"} or (
             args.command in {"spec", "plan"} and args.action in {"init", "freeze"}) or (
             args.command == "contracts" and args.action == "generate") or (
@@ -345,7 +365,8 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, KeyError, TypeError, KeyboardInterrupt) as exc:
         terminal = getattr(exc, "restart_required", False)
         if isinstance(exc, KeyboardInterrupt) and not terminal:
-            raise
+            print(json.dumps({"status": "incomplete", "interrupted": True}))
+            return 130
         extra = {"severity": "critical", "restart_required": True,
                  "failure_path": getattr(exc, "failure_path", None)} if terminal else {}
         if getattr(exc, "persistence_error", None):

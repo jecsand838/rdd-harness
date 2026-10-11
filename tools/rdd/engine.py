@@ -1220,7 +1220,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if path.resolve().is_relative_to(self.root):
             rel = path.resolve().relative_to(self.root).as_posix()
             if rel in {".rdd/run.json", ".rdd/runtime/headless.json", ".rdd/runtime/failures",
-                       ".rdd/runtime/controller.lock", ".rdd/runtime/workflow.lock"} or rel.startswith(
+                       ".rdd/runtime/controller.lock", ".rdd/runtime/workflow.lock", ".rdd/runtime/reviewer.lock"} or rel.startswith(
                            (".rdd/runtime/failures/", ".rdd/runtime/state.sqlite3")):
                 raise RddError("Export cannot replace reserved run controls, SQLite files or terminal failure evidence")
             if not rel.startswith(EXCLUDED_PREFIXES) and rel not in EXCLUDED_FILES:

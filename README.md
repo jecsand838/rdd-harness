@@ -61,7 +61,7 @@ The controller uses the Python standard library; no Python package installation 
 | Prerequisite | Purpose |
 | --- | --- |
 | Python 3.11+ and Git | Controller, regression suite, exact source identities, branches, and isolated worktrees |
-| Qualified Codex CLI 0.161.0 or 0.162.1 with App Server, native Goals and custom subagents | Workflow execution and configured agent roles |
+| Qualified Codex CLI 0.162.1 with the native TUI, App Server, native Goals and custom subagents | Workflow execution and configured agent roles |
 | Model/account access | The Astra/ultra, Sol/xhigh, and Luna/xhigh settings listed above; no silent model downgrade |
 | GitHub CLI `gh` and a writable GitHub `origin` remote | Phase PR publication, required checks, and stack verification |
 | Rustup with the [pinned Rust toolchain](rust-toolchain.toml) | Rust compiler, `rustfmt`, `clippy`, and `wasm32-unknown-unknown` for native and Rust/WASM work |
@@ -82,9 +82,9 @@ Clone your repository or fork using its actual URL and enter a clean checkout. A
 ./rdd workflow implementation
 ```
 
-Specification starts a fresh regenerate run when none exists. After read-only runtime preflight, a fresh checkout on `main` gets a dedicated `codex/*-baseline` branch and local run state. A clean existing authoring branch is retained. The coordinator qualifies and freezes the solution, with typed questions only when actual specification answers are needed. Preparation and implementation run headlessly with native Goals. The runner activates and resumes those Goals; it supplies the workflow instructions and objective.
+When no run exists, specification starts a fresh regenerate run; a clean checkout on `main` gets its dedicated baseline branch and local run state. For an unaccepted stage, its command opens the qualified Codex 0.162.1 TUI under the existing approval policy and supplies stage instructions automatically; accepted stages are rechecked without relaunch. Specification asks only necessary questions in the native TUI. Preparation works interactively from its instructions, without routine user prompts. The implementation command prints the exact copy-ready `/goal` text; paste it only when no Goal exists. On retry, inspect and resume the exact recorded session and existing Goal. Never select `--last`, replace a session or Goal, or reset its accounting. For all launched stages, the first TUI action attaches with `./rdd workflow attach STAGE --launch-id UUID`, where UUID is the random launch nonce in the supplied instructions. Attach reads `CODEX_THREAD_ID` from the TUI environment and binds both; that runtime-derived thread ID is observed provenance, not authentication or backend attestation.
 
-Each command returns success only after the controller verifies that stage's acceptance. Preparation still requires committed and pushed materialization, actual preparation CI, required external evidence, and both final review perspectives before `gate preparation`. Implementation still requires every phase gate, verified PR and seal, then `gate project`. Missing permissions, approvals, tools, evidence or backend sessions leave the command incomplete. Follow the [workflow guide](docs/harness/workflow-guide.md) for detailed obligations and the [short playbook](docs/harness/blog-demo.md) for a fresh checkout.
+After the TUI exits, the runner obtains a read-only `workflow_result`; that result determines the command exit status. A command returns success only after the controller verifies that stage's acceptance. Preparation still requires committed and pushed materialization, actual preparation CI, required external evidence, and both final review perspectives before `gate preparation`. Implementation still requires every phase gate, verified PR and seal, then `gate project`. Missing tools, evidence or backend sessions leave the command incomplete. Follow the [workflow guide](docs/harness/workflow-guide.md) for detailed obligations and the [short playbook](docs/harness/blog-demo.md) for a fresh checkout.
 
 | Exit | Meaning |
 | --- | --- |
@@ -93,9 +93,9 @@ Each command returns success only after the controller verifies that stage's acc
 | `2` | Incomplete or blocked workflow; preserve diagnostics and resolve the cause |
 | `130` | Interrupted workflow; preserve the recorded session and rerun the same command |
 
-Repeating a workflow command resumes its recorded run and backend sessions. An already accepted stage is checked and returned without another launch. The runner never resets an uncertain session or Goal accounting to imply progress. An explicit workflow `--mode` must match the existing run. Use the explicit new-run procedure below for an intentional amendment or replacement.
+Repeating a workflow command opens the TUI for the recorded run and resumes the exact session. An already accepted stage is checked and returned without another launch. If an implementation Goal exists, inspect and resume that Goal; do not create a replacement or select the last Goal. The runner never resets an uncertain session or Goal accounting to imply progress. An explicit workflow `--mode` must match the existing run. Use the explicit new-run procedure below for an intentional amendment or replacement.
 
-To inspect a launch packet without starting Codex or changing branch, run state, Goals or files:
+To inspect a launch packet without starting the TUI or changing branch, run state, Goals or files:
 
 ```sh
 ./rdd workflow specification --print
@@ -115,7 +115,7 @@ Use `./rdd status` for the current run, active phase, tasks, blockers, and exact
 ./rdd export-run .rdd/evidence/run-checkpoint.json
 ```
 
-After resolving an interruption, return to the recorded baseline or phase branch and rerun the same workflow command. It reconciles resumable controller state and resumes the recorded backend session. Standalone controller recovery remains available with:
+After resolving an interruption, return to the recorded baseline or phase branch and rerun the same workflow command. It reconciles resumable controller state and resumes the exact recorded session; for implementation, inspect the current Goal and resume it without using `--last`. Standalone controller recovery remains available with:
 
 ```sh
 ./rdd resume
@@ -129,7 +129,7 @@ To restore on another machine, transfer the Git repository at the checkpoint's e
 ./rdd resume --from PATH_TO_RUN_CHECKPOINT.json
 ```
 
-Backend sessions belong to the configured local runtime; a checkpoint does not create or transfer those sessions. A missing or uncertain session stops recoverably instead of being replaced. Runtime state and evidence are ignored by Git, so pushing source alone does not transfer them. The checkpoint carries run state and raw check logs; imports verify source/lock identity and log hashes. See [recovery procedures](docs/harness/workflow-guide.md#repairs-and-interruptions) and the [evidence guide](docs/harness/evidence-guide.md) for the full process.
+TUI sessions belong to the configured local runtime; a checkpoint does not create or transfer them. A missing or uncertain session stops recoverably instead of being replaced. Runtime state and evidence are ignored by Git, so pushing source alone does not transfer them. The checkpoint carries run state and raw check logs; imports verify source/lock identity and log hashes. See [recovery procedures](docs/harness/workflow-guide.md#repairs-and-interruptions) and the [evidence guide](docs/harness/evidence-guide.md) for the full process.
 
 An older run whose baseline was recorded as `main` remains inspectable/exportable. Preserve its source and checkpoint, then start a fresh run on a dedicated baseline; do not edit recorded branch identities to move it. Branch refusals preserve dirty work and do not automatically switch, stash, reset, or rewrite artifacts.
 

@@ -266,6 +266,20 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(path.read_bytes() if path.exists() else None, before)
         self.assertEqual(self.f.c.state(allow_blocked=True), state)
 
+    def test_export_cannot_replace_active_reviewer_lock(self):
+        path = self.root / ".rdd/runtime/reviewer.lock"
+        with operation_lock(self.root, reviewer=True):
+            identity = (path.stat().st_dev, path.stat().st_ino)
+            contents = path.read_bytes()
+            with patch.object(self.f.c, "state", side_effect=AssertionError("Destination must reject before export reads state")):
+                with self.assertRaisesRegex(RddError, "reserved run controls"):
+                    self.f.c.export_run(path)
+            self.assertEqual((path.stat().st_dev, path.stat().st_ino), identity)
+            self.assertEqual(path.read_bytes(), contents)
+            with self.assertRaises(RddError):
+                with operation_lock(self.root, reviewer=True):
+                    self.fail("The original reviewer lock must remain held")
+
     def test_export_cannot_overwrite_terminal_failure_marker(self):
         self.reserved_export_destination()
 

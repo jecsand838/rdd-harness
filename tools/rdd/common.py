@@ -514,9 +514,11 @@ def validate_artifact(root: Path, name: str, value: Any) -> None:
 
 
 @contextlib.contextmanager
-def operation_lock(root: Path, *, workflow: bool = False):
+def operation_lock(root: Path, *, workflow: bool = False, reviewer: bool = False):
     """Serialize CLI mutations across processes; OS releases the lock after crashes."""
-    path = safe_path(root, ".rdd/runtime/workflow.lock" if workflow else ".rdd/runtime/controller.lock")
+    if workflow and reviewer:
+        raise RddError("Choose one process lock", "environment")
+    path = safe_path(root, ".rdd/runtime/workflow.lock" if workflow else ".rdd/runtime/reviewer.lock" if reviewer else ".rdd/runtime/controller.lock")
     path.parent.mkdir(parents=True, exist_ok=True)
     stream = path.open("a+b")
     locked = False
@@ -531,14 +533,14 @@ def operation_lock(root: Path, *, workflow: bool = False):
                 msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
                 locked = True
             except OSError as exc:
-                raise RddError("Another workflow driver is running" if workflow else "Another controller mutation is running; read status and retry after it finishes", "environment") from exc
+                raise RddError("Another workflow driver is running" if workflow else "Another isolated review is running" if reviewer else "Another controller mutation is running; read status and retry after it finishes", "environment") from exc
         else:
             import fcntl
             try:
                 fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 locked = True
             except BlockingIOError as exc:
-                raise RddError("Another workflow driver is running" if workflow else "Another controller mutation is running; read status and retry after it finishes", "environment") from exc
+                raise RddError("Another workflow driver is running" if workflow else "Another isolated review is running" if reviewer else "Another controller mutation is running; read status and retry after it finishes", "environment") from exc
         yield
     finally:
         if locked:
