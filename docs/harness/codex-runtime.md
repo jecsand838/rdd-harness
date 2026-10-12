@@ -413,8 +413,10 @@ The version/source manifest is `.rdd/sources/runtime.json`. Source inspection, a
 ## Manual workflow verification
 
 Harness behavior is exercised manually during application generation. The
-standalone harness and generator test suites and `selftest` command have been
-removed. Application contract generation still validates descriptors, compiles
+Python harness regression and standalone generator suites have been deleted.
+The existing Rust generator unit tests remain available with `./rdd selftest`;
+this manual command is never invoked by CI/CD or application contract checks.
+Application contract generation still validates descriptors, compiles
 host/target bindings and verifies positive/negative provider-consumer proofs.
 All frozen application tests, benchmarks, reviews and gates remain mandatory.
 

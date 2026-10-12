@@ -376,3 +376,138 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     generate(&descriptor, &destination, proof)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
+
+    #[test]
+    fn local_boundary_returns_the_schema_response_without_an_associated_error() {
+        let service = Service {
+            name: "StoreService".into(),
+            proto_name: "StoreService".into(),
+            package: "store.v1".into(),
+            comments: Default::default(),
+            options: Default::default(),
+            methods: vec![prost_build::Method {
+                name: "save".into(),
+                proto_name: "Save".into(),
+                comments: Default::default(),
+                input_type: "SaveRequest".into(),
+                output_type: "SaveResponse".into(),
+                input_proto_type: ".store.v1.SaveRequest".into(),
+                output_proto_type: ".store.v1.SaveResponse".into(),
+                options: Default::default(),
+                client_streaming: false,
+                server_streaming: false,
+            }],
+        };
+        let mut generator = LocalServices {
+            proof: Proof::None,
+            corrupted_one_method: false,
+            resolved: Rc::new(RefCell::new(BTreeMap::new())),
+        };
+        let mut output = String::new();
+        generator.generate(service, &mut output);
+        assert!(
+            output.contains("Future<Output = SaveResponse>"),
+            "schema response must own boundary outcomes"
+        );
+        assert!(
+            !output.contains("type Error"),
+            "an associated error bypasses frozen response outcomes"
+        );
+    }
+
+    fn descriptor(streaming: bool) -> FileDescriptorSet {
+        FileDescriptorSet {
+            file: vec![FileDescriptorProto {
+                name: Some("example/v1/check.proto".into()),
+                package: Some("example.v1".into()),
+                message_type: vec![
+                    prost_types::DescriptorProto {
+                        name: Some("CheckRequest".into()),
+                        ..Default::default()
+                    },
+                    prost_types::DescriptorProto {
+                        name: Some("CheckResponse".into()),
+                        oneof_decl: vec![prost_types::OneofDescriptorProto {
+                            name: Some("outcome".into()),
+                            ..Default::default()
+                        }],
+                        field: vec![
+                            prost_types::FieldDescriptorProto {
+                                name: Some("success".into()),
+                                number: Some(1),
+                                oneof_index: Some(0),
+                                r#type: Some(
+                                    prost_types::field_descriptor_proto::Type::String as i32,
+                                ),
+                                ..Default::default()
+                            },
+                            prost_types::FieldDescriptorProto {
+                                name: Some("error".into()),
+                                number: Some(2),
+                                oneof_index: Some(0),
+                                r#type: Some(
+                                    prost_types::field_descriptor_proto::Type::String as i32,
+                                ),
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    },
+                ],
+                service: vec![ServiceDescriptorProto {
+                    name: Some("CheckService".into()),
+                    method: vec![MethodDescriptorProto {
+                        name: Some("Check".into()),
+                        input_type: Some(".example.v1.CheckRequest".into()),
+                        output_type: Some(".example.v1.CheckResponse".into()),
+                        client_streaming: Some(streaming),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+        }
+    }
+
+    #[test]
+    fn response_outcomes_require_a_real_schema_oneof() {
+        let mut fds = descriptor(false);
+        fds.file[0].message_type[1].oneof_decl.clear();
+        assert!(
+            validate(&fds).is_err(),
+            "response without schema outcomes must be rejected"
+        );
+    }
+
+    #[test]
+    fn unary_interfaces_are_accepted_and_streaming_is_explicitly_rejected() {
+        assert!(validate(&descriptor(false)).is_ok());
+        assert!(validate(&descriptor(true)).is_err());
+    }
+
+    #[test]
+    fn no_service_cannot_claim_operation_signature_proof() {
+        assert!(validate(&FileDescriptorSet::default()).is_err());
+        let mut fds = descriptor(false);
+        fds.file[0].service.clear();
+        assert!(validate(&fds).is_err());
+    }
+
+    #[test]
+    fn module_tree_is_nested_and_deduplicated() {
+        let mut tree = ModuleTree::default();
+        let parts = vec!["example".to_owned(), "v1".to_owned()];
+        tree.add(&parts, "example.v1.rs".into());
+        tree.add(&parts, "example.v1.rs".into());
+        let mut output = String::new();
+        tree.render(&mut output, 0);
+        assert!(output.contains("pub mod example {\n    pub mod v1 {"));
+        assert_eq!(output.matches("example.v1.rs").count(), 1);
+    }
+}

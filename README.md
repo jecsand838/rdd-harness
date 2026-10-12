@@ -210,7 +210,7 @@ After project acceptance, archive the reports/checkpoint and keep the phase stac
 
 ### What CI proves
 
-CI verifies frozen application work. Harness selftests, portability suites and standalone generator tests have been removed. Ordinary unfrozen harness PRs run no tests; `main` and baseline pushes start no CI. The required PR **`verify`** check reports the selected scope and requires any selected application verification to succeed.
+CI verifies frozen application work. Harness regression and standalone Python generator suites have been deleted; no harness tests run in CI/CD. The existing Rust generator unit tests remain available manually through `./rdd selftest`. Ordinary unfrozen harness PRs run no tests; `main` and baseline pushes start no CI. The required PR **`verify`** check reports the selected scope and requires any selected application verification to succeed.
 
 A phase PR uses the trusted base controller and frozen policy on its declared hosted environments. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy. The release route uses operator-pinned policy while retaining the controller from the PR's `main` base. An ordinary unfrozen harness-maintenance PR into `main` runs no application checks and cannot certify application acceptance.
 

@@ -107,6 +107,7 @@ def parser() -> argparse.ArgumentParser:
     contract.add_argument("--bootstrap-lock", action="store_true", help="First qualification only: resolve missing Cargo.lock files")
     contract.add_argument("--target", action="append", default=[])
     contract.add_argument("--against", help="Buf breaking-check baseline input")
+    commands.add_parser("selftest", help="Manually run the Rust generator unit tests; never runs in CI or claims app completion")
     ci = commands.add_parser("ci", help="Stateless trusted-baseline verification of a candidate checkout")
     ci.add_argument("--policy-root", type=Path)
     ci.add_argument("--branch")
@@ -223,6 +224,14 @@ def dispatch(c: Controller, a: argparse.Namespace):
                                  targets=tuple(a.target), against=a.against)
         except ContractCheckError as exc:
             raise RddError(str(exc), "environment" if exc.blocked else "specification") from exc
+    if cmd == "selftest":
+        cargo = shutil.which("cargo")
+        if not cargo:
+            raise RddError("Cargo is required for manual generator selftests", "environment")
+        result = subprocess.run([cargo, "test", "--locked", "--manifest-path",
+                                 str(c.root / "tools/proto-codegen/Cargo.toml")], cwd=c.root)
+        return {"status": "passed" if result.returncode == 0 else "failed", "scope": "generator_unit_tests",
+                "application_complete": False, "returncode": result.returncode}
     if cmd == "ci":
         from rdd.ci import verify, verify_preparation
         if a.preparation:
@@ -275,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
             # Refuse before constructing runtime state or acquiring a write lock.
             require_source_branch(args.root)
         controller = Controller(args.root)
-        legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run"} or (
+        legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run", "selftest"} or (
             args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage == "nodes"))
         if not legacy_readonly:
             controller.guard_v2()
@@ -287,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
             controller.guard_export(args.file)
         elif source_write and args.command != "start":
             controller.guard_source_write(baseline=args.command in {"spec", "plan", "prepare", "contracts"})
-        readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "ci"} or (
+        readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "selftest", "ci"} or (
             args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
             args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage in {"nodes", "next"}))
         if args.command in {"start", "init"}:
