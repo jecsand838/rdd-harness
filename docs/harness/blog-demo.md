@@ -39,6 +39,8 @@ After leaving the TUI, run `./rdd status`. Continue only when it reports `specif
 
 The command supplies the preparation instructions. Let the session finish the groomed backlog, plan freeze, task packets, committed/pushed baseline, readiness evidence and final reviews. After leaving the TUI, check `./rdd status`: it must report `prepared`, established by a passing `gate preparation`. `preparing` means the handoff is still incomplete.
 
+Baseline pushes do not start CI. Once materialization is committed and pushed, the session must explicitly dispatch `gh workflow run preparation.yml --ref BASELINE_BRANCH -f candidate=FULL_SHA`, using the recorded baseline branch and its exact full commit SHA. The matching preparation-policy pin and all required hosted/native evidence remain prerequisites for the gate; see the [preparation protocol](workflow-guide.md#stage-two-preparation).
+
 ## 4. Implementation
 
 ```sh
