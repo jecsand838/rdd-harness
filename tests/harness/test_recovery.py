@@ -25,7 +25,7 @@ class RecoveryTests(unittest.TestCase):
 
     def completed(self):
         f = self.f
-        f.opened()
+        f.opened(seed_owner=type(self))
         f.implement_all()
         f.review()
         f.c.gate_phase("P01")
@@ -111,7 +111,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.f.c.anchors_verify()["remaining"], 0)
 
     def test_claimed_and_released_task_cannot_drop_or_forge_runtime_identity(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         c = self.f.c
         untouched = read_json(self.export())
         c.validate_checkpoint_state(untouched["state"], untouched)
@@ -135,7 +135,7 @@ class RecoveryTests(unittest.TestCase):
                 c.validate_checkpoint_state(changed["state"], changed)
 
     def test_export_rejects_changed_raw_log_without_creating_checkpoint(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         receipt = next(iter(self.f.c.state()["checks"].values()))
         log = self.root / receipt["log_path"]
         log.write_text(log.read_text() + "\nchanged")
@@ -145,7 +145,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertFalse(dest.exists())
 
     def test_raw_log_tampering_is_rejected_before_any_import_write(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         path = self.export()
         checkpoint = read_json(path)
         receipt = next(iter(checkpoint["state"]["checks"].values()))
@@ -158,7 +158,7 @@ class RecoveryTests(unittest.TestCase):
         self.assert_no_import()
 
     def test_import_rejects_changed_preparation_baseline_before_any_write(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         path = self.export()
         checkpoint = read_json(path)
         checkpoint["baseline"]["prepared_digest"] = "0" * 64
@@ -169,7 +169,7 @@ class RecoveryTests(unittest.TestCase):
         self.assert_no_import()
 
     def test_import_cannot_turn_pending_tasks_into_a_completed_run(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         path = self.export()
         checkpoint = read_json(path)
         checkpoint["state"]["status"] = "complete"
@@ -180,7 +180,7 @@ class RecoveryTests(unittest.TestCase):
         self.assert_no_import()
 
     def test_expired_lease_preserves_dirty_work_and_claims_a_distinct_attempt(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="expired-worker")
         worker = self.root / claim["lease"]["worktree"]
         draft = worker / "tests/behavior.py"
@@ -201,7 +201,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertTrue(self.f.g("status", "--porcelain", root=worker))
 
     def test_released_and_expired_attempts_can_enroll_without_losing_work(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         c = self.f.c
         for expired in (False, True):
             claim = c.task_claim("T001", "rdd_complex_implementor", session_id=f"repair-author-{expired}")
@@ -227,7 +227,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertNotEqual(final["lease"]["worktree"], claim["lease"]["worktree"])
 
     def test_repair_authorization_checkpoint_roundtrip_and_tampering(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         c = self.f.c
         c.task_claim("T001", "rdd_complex_implementor", session_id="repair-author")
         self.f.live_review(findings=[self.f.finding(), self.f.finding("OTHER", ("T003",)),
@@ -276,7 +276,7 @@ class RecoveryTests(unittest.TestCase):
         self.assert_no_import()
 
     def test_unattempted_task_and_invented_live_repair_cannot_gain_exemptions(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         c = self.f.c
         self.f.live_review(findings=[self.f.finding()])
         self.f.assert_transition_rejected(lambda: c.task_reopen("T001", "Not an attempted repair"), "prior attempt")
@@ -298,7 +298,7 @@ class RecoveryTests(unittest.TestCase):
         self.f.opened()
 
     def test_new_run_preserves_prior_worktree_and_packet(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         first = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         worker = self.root / first["lease"]["worktree"]
         draft = worker / "tests/behavior.py"
@@ -317,7 +317,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual((self.root / first["packet"]).read_bytes(), packet)
 
     def test_new_run_preserves_packets_without_worktrees(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         first = self.f.c.task_claim("T001", "rdd_complex_implementor", worktree=False, session_id="fixture-worker")
         packet = (self.root / first["packet"]).read_bytes()
         self.f.c.task_release("T001", "Preserve packet before regeneration")
@@ -329,7 +329,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual((self.root / first["packet"]).read_bytes(), packet)
 
     def test_checkpoint_accepts_historical_worktree_path(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         claim = self.f.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         legacy = ".rdd/runtime/worktrees/T001-a1"
         if claim["lease"]["worktree"] != legacy:
@@ -346,7 +346,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.f.g("branch", "--show-current", root=self.root / legacy), claim["lease"]["branch"])
 
     def test_interrupted_integration_before_pick_can_resume_and_retry(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         _, worker, sha = self.submission()
         before = head(self.root)
         self.interrupt_integration(sha, after_pick=False)
@@ -360,7 +360,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.f.c.task_integrate("T001", sha)["status"], "integrated")
 
     def test_interrupted_integration_after_pick_recovers_without_duplicate_commit(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         _, _, sha = self.submission()
         self.interrupt_integration(sha, after_pick=True)
         picked = head(self.root)
@@ -374,7 +374,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertTrue(any(e["action"] == "integration_recovered" for e in self.f.c.state()["events"]))
 
     def test_ambiguous_interrupted_integration_rejects_and_preserves_commits(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         _, worker, sha = self.submission()
         self.interrupt_integration(sha, after_pick=True)
         self.f.write("docs/unleased.md", "Unrelated coordinator change to preserve.\n")

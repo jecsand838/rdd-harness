@@ -101,6 +101,8 @@ Run `init` before `status` on a fresh clone: Git does not carry the ignored loca
 
 On Windows, replace `./rdd` with `python tools/rdd/cli.py`, `rdd.cmd` in Command Prompt, or `./rdd.ps1` in PowerShell, keeping the same arguments. On Unix, `python3 tools/rdd/cli.py` also works if a file extractor did not preserve executable permissions.
 
+`./rdd selftest --suite portability` runs the focused process, Git, encoding and storage checks used by routine native CI. The default remains the full suite. Add `--timings .rdd/evidence/selftest-timings.json` to either suite to record individual test outcomes and elapsed times.
+
 If starting from an archive rather than a clone, extract it into its own directory, initialize Git on a named authoring branch with `git init -b codex/todo-baseline`, and run `./rdd init` there. After configuring your Git identity, make the initial source commit and connect a writable `origin` remote if one does not already exist. Clones already have history and a remote; they do not need an extra initialization commit.
 
 To inspect the specification launch prompt without opening Codex or starting a run:
@@ -113,7 +115,7 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
 
 ### Start development deliberately
 
-`main` is the merge-only release branch. Begin on a clean, dedicated baseline such as `codex/todo-baseline`; use that branch for all specification and preparation commits. In the examples below, replace `YOUR_BASELINE_BRANCH` with its actual name. The shipped CI verifies pushes to `codex/*-baseline` and phase PRs targeting those branches or `rdd/**`. Other naming patterns require a reviewed CI filter change before specification freeze. The controller rejects source authoring on `main`, detached HEAD, or a branch other than the recorded baseline/phase. Complete each workflow and commit its accepted output before continuing; these are separate interactive sessions, not a batch script.
+`main` is the merge-only release branch. Begin on a clean, dedicated baseline such as `codex/todo-baseline`; use that branch for all specification and preparation commits. In the examples below, replace `YOUR_BASELINE_BRANCH` with its actual name. Phase PRs targeting `codex/*-baseline` or `rdd/**` receive trusted CI; baseline pushes do not start jobs. Dispatch preparation qualification explicitly when its committed materialization is ready. Other naming patterns require a reviewed CI filter change before specification freeze. The controller rejects source authoring on `main`, detached HEAD, or a branch other than the recorded baseline/phase. Complete each workflow and commit its accepted output before continuing; these are separate interactive sessions, not a batch script.
 
 1. **Specify the solution.** For a first full solution, start a regenerate run:
 
@@ -135,9 +137,10 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
 
    ```sh
    git push origin YOUR_BASELINE_BRANCH
+   gh workflow run preparation.yml --ref YOUR_BASELINE_BRANCH -f candidate=FULL_MATERIALIZATION_SHA
    ```
 
-   Obtain successful preparation CI for that exact commit using the pinned `RDD_PREPARATION_HARNESS_SHA`, import any required external evidence, and run `./rdd readiness preparation`. Both independent final reviewers must inspect the committed handoff and current evidence; record their reports, then run `./rdd gate preparation`. Only a passing gate grants `prepared` and permits P01. See the [preparation protocol](docs/harness/workflow-guide.md#stage-two-preparation) for the exact sequence.
+   Replace `FULL_MATERIALIZATION_SHA` with the full committed SHA from `git rev-parse HEAD`; the dispatched baseline ref must resolve to that exact revision. Obtain successful preparation CI using the pinned `RDD_PREPARATION_HARNESS_SHA`, import any required external evidence, and run `./rdd readiness preparation`. Both independent final reviewers must inspect the committed handoff and current evidence; record their reports, then run `./rdd gate preparation`. Only a passing gate grants `prepared` and permits P01. See the [preparation protocol](docs/harness/workflow-guide.md#stage-two-preparation) for the exact sequence.
 
    The first phase PR uses this accepted remote baseline. Require `verify` on it; later phase bases need the same required check only after they are sealed. Do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for setup commands.
 
@@ -200,13 +203,15 @@ After project acceptance, archive the reports/checkpoint and keep the phase stac
 
 ### What CI proves
 
-CI runs on Linux, macOS, and Windows, with the aggregate check named **`verify`**. A phase PR uses the trusted base controller and policy to validate the candidate. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy to grant itself permission. The explicit release route uses operator-pinned policy while retaining the controller from the PR's `main` base.
+Routine harness PRs run the full candidate tests and real contract compiler proofs on Linux, the trusted base tests once on Linux, and focused portability tests on macOS and Windows. Documentation-only PRs and `main` pushes run lightweight Linux checks. Full native harness qualification runs on release PRs and by explicit dispatch. The PR aggregate **`verify`** requires every job selected for that run; an unexpected skip is a failure. See the [CI routing table](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence).
 
-Preparation has its own CI route while the run is `preparing`: pin the trusted harness commit in the repository variable `RDD_PREPARATION_HARNESS_SHA`, then push the exact materialized `codex/*-baseline` commit. Import its raw evidence before `gate preparation`; hosted success cannot replace qualified-host/manual proof. See the [workflow guide](docs/harness/workflow-guide.md#stage-two-preparation). Harness maintenance PRs also run the candidate selftests and actual native/WASM contract compiler proofs on the supported OS matrix.
+A phase PR uses the trusted base controller and frozen policy on its declared hosted environments. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy. The release route uses operator-pinned policy while retaining the controller from the PR's `main` base. An ordinary unfrozen harness-maintenance PR into `main` has a separate test route and cannot certify application acceptance.
 
-Before a frozen application plan exists, CI reports `harness_only` with `application_complete=false`. An intact prepared baseline verifies contracts and pending markers. A phase PR runs cumulative ordinary checks for the applicable native platform. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
+Preparation CI is dispatch-only while the run is `preparing`: pin the trusted harness in `RDD_PREPARATION_HARNESS_SHA`, push the materialized baseline and dispatch its exact SHA using that baseline ref. Successor dispatches on the same baseline cancel older attempts. Import raw evidence before `gate preparation`; hosted success cannot replace qualified-host/manual proof. See the [workflow guide](docs/harness/workflow-guide.md#stage-two-preparation).
 
-On nonphase branches, CI accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; a same-revision push check cannot detect rollback against an earlier revision. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
+Before a frozen application plan exists, the stateless `./rdd ci` verifier reports `harness_only` with `application_complete=false`. An intact prepared baseline verifies contracts and pending markers. A phase PR runs cumulative ordinary checks for the applicable native platform. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
+
+On nonphase branches, the stateless verifier accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; lightweight post-merge diagnostics do not run this verification. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
 
 Protect the verification workflow and policy through repository rules and review. The harness trusts its local controller and evidence observers; it is not a sandbox against someone who can rewrite the verifier or state. See the [security model](docs/harness/security-model.md) for the trust boundary and the [runtime guide](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence) for CI and native evidence requirements.
 

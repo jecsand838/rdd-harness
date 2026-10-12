@@ -152,7 +152,15 @@ Commit the hydrated plan and obtain semantic and execution reviews of the same c
 
 Only this gate grants `prepared` status. It binds the exact committed baseline; changes require refreshed evidence. Stage review/gate receipts live under ignored runtime/evidence locations so recording them does not invalidate the source they certify.
 
-Preparation CI uses `.github/workflows/preparation.yml` and the operator-controlled `RDD_PREPARATION_HARNESS_SHA` repository variable: a full immutable harness commit, independently selected from the candidate. Push the committed `codex/*-baseline` candidate, or dispatch with its exact SHA and matching branch ref when the workflow is available on the default branch. The trusted verifier checks that the candidate retains its protected policy and selects hosted runners from its declared unprofiled environments. It explicitly provisions declared Python, Rust, Buf and supported frontend tools and uploads raw receipts/logs for import. The gate independently observes the exact GitHub run, attempt, successful verification jobs, policy pin and matching workflow bytes. Native/manual or qualified-host obligations remain separate. A failed or skipped hosted run is not preparation acceptance. Phase CI continues using its trusted accepted base.
+Preparation CI uses `.github/workflows/preparation.yml` and the operator-controlled `RDD_PREPARATION_HARNESS_SHA` repository variable: a full immutable harness commit, independently selected from the candidate. Baseline pushes do not launch CI. When the committed materialization is ready, push it and explicitly dispatch the workflow (which must exist on the default branch):
+
+```sh
+gh workflow run preparation.yml --ref YOUR_BASELINE_BRANCH -f candidate=FULL_MATERIALIZATION_SHA
+```
+
+Use a `codex/*-baseline` branch and the full SHA from `git rev-parse HEAD`. The dispatch ref must resolve to that exact candidate; a stale SHA, tag or different branch is rejected before provisioning. Successive dispatches share a concurrency group per baseline branch, so a new attempt cancels older work on that baseline. Distinct baselines remain independent.
+
+The trusted verifier checks that the candidate retains its protected policy and selects hosted runners from its declared unprofiled environments. It explicitly provisions declared Python, Rust, Buf and supported frontend tools and uploads raw receipts/logs for import. The gate independently observes the exact GitHub run, attempt, successful verification jobs, policy pin and matching workflow bytes. Native/manual or qualified-host obligations remain separate. A failed or skipped hosted run is not preparation acceptance. Phase CI continues using its trusted accepted base.
 
 Register a mandatory specification `contract_check_ids` entry with kind `contract`, working directory `.`, and argv `["{python}", "tools/rdd/proto_traits.py"]`, optionally followed by paired `--target`, target arguments. Readiness verifies its actual generated inventory and per-operation positive/negative compiler evidence; other module and semantic checks supplement it. A standalone `contracts check` is useful diagnostics but does not replace the candidate-bound readiness receipt.
 

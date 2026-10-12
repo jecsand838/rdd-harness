@@ -105,7 +105,9 @@ def parser() -> argparse.ArgumentParser:
     contract.add_argument("--bootstrap-lock", action="store_true", help="First qualification only: resolve missing Cargo.lock files")
     contract.add_argument("--target", action="append", default=[])
     contract.add_argument("--against", help="Buf breaking-check baseline input")
-    commands.add_parser("selftest", help="Run the real offline controller/adapters regression suite; never claims app completion")
+    selftest = commands.add_parser("selftest", help="Run the real offline controller/adapters regression suite; never claims app completion")
+    selftest.add_argument("--suite", choices=("full", "portability"), default="full")
+    selftest.add_argument("--timings", type=Path, help="Write per-test outcomes/durations and suite totals as JSON")
     ci = commands.add_parser("ci", help="Stateless trusted-baseline verification of a candidate checkout")
     ci.add_argument("--policy-root", type=Path)
     ci.add_argument("--branch")
@@ -223,10 +225,8 @@ def dispatch(c: Controller, a: argparse.Namespace):
         except ContractCheckError as exc:
             raise RddError(str(exc), "environment" if exc.blocked else "specification") from exc
     if cmd == "selftest":
-        result = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(c.root / "tests/harness"),
-                                 "-p", "test_*.py", "-v"], cwd=c.root)
-        return {"status": "passed" if result.returncode == 0 else "failed", "scope": "harness_regression",
-                "application_complete": False, "returncode": result.returncode}
+        from rdd.selftest import run
+        return run(c.root, a.suite, a.timings)
     if cmd == "ci":
         from rdd.ci import verify, verify_preparation
         if a.preparation:

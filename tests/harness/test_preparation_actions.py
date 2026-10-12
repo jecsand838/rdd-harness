@@ -1,7 +1,11 @@
 """Preparation acceptance requires server-observed CI, not asserted run URLs."""
 import copy
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
+import textwrap
 import unittest
 
 from tools.rdd.adapters import CommandResult, GitHubAdapter, RddAdapterError
@@ -9,6 +13,38 @@ from tools.rdd.adapters import CommandResult, GitHubAdapter, RddAdapterError
 HEAD, HARNESS, BLOB = "a" * 40, "b" * 40, "c" * 40
 URL = "https://github.com/example/rdd/actions/runs/123"
 WORKFLOW = ".github/workflows/preparation.yml"
+
+
+class PreparationDispatchTests(unittest.TestCase):
+    def setUp(self):
+        self.workflow = (Path(__file__).resolve().parents[2] / WORKFLOW).read_text(encoding="utf-8")
+        self.guard = textwrap.dedent(self.workflow.split("python - <<'PY'\n", 1)[1].split("\n          PY", 1)[0])
+
+    def guard_result(self, **replacement):
+        environment = dict(os.environ, GITHUB_EVENT_NAME="workflow_dispatch", GITHUB_REF="refs/heads/codex/todo-baseline",
+                           GITHUB_SHA=HEAD, RDD_HEAD_SHA=HEAD, RDD_HARNESS_SHA=HARNESS)
+        environment.update(replacement)
+        return subprocess.run([sys.executable, "-c", self.guard], env=environment, capture_output=True, text=True)
+
+    def test_exact_baseline_dispatch_passes_identity_guard(self):
+        result = self.guard_result()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_stale_tag_nonbaseline_nested_and_non_dispatch_fail_before_jobs(self):
+        for replacement in ({"GITHUB_SHA": "d" * 40}, {"RDD_HEAD_SHA": "A" * 40},
+                            {"GITHUB_REF": "refs/tags/codex/todo-baseline"}, {"GITHUB_REF": "refs/heads/main"},
+                            {"GITHUB_REF": "refs/heads/codex/nested/todo-baseline"}, {"GITHUB_EVENT_NAME": "push"}):
+            with self.subTest(replacement=replacement):
+                result = self.guard_result(**replacement)
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_dispatch_only_and_branch_stable_concurrency(self):
+        triggers = self.workflow.split("permissions:", 1)[0]
+        self.assertNotIn("  push:", triggers)
+        self.assertIn("group: rdd-preparation-${{ github.ref }}", self.workflow)
+        self.assertIn("name: preparation (${{ matrix.os }})", self.workflow)
+        self.assertIn("name: Verify committed preparation with trusted controller", self.workflow)
+        self.assertNotIn("continue-on-error", self.workflow)
 
 
 class ActionsFixture:

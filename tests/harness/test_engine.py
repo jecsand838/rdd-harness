@@ -8,12 +8,15 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
+import shutil
+import stat
 import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
 from test_artifacts import Fixture, check, task
-from tools.rdd.common import RddError, head, read_json, source_digest, write_json
+from tools.rdd.common import RddError, file_hash, head, read_json, source_digest, write_json
 from tools.rdd.engine import Controller
 from tools.rdd.checks import execute_check, platform_name
 
@@ -63,6 +66,94 @@ class FakeGitHub:
         return dict(ready=True, url=run_url, run_id=1, head_sha=candidate_sha, harness_sha=expected_harness_sha,
                     attempt=1, workflow_blob="f" * 40, blockers=[],
                     jobs=[dict(id=1, name=f"preparation ({RUNNERS[platform_name()]})", status="completed", conclusion="success")])
+
+
+class PreparedFixtureSeed:
+    """One closed, byte-sealed PREPARED fixture per explicitly opting-in class.
+
+    Only tests own this helper. It replays the existing preparation transitions
+    on this host, then physically copies files (including Git objects and DB).
+    Phase entry, task operations and recovery always execute on each consumer.
+    """
+    fields = ("config", "reqs", "spec", "plan")
+
+    @staticmethod
+    def files(root, *, source_only=False):
+        return {p.relative_to(root).as_posix(): file_hash(p)
+                for p in root.rglob("*") if p.is_file()
+                and (not source_only or not (
+                    ".git" in p.relative_to(root).parts
+                    or p.relative_to(root).as_posix().startswith((".rdd/runtime/", ".rdd/evidence/"))))}
+
+    @staticmethod
+    def topology(root):
+        # lstat records directory/link/special-file identity without following
+        # foreign directories. Empty directories are part of the sealed tree.
+        return {p.relative_to(root).as_posix(): stat.S_IFMT(p.lstat().st_mode)
+                for p in (root, *root.rglob("*"))}
+
+    @staticmethod
+    def assert_seedable(root, state, processes):
+        assert state["status"] == "prepared" and state.get("active_phase") is None, "Seed must be PREPARED"
+        assert all(p["status"] == "pending" for p in state["phases"].values()), "Seed phases must be unopened"
+        assert all(t["status"] == "todo" and t["attempts"] == 0
+                   and not any(t.get(key) for key in ("worktree", "lease_expires", "commit", "evidence"))
+                   for t in state["tasks"].values()), "Seed must have no claimed/completed/attempted tasks"
+        assert all(process.poll() is not None for process in processes), "Seed has an active process"
+        paths = list(root.rglob("*"))
+        assert not any(p.is_symlink() or p.name.endswith(("-wal", "-shm", "-journal", ".lock"))
+                       for p in paths), "Seed must be fully closed with no links, WAL, journals or locks"
+        assert (root / ".git").is_dir(), "Seed requires its own physical Git repository"
+        for rel in (".git/worktrees", ".rdd/runtime/worktrees"):
+            directory = root / rel
+            assert not directory.exists() or not any(directory.iterdir()), "Seed has a worktree"
+        alternates = root / ".git/objects/info/alternates"
+        assert not alternates.exists(), "Seed must not share Git objects"
+        result = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=root,
+                                capture_output=True, text=True, check=True, timeout=30)
+        assert sum(line.startswith("worktree ") for line in result.stdout.splitlines()) == 1, "Seed has a worktree"
+
+    def __init__(self, temporary_root):
+        self.tmp = tempfile.TemporaryDirectory(prefix="rdd-prepared-seed-", dir=temporary_root)
+        self.root = Path(self.tmp.name) / "repo"
+        fixture = EngineTests(methodName="runTest")
+        processes = []
+        original_popen = subprocess.Popen
+        def process(*args, **kwargs):
+            child = original_popen(*args, **kwargs)
+            processes.append(child)
+            return child
+        try:
+            with patch("subprocess.Popen", side_effect=process):
+                try:
+                    fixture.setUp()
+                    fixture.prepared()
+                    state = fixture.c.state()
+                    fixture.c.close()
+                    self.assert_seedable(fixture.root, state, processes)
+                    self.data = {name: copy.deepcopy(getattr(fixture, name)) for name in self.fields}
+                    shutil.copytree(fixture.root, self.root)
+                finally:
+                    fixture.doCleanups()
+            assert all(child.poll() is not None for child in processes), "Seed has an active process"
+            self.seal = self.files(self.root)
+            self.topology_seal = self.topology(self.root)
+        except BaseException:
+            self.tmp.cleanup()
+            raise
+
+    def copy_into(self, fixture):
+        assert self.topology(self.root) == self.topology_seal and self.files(self.root) == self.seal, \
+            "PREPARED seed is immutable; its topology or bytes changed"
+        fixture.c.close()
+        shutil.rmtree(fixture.root)
+        shutil.copytree(self.root, fixture.root)
+        for name, value in self.data.items():
+            setattr(fixture, name, copy.deepcopy(value))
+        # Preserve consumer references to its own Controller, with a fresh path-
+        # owning Store/config. No connection or fake adapter is shared by clones.
+        fixture.c._store = None
+        fixture.c.config = copy.deepcopy(fixture.config)
 
 
 class EngineTests(Fixture):
@@ -122,7 +213,10 @@ class EngineTests(Fixture):
         self.plan["element_coverage"] = [dict(element=e["id"], tasks=[t["id"] for t in tasks], checks=["behavior"], baseline_evidence=None)
             for e in self.spec["solution_elements"]]
         self.hub = FakeGitHub()
-        self.hub_patch = patch("tools.rdd.engine.GitHubAdapter", lambda root: self.hub)
+        from tools.rdd import engine
+        previous_hub = engine.GitHubAdapter
+        self.hub_patch = patch("tools.rdd.engine.GitHubAdapter",
+            lambda root: self.hub if Path(root).resolve() == self.root.resolve() else previous_hub(root))
         self.hub_patch.start()
         self.addCleanup(self.hub_patch.stop)
         # Explicit external compiler boundary fake. The actual protected driver,
@@ -142,6 +236,8 @@ class EngineTests(Fixture):
         self.c.spec_init()
         self.spec["id"] = "fixture-run"
         write_json(self.root / ".rdd/spec.json", self.spec)
+        self._initial_inputs = {name: copy.deepcopy(getattr(self, name)) for name in PreparedFixtureSeed.fields}
+        self._initial_files = PreparedFixtureSeed.files(self.root, source_only=True)
 
     def g(self, *args, root=None):
         proc = subprocess.run(["git", *args], cwd=root or self.root, check=False,
@@ -248,8 +344,29 @@ class EngineTests(Fixture):
         self.stage_ready("preparation", ci=True)
         self.c.gate_preparation()
 
-    def opened(self):
-        self.prepared()
+    def prepared_from_seed(self, owner):
+        """Explicit downstream opt-in; custom/upstream fixtures keep prepared()."""
+        assert all(getattr(self, name) == value for name, value in self._initial_inputs.items()), "Cannot reuse a custom fixture"
+        assert PreparedFixtureSeed.files(self.root, source_only=True) == self._initial_files, "Cannot reuse custom fixture source"
+        assert self.c.state()["status"] == "specification", "Reuse requires an untouched fresh fixture"
+        seed = owner.__dict__.get("_prepared_fixture_seed")
+        if seed is None:
+            seed = PreparedFixtureSeed(self.root.parent.parent)
+            owner._prepared_fixture_seed = seed
+            def cleanup():
+                try:
+                    seed.tmp.cleanup()
+                finally:
+                    if owner.__dict__.get("_prepared_fixture_seed") is seed:
+                        delattr(owner, "_prepared_fixture_seed")
+            owner.addClassCleanup(cleanup)
+        seed.copy_into(self)
+
+    def opened(self, *, seed_owner=None):
+        if seed_owner is None:
+            self.prepared()
+        else:
+            self.prepared_from_seed(seed_owner)
         self.c.phase_begin("P01")
         self.live_review()
 
@@ -340,7 +457,7 @@ class EngineTests(Fixture):
         self.assertEqual(result["requested_runtime"], self.c.profile_settings("rdd_complex_implementor"))
 
     def test_small_scope_accepts_light_profile_and_retains_requested_identity(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         result = self.c.task_claim("T001", "rdd_light_implementor", worktree=False, session_id="light-worker")
         self.assertEqual(result["requested_runtime"], self.c.profile_settings("rdd_light_implementor"))
         self.assertEqual(self.c.state()["tasks"]["T001"]["requested_runtime"], result["requested_runtime"])
@@ -442,7 +559,7 @@ class EngineTests(Fixture):
         self.assertTrue(self.c.gate_project()["application_complete"])
 
     def test_frozen_contract_edits_and_added_boundaries_are_rejected(self):
-        self.prepared()
+        self.prepared_from_seed(type(self))
         p = self.root / "contracts/fixture/v1/fixture.proto"
         original = p.read_text()
         p.write_text(original + "// changed contract\n")
@@ -454,13 +571,13 @@ class EngineTests(Fixture):
             self.c.frozen()
 
     def test_frozen_policy_change_is_rejected(self):
-        self.prepared()
+        self.prepared_from_seed(type(self))
         self.write(".rdd/schemas/spec.schema.json", '{}\n')
         with self.assertRaises(RddError):
             self.c.frozen()
 
     def test_category_barrier_prevents_early_production_claim(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         self.assertEqual([t["id"] for t in self.c.next()["ready"]], ["T001"])
         with self.assertRaisesRegex(RddError, "not ready"):
             self.c.task_claim("T003", "rdd_complex_implementor", worktree=True, session_id="early-worker")
@@ -468,7 +585,7 @@ class EngineTests(Fixture):
             self.c.task_complete("T001")
 
     def test_category_handoff_requires_live_observation_without_task_approval(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         red = self.red_task()
         self.c.task_complete("T001", red["id"])
         self.commit("Preserve accepted RED and controller cleanup")
@@ -478,38 +595,38 @@ class EngineTests(Fixture):
         self.assertEqual(self.c.task_claim("T002", "rdd_complex_implementor", session_id="deletion-worker")["task"], "T002")
 
     def test_green_test_cannot_be_used_as_red_evidence(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         receipt = self.red_task('print("No failing fixture assertions")\n')
         self.assertNotEqual(receipt["outcome"], "red")
         with self.assertRaisesRegex(RddError, "behavioral RED"):
             self.c.task_complete("T001", receipt["id"])
 
     def test_missing_module_is_not_behavioral_red(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         receipt = self.red_task('import deliberately_missing_fixture_module\nassert False, "EXPECTED_ASSERTION"\n')
         self.assertNotEqual(receipt["outcome"], "red")
         with self.assertRaisesRegex(RddError, "behavioral RED"):
             self.c.task_complete("T001", receipt["id"])
 
     def test_gate_rejects_incomplete_phase(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         with self.assertRaisesRegex(RddError, "Every task"):
             self.c.gate_phase("P01")
 
     def test_review_session_cannot_be_an_implementor(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         self.c.task_claim("T001", "rdd_complex_implementor", worktree=True, session_id="same-session")
         with self.assertRaisesRegex(RddError, "distinct"):
             self.review(session_id="same-session")
 
     def test_review_must_cover_current_commit_and_all_checks(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         for changes in (dict(source_commit="a" * 40), dict(source_digest="b" * 64), dict(checks_reviewed=["contract"])):
             with self.subTest(changes=changes), self.assertRaises(RddError):
                 self.review(**changes)
 
     def test_repaired_source_invalidates_prior_review(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         self.implement_all()
         self.review()
         self.write("modules/value.py", "def value():\n    return 43\n")
@@ -518,7 +635,7 @@ class EngineTests(Fixture):
             self.c.gate_phase("P01")
 
     def test_open_phase_repair_returns_to_tests_and_invalidates_gate(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         self.implement_all()
         self.review()
         self.c.gate_phase("P01")
@@ -558,19 +675,19 @@ class EngineTests(Fixture):
         self.assertTrue(after[2] == before[2], "Rejected transition changed source, evidence, packets or worker files")
 
     def test_live_finding_after_claim_blocks_integration_before_side_effects(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         _, sha = self.pending_submission()
         self.live_review(findings=[self.finding()])
         self.assert_transition_rejected(lambda: self.c.task_integrate("T001", sha), "F1")
 
     def test_live_finding_after_integration_blocks_completion_before_side_effects(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         red = self.red_task()
         self.live_review(findings=[self.finding()])
         self.assert_transition_rejected(lambda: self.c.task_complete("T001", red["id"]), "F1")
 
     def test_claimed_repair_enrolls_exact_findings_without_extending_lease(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         worker, sha = self.pending_submission()
         self.live_review(findings=[self.finding()])
         before = self.c.state()["tasks"]["T001"]
@@ -592,7 +709,7 @@ class EngineTests(Fixture):
         self.finish("T001", red["id"])
 
     def test_integrated_repair_requires_fresh_lease_and_independent_resolution(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         red = self.red_task()
         self.live_review(findings=[self.finding()])
         old = self.c.state()["tasks"]["T001"]
@@ -621,7 +738,7 @@ class EngineTests(Fixture):
         self.finish("T001", red["id"])
 
     def test_task_review_scope_and_severity_preserve_unaffected_progress(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         _, sha = self.pending_submission()
         self.live_review(findings=[self.finding("OTHER", tasks=("T003",)), self.finding("LOW", severity="low")])
         self.c.task_integrate("T001", sha)
@@ -633,7 +750,7 @@ class EngineTests(Fixture):
         self.assert_transition_rejected(lambda: self.c.task_reopen("T001", "Cannot bypass a global issue"), "GLOBAL")
 
     def test_new_global_finding_cannot_use_an_existing_repair_authorization(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         _, sha = self.pending_submission()
         self.live_review(findings=[self.finding()])
         self.c.task_reopen("T001", "Enroll only the scoped assertion")
@@ -675,7 +792,7 @@ class EngineTests(Fixture):
         self.finish("T006")
 
     def test_existing_lease_cannot_bypass_earlier_category_or_dependency_repairs(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         red = self.red_task()
         self.finish("T001", red["id"])
         claim = self.c.task_claim("T002", "rdd_complex_implementor", session_id="deletion-author")
@@ -697,7 +814,7 @@ class EngineTests(Fixture):
         self.assert_transition_rejected(lambda: self.c.task_complete("T002"), "category/dependency")
 
     def test_pending_ci_does_not_seal_a_phase(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         self.implement_all()
         self.review()
         self.c.gate_phase("P01")
@@ -708,7 +825,7 @@ class EngineTests(Fixture):
         self.assertEqual(self.c.state()["phases"]["P01"]["status"], "gated")
 
     def test_sealed_phase_cannot_be_reopened(self):
-        self.opened()
+        self.opened(seed_owner=type(self))
         self.implement_all()
         self.review()
         self.c.gate_phase("P01")

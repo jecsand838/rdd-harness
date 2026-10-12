@@ -180,7 +180,7 @@ class BranchGuardTests(unittest.TestCase):
         self.assertTrue(self.snapshot() == corrected, "Corrected draft validation changed run state or files")
 
     def test_cli_frozen_planning_error_still_records_automatic_blocker(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         before = self.c.state()
         invalid = copy.deepcopy(self.f.plan)
         invalid["phases"][0]["id"] = "P02"
@@ -242,7 +242,7 @@ class BranchGuardTests(unittest.TestCase):
             self.assertFalse((root / ".rdd/runtime").exists())
 
     def test_main_rejects_source_operations_before_validation_or_state_writes(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         self.f.g("switch", "main")
         self.dirty_input()
         for name, operation in self.source_operations().items():
@@ -251,7 +251,7 @@ class BranchGuardTests(unittest.TestCase):
         self.rejected(lambda: self.c.start("regenerate", "main-must-not-start"))
 
     def test_detached_rejects_source_operations_and_retains_dirty_inputs(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         self.f.g("switch", "--detach", "HEAD")
         self.dirty_input()
         for name, operation in self.source_operations().items():
@@ -260,7 +260,7 @@ class BranchGuardTests(unittest.TestCase):
         self.rejected(lambda: self.c.start("regenerate", "detached-must-not-start"))
 
     def test_wrong_named_baseline_rejects_all_existing_run_source_operations(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         self.f.g("switch", "-c", "codex/other-release")
         self.dirty_input()
         for name, operation in self.source_operations().items():
@@ -268,7 +268,7 @@ class BranchGuardTests(unittest.TestCase):
                 self.rejected(operation)
 
     def test_first_phase_records_the_release_baseline_and_exact_prepared_commit(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         baseline = head(self.root)
         opened = self.c.phase_begin("P01")
         self.assertEqual(opened["base_branch"], "codex/test-baseline")
@@ -284,14 +284,14 @@ class BranchGuardTests(unittest.TestCase):
         self.assertEqual(self.c.guard_source_write(state), "codex/test-baseline")
 
     def test_implementation_requires_recorded_phase_even_at_identical_head(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         self.f.g("switch", "-c", "codex/phase-lookalike")
         for name in ("task claim", "task integrate", "task complete", "task reopen", "anchors reconcile", "resume", "workflow implementation"):
             with self.subTest(operation=name):
                 self.rejected(self.source_operations()[name])
 
     def test_integration_requires_the_recorded_worker_branch_before_intent(self):
-        self.f.opened()
+        self.f.opened(seed_owner=type(self))
         claim = self.c.task_claim("T001", "rdd_complex_implementor", session_id="fixture-worker")
         worker = self.root / claim["lease"]["worktree"]
         self.f.g("switch", "-c", "codex/worker-lookalike", root=worker)
@@ -303,14 +303,14 @@ class BranchGuardTests(unittest.TestCase):
         self.assertNotIn("integration", self.c.state()["tasks"]["T001"])
 
     def test_checkpoint_import_rejects_wrong_branch_before_restoring_evidence(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         checkpoint = self.root / ".rdd/runtime/branch-checkpoint.json"
         self.c.export_run(checkpoint)
         self.f.g("switch", "-c", "codex/checkpoint-lookalike")
         self.rejected(lambda: self.c.resume(checkpoint))
 
     def test_checkpoint_branch_identity_is_checked_before_fresh_store_creation(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         checkpoint = self.root / ".rdd/runtime/branch-checkpoint.json"
         self.c.export_run(checkpoint)
         self.c.close()
@@ -542,7 +542,7 @@ for mode in ("direct", "cleanup", "blocker-read", "blocker-write"):
             self.assertEqual((root / ".rdd/config.json").read_bytes(), before)
 
     def test_cli_rejections_precede_operation_lock_and_preserve_full_runtime(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         for branch in ("main", "codex/cli-lookalike"):
             if branch == "main":
                 self.f.g("switch", "main")
@@ -634,7 +634,7 @@ for mode in ("direct", "cleanup", "blocker-read", "blocker-write"):
             self.assertEqual(self.snapshot(), before)
 
     def test_direct_generation_in_a_frozen_clone_requires_checkpoint_or_new_run(self):
-        self.f.prepared()
+        self.f.prepared_from_seed(type(self))
         with tempfile.TemporaryDirectory(prefix="rdd-frozen-clone-") as directory:
             clone = Path(directory) / "clone"
             subprocess.run(["git", "clone", "--quiet", "--no-local", "--branch", "codex/test-baseline",

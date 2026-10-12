@@ -119,9 +119,14 @@ class VerifierSelectionTests(unittest.TestCase):
                         self.write(self.base, path)
                 result = self.select("codex/rdd-release/example", **self.release_environment())
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(self.outputs(), {"root": "baseline", "policy_root": "prepared-policy",
+                expected = {"root": "baseline", "policy_root": "prepared-policy",
                     "policy_sha": "a" * 40, "release_policy": "a" * 40,
-                    "release_source": "b" * 40, "prepared": "true"})
+                    "release_source": "b" * 40, "prepared": "true"}
+                self.assertEqual({key: self.outputs()[key] for key in expected}, expected)
+                self.assertEqual(self.outputs()["controller"], "true")
+                self.assertEqual(self.outputs()["full"], "true")
+                self.assertEqual(json.loads(self.outputs()["full_matrix"]),
+                                 {"os": ["ubuntu-24.04", "macos-latest", "windows-latest"]})
 
     def test_release_event_target_fork_and_pin_errors_cannot_fallback(self):
         for path in self.required:
