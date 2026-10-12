@@ -62,10 +62,10 @@ than bypassing them.
 
 ## Native Goal execution
 
-`CodexAdapter.native_argv(prompt, session_id=None)` supplies the launcher's
+`CodexAdapter.native_argv(prompt, session_id=None, *, permission=None)` supplies the launcher's
 canonical coordinator model, effort, sandbox and developer instructions. It
 encodes configuration as TOML and passes the prompt as one positional argument
-after `--`. It leaves approval policy to the runtime and does not create a second
+after `--`. By default it leaves approval policy to the runtime and does not create a second
 workflow loop or session ledger.
 
 1. Complete `$specification-workflow` and `$preparation-workflow` in sequence, including both independent review perspectives and `gate preparation` for the exact committed handoff.
@@ -99,6 +99,45 @@ describes the lifecycle and completion-evidence model. A budget stop or pause is
 not success. Missing benchmarks, model access, unresolved specs, and unavailable
 PR evidence must remain visible blockers.
 
+### Workflow permissions
+
+Each interactive launcher accepts `--permission=full-access`:
+
+```sh
+./rdd workflow specification --mode regenerate --permission=full-access
+./rdd workflow preparation --permission=full-access
+./rdd workflow implementation --permission=full-access
+```
+
+Use the option on each session that needs full access. It replaces the launcher's
+sandbox argument with `--sandbox danger-full-access` and adds
+`--ask-for-approval never`. Model, effort and coordinator instructions still come
+from the canonical profile. The launch packet's `requested_runtime` reports the
+effective requested sandbox and approval override; its profile identity still
+identifies the unchanged source profile. These are requested settings, not runtime
+attestation. Omission preserves the existing launch behavior and does not remember
+a previous invocation's override.
+
+Inspect the argv without starting Codex or an RDD run:
+
+```sh
+./rdd workflow specification --permission=full-access --print
+```
+
+Leave out `--mode` for this inspection: an explicit mode can start a run even with
+`--print`. The option applies only to the three interactive workflow stages;
+graph commands such as `workflow claim` reject it. `./rdd goal` only prints the
+objective, so Goal mode uses the permissions of the implementation session in
+which you submit `/goal`. Controller branch restrictions, frozen artifacts,
+reviewer responsibilities and acceptance gates still apply.
+
+When reopening a recorded full-access session directly, select its exact UUID
+and request the same settings explicitly:
+
+```sh
+codex resume SESSION_UUID --cd REPOSITORY --sandbox danger-full-access --ask-for-approval never
+```
+
 ## Bounded worker adapter
 
 `CodexAdapter.exec()` is an optional one-turn adapter for automation. It is not an
@@ -117,9 +156,10 @@ headless subprocess. It never uses a shell to interpolate prompts, file names,
 model IDs or PR text.
 
 The existing bounded-exec `-a never` restriction suppresses fresh approval
-prompts for that one-turn subprocess. The native interactive launcher does not
-set this approval override. Neither interface bypasses sandbox enforcement, and
-profile requests alone are not evidence of a child's effective permissions.
+prompts for that one-turn subprocess while retaining its profile sandbox. The
+native interactive launcher sets an approval override only when explicitly
+invoked with `--permission=full-access`, which also disables its sandbox. Profile
+requests alone are not evidence of a child's effective permissions.
 
 Every attempt uses a new directory below `.rdd/runtime/`. It contains the prompt,
 schema snapshot, streaming `events.jsonl`, `stderr.log`, final `answer.json`, and a

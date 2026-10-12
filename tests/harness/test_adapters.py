@@ -359,6 +359,54 @@ class CodexAdapterTests(unittest.TestCase):
         self.assertEqual(resumed, ["codex", "resume", session_id, *launch[1:]])
         self.assertNotIn("--last", resumed)
 
+    def test_native_full_access_changes_only_sandbox_and_approval(self):
+        prompt = '--last; $(touch INJECTED); `echo no`; $HOME\nUnicode 🧪'
+        adapter = CodexAdapter(self.root, runner=self.runner)
+        default = adapter.native_argv(prompt)
+        explicit = adapter.native_argv(prompt, permission="full-access")
+        expected = list(default)
+        expected[expected.index("--sandbox") + 1] = "danger-full-access"
+        expected[-2:-2] = ["--ask-for-approval", "never"]
+        self.assertEqual(explicit, expected)
+        self.assertEqual(self.calls, [])
+        self.assertFalse((self.root / "INJECTED").exists())
+
+    def test_native_full_access_resume_preserves_exact_session_selection(self):
+        session_id = "01234567-89ab-4cde-8fab-0123456789ab"
+        adapter = CodexAdapter(self.root, runner=self.runner)
+        launch = adapter.native_argv("Continue the recorded workflow.", permission="full-access")
+        resumed = adapter.native_argv("Continue the recorded workflow.", session_id=session_id,
+                                      permission="full-access")
+        self.assertEqual(resumed, ["codex", "resume", session_id, *launch[1:]])
+        self.assertNotIn("--last", resumed)
+
+    def test_native_permission_reaches_real_subprocess_without_shell_interpretation(self):
+        receiver = self.root / "native_receiver.py"
+        receiver.write_text("import json, sys\nprint(json.dumps(sys.argv[1:]))\n", encoding="utf-8")
+        prompt = '--last; $(touch INJECTED); `echo no`; $HOME\nUnicode 🧪'
+        for permission in (None, "full-access"):
+            with self.subTest(permission=permission):
+                argv = CodexAdapter(self.root).native_argv(prompt, permission=permission)
+                received = run_argv([sys.executable, str(receiver), *argv[1:]], self.root, timeout=10)
+                self.assertEqual(received.returncode, 0, received.stderr)
+                actual = json.loads(received.stdout)
+                self.assertEqual(actual, argv[1:])
+                self.assertEqual(actual[actual.index("--sandbox") + 1],
+                                 "danger-full-access" if permission else "workspace-write")
+                if permission:
+                    self.assertEqual(actual[actual.index("--ask-for-approval") + 1], "never")
+                else:
+                    self.assertNotIn("--ask-for-approval", actual)
+                self.assertEqual(actual[-2:], ["--", prompt])
+        self.assertFalse((self.root / "INJECTED").exists())
+
+    def test_native_launch_rejects_unsupported_permission_without_execution(self):
+        for permission in ("", "workspace-write", "danger-full-access", "read-only", True, 42, []):
+            with self.subTest(permission=permission), self.assertRaises(RddAdapterError) as error:
+                CodexAdapter(self.root, runner=self.runner).native_argv("Continue", permission=permission)
+            self.assertEqual(error.exception.code, "invalid-permission")
+        self.assertEqual(self.calls, [])
+
     def test_native_resume_rejects_names_options_and_ambiguous_session_ids(self):
         for session_id in ("", "friendly-name", "--last", "../session", "session-123", 42):
             with self.subTest(session_id=session_id), self.assertRaises(RddAdapterError) as error:
@@ -577,15 +625,19 @@ class InstalledCodexSmokeTests(unittest.TestCase):
         binary = os.environ["RDD_CODEX_SMOKE"]
         root = Path(__file__).resolve().parents[2]
         adapter = CodexAdapter(root, binary=binary)
-        for session_id in (None, "01234567-89ab-4cde-8fab-0123456789ab"):
-            with self.subTest(session_id=session_id):
-                argv = adapter.native_argv("Read-only syntax check", session_id=session_id)
-                help_result = run_argv([*argv[:-2], "--help"], root, timeout=15)
-                self.assertEqual(help_result.returncode, 0, help_result.stderr)
-                if session_id:
-                    self.assertIn("SESSION_ID", help_result.stdout)
-                for flag in ("--config", "--model", "--sandbox", "--cd"):
-                    self.assertIn(flag, help_result.stdout)
+        for permission in (None, "full-access"):
+            for session_id in (None, "01234567-89ab-4cde-8fab-0123456789ab"):
+                with self.subTest(permission=permission, session_id=session_id):
+                    argv = adapter.native_argv("Read-only syntax check", session_id=session_id,
+                                               permission=permission)
+                    help_result = run_argv([*argv[:-2], "--help"], root, timeout=15)
+                    self.assertEqual(help_result.returncode, 0, help_result.stderr)
+                    if session_id:
+                        self.assertIn("SESSION_ID", help_result.stdout)
+                    for flag in ("--config", "--model", "--sandbox", "--cd"):
+                        self.assertIn(flag, help_result.stdout)
+                    if permission:
+                        self.assertIn("--ask-for-approval", help_result.stdout)
 
 
 if __name__ == "__main__":

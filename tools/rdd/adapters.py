@@ -656,14 +656,21 @@ def codex_config_string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
 
 
+def validate_native_permission(permission: str | None) -> None:
+    """Keep native permission overrides explicit and limited to the supported choice."""
+    if permission is not None and (not isinstance(permission, str) or permission != "full-access"):
+        raise RddAdapterError("invalid-permission", "Native workflow permission must be omitted or 'full-access'.")
+
+
 class CodexAdapter:
     def __init__(self, repo: str | Path, binary: str = "codex", runner: Callable[..., CommandResult] = run_argv):
         self.repo = Path(repo).resolve()
         self.binary = binary
         self.runner = runner
 
-    def native_argv(self, prompt: str, session_id: str | None = None) -> list[str]:
+    def native_argv(self, prompt: str, session_id: str | None = None, *, permission: str | None = None) -> list[str]:
         """Build a native coordinator launch or exact-session resume without executing it."""
+        validate_native_permission(permission)
         if not isinstance(prompt, str) or not prompt.strip() or "\0" in prompt:
             raise RddAdapterError("empty-prompt", "A native prompt must contain a concrete target without NUL.")
         if session_id is not None and (not isinstance(session_id, str) or not re.fullmatch(
@@ -680,7 +687,10 @@ class CodexAdapter:
         argv.extend(["--cd", str(self.repo), "--model", profile["model"],
                      "--config", "model_reasoning_effort=" + codex_config_string(profile["effort"]),
                      "--config", "developer_instructions=" + codex_config_string(profile["developer_instructions"]),
-                     "--sandbox", profile["sandbox"], "--", prompt])
+                     "--sandbox", "danger-full-access" if permission else profile["sandbox"]])
+        if permission:
+            argv.extend(["--ask-for-approval", "never"])
+        argv.extend(["--", prompt])
         return argv
 
     def doctor(self, models: Sequence[tuple[str, str]], *, refresh_catalog: bool = False,
