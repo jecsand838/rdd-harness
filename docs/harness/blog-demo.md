@@ -1,8 +1,8 @@
 # Fresh Todo generation
 
-This runbook starts from the reviewed `main` branch. All three workflows open the native Codex TUI; the examples explicitly select full access without command-approval prompts using `--permission=full-access`. The measured reference client is Codex CLI **0.162.1**.
+This runbook starts from the reviewed `main` branch. All three workflows open the native Codex TUI; the examples explicitly select full access without command-approval prompts using `--permission full-access`. The measured reference client is Codex CLI **0.162.1**.
 
-Keep `--permission=full-access` on **each** specification, preparation and implementation launch below. It passes `--sandbox danger-full-access --ask-for-approval never` to Codex for that session; the setting is not saved for later launches. Omit the option to use the default launch permissions. See [workflow permissions](codex-runtime.md#workflow-permissions) for details.
+Keep `--permission full-access` on **each** specification, preparation and implementation launch below. It passes `--sandbox danger-full-access --ask-for-approval never` to Codex for that session; the setting is not saved for later launches. Omit the option to use the default launch permissions. See [workflow permissions](codex-runtime.md#workflow-permissions) for details.
 
 ## 1. Create a fresh checkout
 
@@ -26,7 +26,7 @@ Before preparation acceptance, the repository needs the [required-check configur
 ## 2. Specification
 
 ```sh
-./rdd workflow specification --mode regenerate --permission=full-access
+./rdd workflow specification --mode regenerate --permission full-access
 ```
 
 The command supplies the specification workflow instructions and uses [requirements/requirements.md](../../requirements/requirements.md). Answer its specification questions. Let it finish independent reviews, qualification, specification/contract freeze and the baseline commit. No separate startup prompt is needed.
@@ -36,7 +36,7 @@ After leaving the TUI, run `./rdd status`. Continue only when it reports `specif
 ## 3. Preparation
 
 ```sh
-./rdd workflow preparation --permission=full-access
+./rdd workflow preparation --permission full-access
 ```
 
 The command supplies the preparation instructions. Let the session finish the groomed backlog, plan freeze, task packets, committed/pushed baseline, readiness evidence and final reviews. After leaving the TUI, check `./rdd status`: it must report `prepared`, established by a passing `gate preparation`. `preparing` means the handoff is still incomplete.
@@ -46,7 +46,7 @@ Baseline pushes do not start CI. Once materialization is committed and pushed, t
 ## 4. Implementation
 
 ```sh
-./rdd workflow implementation --permission=full-access
+./rdd workflow implementation --permission full-access
 ```
 
 The session prints the exact objective from `./rdd goal`. Copy it into the TUI prefixed with `/goal ` and submit it. Goal mode uses this implementation session's full-access permissions. This is the one manual Goal activation step; an ordinary message does not activate Goal mode. You can also print the objective from a terminal in this checkout with `./rdd goal`; that print-only command needs no permission option.

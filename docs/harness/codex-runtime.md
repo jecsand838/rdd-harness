@@ -101,12 +101,12 @@ PR evidence must remain visible blockers.
 
 ### Workflow permissions
 
-Each interactive launcher accepts `--permission=full-access`:
+Each interactive launcher accepts `--permission full-access`:
 
 ```sh
-./rdd workflow specification --mode regenerate --permission=full-access
-./rdd workflow preparation --permission=full-access
-./rdd workflow implementation --permission=full-access
+./rdd workflow specification --mode regenerate --permission full-access
+./rdd workflow preparation --permission full-access
+./rdd workflow implementation --permission full-access
 ```
 
 Use the option on each session that needs full access. It replaces the launcher's
@@ -121,7 +121,7 @@ a previous invocation's override.
 Inspect the argv without starting Codex or an RDD run:
 
 ```sh
-./rdd workflow specification --permission=full-access --print
+./rdd workflow specification --permission full-access --print
 ```
 
 Leave out `--mode` for this inspection: an explicit mode can start a run even with
@@ -158,7 +158,7 @@ model IDs or PR text.
 The existing bounded-exec `-a never` restriction suppresses fresh approval
 prompts for that one-turn subprocess while retaining its profile sandbox. The
 native interactive launcher sets an approval override only when explicitly
-invoked with `--permission=full-access`, which also disables its sandbox. Profile
+invoked with `--permission full-access`, which also disables its sandbox. Profile
 requests alone are not evidence of a child's effective permissions.
 
 Every attempt uses a new directory below `.rdd/runtime/`. It contains the prompt,

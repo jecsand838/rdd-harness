@@ -100,7 +100,7 @@ def parser() -> argparse.ArgumentParser:
     wf.add_argument("--finding", help="Unresolved live finding authorizing a scoped corrective retry")
     wf.add_argument("--mode", choices=("amend", "regenerate"))
     wf.add_argument("--permission", choices=("full-access",),
-                    help="Explicit native launch override: unrestricted sandbox and no approval prompts (launch stages only)")
+                    help="Use --permission full-access for an unrestricted sandbox and no approval prompts (launch stages only)")
     wf.add_argument("--print", action="store_true", dest="print_only", help="Show the launch packet; does not start Codex (an explicit --mode starts the requested run)")
     contract = commands.add_parser("contracts")
     contract.add_argument("action", choices=("check", "generate"))
