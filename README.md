@@ -105,7 +105,7 @@ If starting from an archive rather than a clone, extract it into its own directo
 To inspect the specification launch prompt without opening Codex or starting a run:
 
 ```sh
-./rdd workflow specification --print
+./rdd workflow specification --permission=full-access --print
 ```
 
 Use that command **without `--mode`**. Supplying an explicit mode can start a new run and archive prior artifacts even when `--print` is present.
@@ -114,10 +114,12 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
 
 `main` is the merge-only release branch. Begin on a clean, dedicated baseline such as `codex/todo-baseline`; use that branch for all specification and preparation commits. In the examples below, replace `YOUR_BASELINE_BRANCH` with its actual name. Phase PRs targeting `codex/*-baseline` or `rdd/**` receive trusted CI; baseline pushes do not start jobs. Dispatch preparation qualification explicitly when its committed materialization is ready. Other naming patterns require a reviewed CI filter change before specification freeze. The controller rejects source authoring on `main`, detached HEAD, or a branch other than the recorded baseline/phase. Complete each workflow and commit its accepted output before continuing; these are separate interactive sessions, not a batch script.
 
+The stage commands below explicitly select full access without command-approval prompts. Keep `--permission=full-access` on each launch; it is not saved for later sessions. Omit it to use the default launch permissions.
+
 1. **Specify the solution.** For a first full solution, start a regenerate run:
 
    ```sh
-   ./rdd workflow specification --mode regenerate
+   ./rdd workflow specification --mode regenerate --permission=full-access
    ```
 
    Resolve architectural questions in the Codex session. The workflow qualifies the solution and freezes the specification and contracts. Commit the accepted baseline before preparation.
@@ -125,7 +127,7 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
 2. **Prepare the work.** From the frozen specification:
 
    ```sh
-   ./rdd workflow preparation
+   ./rdd workflow preparation --permission=full-access
    ```
 
    The workflow reviews and freezes the task graph, then materializes the approved shells, task packets, and matrix. This enters `preparing`; commit the materialized handoff before final review. A frozen specification defect stops affected work and is recorded as a critical harness regression.
@@ -139,26 +141,18 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
 
    Replace `FULL_MATERIALIZATION_SHA` with the full committed SHA from `git rev-parse HEAD`; the dispatched baseline ref must resolve to that exact revision. Obtain successful preparation CI using the pinned `RDD_PREPARATION_HARNESS_SHA`, import any required external evidence, and run `./rdd readiness preparation`. Both independent final reviewers must inspect the committed handoff and current evidence; record their reports, then run `./rdd gate preparation`. Only a passing gate grants `prepared` and permits P01. See the [preparation protocol](docs/harness/workflow-guide.md#stage-two-preparation) for the exact sequence.
 
-   The first phase PR uses this accepted remote baseline. Require `verify` on it; later phase bases need the same required check only after they are sealed. Do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline) for setup commands.
+   The first phase PR uses this accepted remote baseline. Require `verify` on it; later phase bases need the same required check only after they are sealed. Do not protect active phase heads with a blanket status-check rule. See the [manual demo runbook](docs/harness/blog-demo.md#3-preparation) for the preparation handoff.
 
 4. **Open implementation and activate native Goal mode.** Obtain the objective, then launch the implementation session:
 
    ```sh
    ./rdd goal
-   ./rdd workflow implementation
+   ./rdd workflow implementation --permission=full-access
    ```
 
    In Codex, submit `/goal` followed by the exact objective printed by `./rdd goal`. The launcher provides the handoff; it does not activate native Goal mode itself. The objective is under 4,000 characters. Follow the [official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex) for the Goal lifecycle and the [workflow guide](docs/harness/workflow-guide.md#stage-three-implementation) for controller operations.
 
-For full access without command-approval prompts, add `--permission=full-access` to each interactive launch:
-
-```sh
-./rdd workflow specification --mode regenerate --permission=full-access
-./rdd workflow preparation --permission=full-access
-./rdd workflow implementation --permission=full-access
-```
-
-Run these separately as each stage becomes ready. The option passes `--sandbox danger-full-access --ask-for-approval never` to Codex for that session. Omitting it keeps the coordinator's configured sandbox and the runtime's approval policy. `./rdd goal` only prints the objective; submit it with `/goal` inside the implementation session to use that session's permissions. See [workflow permissions](docs/harness/codex-runtime.md#workflow-permissions) for launch inspection and recovery.
+The permission option passes `--sandbox danger-full-access --ask-for-approval never` to Codex for that session. `./rdd goal` only prints the objective; submit it with `/goal` inside the implementation session to use that session's permissions. See [workflow permissions](docs/harness/codex-runtime.md#workflow-permissions) for launch inspection and recovery.
 
 ## Follow progress and recover
 

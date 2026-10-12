@@ -1,6 +1,8 @@
 # Fresh Todo generation
 
-This runbook starts from the reviewed `main` branch. All three workflows open the native Codex TUI; the examples explicitly select full access without command-approval prompts using `--permission=full-access`. Omit that option to use the default launch permissions. The measured reference client is Codex CLI **0.162.1**.
+This runbook starts from the reviewed `main` branch. All three workflows open the native Codex TUI; the examples explicitly select full access without command-approval prompts using `--permission=full-access`. The measured reference client is Codex CLI **0.162.1**.
+
+Keep `--permission=full-access` on **each** specification, preparation and implementation launch below. It passes `--sandbox danger-full-access --ask-for-approval never` to Codex for that session; the setting is not saved for later launches. Omit the option to use the default launch permissions. See [workflow permissions](codex-runtime.md#workflow-permissions) for details.
 
 ## 1. Create a fresh checkout
 
