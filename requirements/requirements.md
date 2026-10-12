@@ -37,7 +37,7 @@ The user is one person operating the application under their own desktop operati
 - Find tasks using status and due-date filters, literal text search, and deterministic ordering.
 - Persist accepted changes across application restarts.
 - Export and restore a complete local backup.
-- Operate using a keyboard and supported assistive technology.
+- Operate using a keyboard.
 - Display actionable failures without silently replacing or discarding stored data.
 
 ### Excluded capabilities
@@ -385,12 +385,6 @@ Every user operation shall be executable using a keyboard alone, with visible fo
 
 Acceptance: Complete all functional journeys without a pointing device. Modal interactions preserve focus within the active dialog and return it to a meaningful location when dismissed; focus is not hidden by application content. WCAG 2.2 criteria 2.1.1, 2.1.2, 2.4.3, 2.4.7, and 2.4.11 guide verification. [S5]
 
-**NFR-A11Y-002 Accessible semantics and feedback**
-
-Interactive controls, validation failures, task status, and asynchronous completion or failure messages shall expose meaningful names, roles, values, and states through the supported assistive technologies.
-
-Acceptance: Screen-reader users can identify a task, edit it, confirm or cancel deletion and restore, and understand success or failure without relying on color alone. Verify WCAG 2.2 criteria 1.3.1, 1.4.1, 3.3.1, 3.3.2, 4.1.2, and 4.1.3 on the platform pairings in Section 6. [S5]
-
 **NFR-A11Y-003 Visual readability**
 
 The interface shall meet the contrast and resizing criteria specified here: at least 4.5:1 for normal text, 3:1 for large text, and 3:1 for meaningful control boundaries and state indicators, with all operations remaining usable at 200 percent text size.
@@ -423,9 +417,9 @@ This section is normative through NFR-PLAT-001 and NFR-PERF-001 through NFR-PERF
 
 ### Supported platform matrix
 
-| Platform | Supported release and architecture | Reference hardware | Assistive technology |
-|---|---|---|---|
-| macOS | macOS 26.x, arm64 (Apple silicon) | Apple silicon Mac with 32 GB RAM or greater and local SSD storage; a macOS VM must have at least 32 GB RAM allocated to the guest | VoiceOver with the packaged application |
+| Platform | Supported release and architecture | Reference hardware |
+|---|---|---|
+| macOS | macOS 26.x, arm64 (Apple silicon) | Apple silicon Mac with 32 GB RAM or greater and local SSD storage; a macOS VM must have at least 32 GB RAM allocated to the guest |
 
 A physical Mac or a macOS VM on Apple silicon meeting this matrix is eligible for acceptance. Windows, Linux (including Ubuntu), macOS releases outside 26.x, Intel Macs, and environments below the RAM minimum are outside this baseline; their absence is not an application acceptance blocker. Native qualification, packaged functional tests, accessibility checks, and benchmarks are required on the selected acceptance environment. Installer format is selected in specification. Each benchmark uses the release package, an active 1280 by 720 logical-pixel window, AC power and normal performance mode on the physical host, at least 20 GiB free local storage, and no concurrent build or benchmark workload. Application data and backup destinations are on the same local SSD, including the backing storage for a VM. No network filesystem is supported for live database storage.
 
@@ -457,7 +451,7 @@ The following verification families define minimum coverage to expand into detai
 | V4 Architecture and environment | NFR-TECH-001 through NFR-TECH-004, NFR-ARCH-001 through NFR-ARCH-002, NFR-MAINT-001, NFR-PLAT-001 | Source and dependency inspection, contract generation and boundary checks, clean builds, actual embedded database, justified module ownership, clean platform installation. |
 | V5 Data and privacy | NFR-OFF-001, NFR-PRIV-001 through NFR-PRIV-002, NFR-DATA-001 through NFR-DATA-004, NFR-SEC-001 through NFR-SEC-002, NFR-OBS-001 | Network isolation and observation, account isolation, command abuse, untrusted text, abrupt termination, storage failure, unsupported format, applicable migration, and diagnostic redaction. |
 | V6 Capacity and performance | NFR-PERF-001 through NFR-PERF-005 | Capacity and maximum-length correctness, P1 through P3 on the selected acceptance environment, delayed-operation responsiveness, and full raw results. |
-| V7 Accessibility and handoff | NFR-A11Y-001 through NFR-A11Y-003, NFR-QUAL-001 through NFR-QUAL-002 | Keyboard journeys, screen-reader journeys, specified contrast and resizing checks, complete requirement mapping, reproducible commands, and artifact identity. |
+| V7 Accessibility and handoff | NFR-A11Y-001 and NFR-A11Y-003, NFR-QUAL-001 through NFR-QUAL-002 | Keyboard journeys, specified contrast and resizing checks, complete requirement mapping, reproducible commands, and artifact identity. |
 
 For NFR-DATA-001 and NFR-DATA-002, the required process-failure model is abrupt termination of the application while the operating system, local filesystem, and storage device remain functioning. The harness records an independent acknowledgment ledger and forces termination before commit, while commit is pending, and after acknowledgment. For each mutation class and whole-collection restore, exercise each cut point 20 times per supported platform; all reopened states must satisfy the stated atomicity and durability rules. Use controlled fault injection and deterministic checkpoints to make cut points meaningful.
 

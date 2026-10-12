@@ -44,7 +44,7 @@ Specify initialization versus unreadable/corrupt state, durable acknowledgment, 
 
 ## User interaction
 
-Specify observable flows, loading/error/empty states, keyboard and assistive-technology behavior, native permissions, and UI-to-application mappings. Link screen/interaction decisions without adding features outside the requirements.
+Specify observable flows, loading/error/empty states, keyboard behavior, native permissions, and UI-to-application mappings. Link screen/interaction decisions without adding features outside the requirements.
 
 ## Quality designs
 

@@ -81,7 +81,7 @@ Logs containing sensitive task/user data are a product defect under the supplied
 
 ## Manual observations
 
-Manual checks require actual observations by an identified evaluator. This includes screen-reader behavior and any explicitly manual native verification. The raw log is a JSON document with this structure:
+Manual checks require actual observations by an identified evaluator. This includes any explicitly manual native verification. The raw log is a JSON document with this structure:
 
 ```json
 {

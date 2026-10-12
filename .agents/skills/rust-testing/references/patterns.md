@@ -64,7 +64,7 @@ Use `#[tokio::test(start_paused = true)]` with `test-util` for deterministic tim
 
 The official guide describes `@wdio/tauri-service` with an embedded provider on Windows, Linux, and macOS. Direct `tauri-driver` has different platform limits. Pin the chosen route; do not assume all historic platform limitations still apply.
 
-Embedded WebDriver and backend-access/mocking plugins belong only in instrumented builds. Release packages must exclude automation servers and mocks, and receive normal installation, restricted-native-operation, offline, and user-journey checks. Record tested revision and package digests. DOM checks cannot replace a screen-reader assessment.
+Embedded WebDriver and backend-access/mocking plugins belong only in instrumented builds. Release packages must exclude automation servers and mocks, and receive normal installation, restricted-native-operation, offline, and user-journey checks. Record tested revision and package digests.
 
 ## Primary references
 

@@ -19,6 +19,6 @@ Read the approved UI specification, Rust frontend choice, interaction states, re
 
 ## Checks
 
-Run component/state tests plus native-connected packaged journeys. Verify keyboard, screen-reader, contrast, resizing, draft and pending states, stale responses, empty/no-results differences, and malicious text rendering. Record automated and manual evidence separately for the phase gate.
+Run component/state tests plus native-connected packaged journeys. Verify keyboard, contrast, resizing, draft and pending states, stale responses, empty/no-results differences, and malicious text rendering. Record automated and manual evidence separately for the phase gate.
 
 Read [view patterns](references/view.md) for original code and state examples. Use `tauri-commands-events` for adapters.
