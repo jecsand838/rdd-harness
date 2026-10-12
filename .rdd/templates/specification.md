@@ -16,13 +16,13 @@ Define the solution representation of domain terms, legal/illegal states, owners
 
 ## Module boundaries
 
-For every module identify:
+Reference the exact accepted `docs/specs/domain-inventory.json` handoff under `domain-boundaries`. Preserve each domain and interaction identity; return corrections to S1. For every module identify:
 
-- Functional subdomain, purpose and all allocated functional requirements.
+- Distinct functional subdomain owner, purpose and allocated requirements, or explicit supporting owner kind.
 - Owned state and invariants.
-- Provided fully qualified Protobuf services and permitted consumed operations.
+- Provided Protobuf services/types, permitted consumed operations/types, and every directed call/type-only binding.
 - Permitted and forbidden dependencies.
-- Reason for a separate module/crate.
+- Distinct implementation paths, approved public exports and construction/wiring entry points; justification if a separate crate is needed.
 - Canonical source/generated identities, including shared support ownership.
 - Disposable specification qualification and separate real implementation conformance checks.
 

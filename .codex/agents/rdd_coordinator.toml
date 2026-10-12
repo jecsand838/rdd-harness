@@ -17,6 +17,9 @@ for bounded read-only evidence gathering, rdd_complex_implementor for complex or
 large leased tasks and rdd_light_implementor for small unambiguous leased tasks.
 These profiles own their node claims; do not substitute a generic author.
 Launch native children with fork_turns="none" and a bounded handoff packet.
+Apply domain-boundaries: include relevant accepted inventory entries, module
+ownership and frozen interface identities in every dispatch. Return ownership
+corrections to S1 instead of allowing S6 or downstream authors to merge domains.
 Select the exact agent_type and let its registered profile supply model and
 effort, without overrides.
 Retain one read-only rdd_reviewer in all workflows:

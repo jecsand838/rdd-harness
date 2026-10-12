@@ -34,7 +34,7 @@ The schemas in `.rdd/schemas/` and the controller's semantic validators define m
 
 ## Specification manifest
 
-`./rdd spec init` emits the current version 2 machine structure. Fill all required fields and validate it; an initial template is deliberately not accepted as a solution. Historical version 1 artifacts are inspect/export inputs, never substitutes for current readiness and review evidence.
+`./rdd spec init` emits the current version 3 machine structure. Fill all required fields and validate it; an initial template is deliberately not accepted as a solution. Historical version 1/2 artifacts are inspect/export inputs, never substitutes for current readiness and review evidence.
 
 | Field | Meaning |
 |---|---|
@@ -43,6 +43,8 @@ The schemas in `.rdd/schemas/` and the controller's semantic validators define m
 | `change_summary`, `amendment` | Why the run exists and its impact (`requirements`, `paths`, `rationale`) |
 | `documents`, `decisions` | Repository-relative files that contain normative solution detail |
 | `contract_files`, `generated_files` | Exact canonical and generated inventories |
+| `domain_inventory` | Canonical S1 `path`, exact `sha256` and accepted `s1_output_digest`; the inventory is included in `documents` and the specification freeze |
+| `boundary_bindings` | One row per S1 interaction with exact `interaction` ID and descriptor `operations` or `types`; calls and type-only imports are distinct |
 | `contract_index_path`, `shared_generated_files` | Descriptor-derived index in existing generator metadata, and explicit ownership/purpose of shared generated support files |
 | `contract_check_ids` | Specification qualification checks using disposable providers/consumers, separate from future application conformance |
 | `project_check_ids` | Complete project-level verification obligations |
@@ -60,9 +62,19 @@ Each check declares its complete executable/evidence contract, including `id`, `
 
 Benchmark metrics include `name`, `statistic`, `limit`, `comparison`, `minimum_samples`, and `unit`. The narrative protocol supplies dataset, hardware, sampling, timing boundaries, and scope. The machine evaluator must actually apply those rules. Check IDs and enum labels are not substitutes for assertions.
 
-The module array contains the enforceable dependency/path map. Each architectural module links to a functional subdomain covering all allocated FRs and declares `provided_services`, `consumed_operations`, `generated_paths`, `adapter_error_specs`, `qualification_checks` and `implementation_checks`. Qualification groups cover disposable provider/consumer, negative signature, dependency direction and compatibility proofs; implementation groups cover real provider/consumer, dependency direction, compatibility and semantics. Detailed atomicity, error/retry behavior and adapter mappings live in linked frozen sections. Private implementation submodules do not need artificial standalone contracts.
+The module array contains the enforceable dependency/path map. Each functional subdomain has a distinct owner module; supporting modules remain explicit and cannot own business invariants. Modules declare `contract_package`, `provided_services`, `consumed_operations`, `provided_types`, `consumed_types`, `generated_paths`, `public_exports`, `adapter_error_specs`, `qualification_checks` and `implementation_checks`. Each public export records `symbol`, owned source `path`, `kind`, descriptor `binding` (null for construction/wiring), and normative `specifications`. Domain contract packages are separate within the shared generated crate. Start with private implementations inside shared crates; dependency or independent-build isolation must justify a separate implementation crate. Qualification groups cover disposable provider/consumer, negative signature, dependency direction and compatibility proofs; implementation groups cover real provider/consumer, dependency direction, compatibility and semantics. Detailed atomicity, error/retry behavior and adapter mappings live in linked frozen sections. Private implementation submodules do not need artificial standalone contracts.
 
-Operation solution elements link through `contract_operations` to fully qualified methods. The generated `contract_index` inside `gen/rust/.rdd-generated.json` derives services, methods, source imports, Rust symbols and binding paths from descriptors and Prost names. It is generated evidence, never a second handwritten schema. Shared support/message files have explicit purposes. Reject unexplained operations, unowned bindings and inconsistent consumer/dependency links. Every FR and positive operation has golden coverage; every golden scenario references an FR. Schema/link completeness still requires independent semantic review.
+Operation solution elements link through `contract_operations` to fully qualified methods. The generated `contract_index` inside `gen/rust/.rdd-generated.json` derives services, methods, message/enum types, source imports, Rust symbols and binding paths from descriptors and Prost names. It is generated evidence, never a second handwritten schema. Shared support/message files have explicit purposes. Reject unexplained operations, unowned bindings and inconsistent consumer/dependency links. Every FR and positive operation has golden coverage; every golden scenario references an FR. Schema/link completeness still requires independent semantic review.
+
+## S1 domain inventory
+
+`docs/specs/domain-inventory.json` uses `.rdd/schemas/domain-inventory.schema.json`. S1 must claim and record it; later nodes cannot rewrite it. Its `requirements_digest` binds the input baseline.
+
+- `domains`: Stable solution subdomain `id`, distinct owner `module`, allocated `requirements`, `behaviors` and `invariants`. Behavior and invariant IDs become solution elements at S6.
+- `supporting_modules`: Stable enabling `id`, owner `module`, explicit `kind`, allocated `requirements` and `behaviors`. These describe adapters, infrastructure, presentation, orchestration, shared types or build support without inventing a business subdomain.
+- `interactions`: Stable `id`, exact consumer/provider module IDs, `kind` (`call` or `type_only`), `requirements` and relevant `behaviors`.
+
+S6 preserves all entries and their allocations. It binds each interaction to generated symbols, with reciprocal provided/consumed inventories and declared dependencies. Type-only imports have frozen source/generated identities and compile as real Rust types. Inventory changes return to S1, invalidate downstream handoffs and require renewed review. Schema validation establishes consistency; independent semantic review establishes whether discovery omitted a real domain or interaction. The canonical design policy is `.agents/skills/domain-boundaries/SKILL.md`.
 
 ## Plan manifest
 
@@ -73,7 +85,8 @@ Operation solution elements link through `contract_operations` to fully qualifie
 - `verticals`: Each has `id`, `goal`, and ordered `tasks`.
 - `target_paths`: Exact path inventory implementing the frozen target tree, including deletion targets that will disappear. Preparation resolves files; it does not invent new architectural owners.
 - `element_coverage`: Implementation and verification ownership for every frozen solution element, or verified preserved-baseline evidence.
-- `boundary_proofs`: One row per descriptor operation, identifying `module`, fully qualified `operation`, `first_phase`, `checks`, and provider, consumer, adapter and verification task IDs. Ownership must cover that operation; checks remain cumulative after its first-due phase.
+- `boundary_proofs`: One row per callable interaction and consumer/provider/operation tuple, identifying `interaction`, `consumer`, `provider`, fully qualified `operation`, `first_phase`, `checks`, and provider, consumer, adapter and verification task IDs. Every consumer has actual owned source/task/check coverage, even when provider evidence is reused. Checks remain cumulative after the interaction's first delivery phase.
+- `type_import_proofs`: Per-interaction consumer/provider/`type` coverage, with `first_phase`, `checks`, consumer tasks and verification tasks. Imported data needs source and compilation coverage, without fabricated operation/provider tasks.
 - `resource_producers`, `resource_uses`: Where every input comes from and when it is required: preparation, task RED/completion, phase or project acceptance.
 - `shells`: Explicit `path` and safe `content` for preparation-created shells.
 

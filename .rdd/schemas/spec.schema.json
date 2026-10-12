@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:rdd:schema:spec:v2",
-  "title": "RDD spec v2",
+  "$id": "urn:rdd:schema:spec:v3",
+  "title": "RDD spec v3",
   "type": "object",
   "properties": {
     "schema_version": {
-      "const": 2
+      "const": 3
     },
     "id": {
       "type": "string",
@@ -121,7 +121,7 @@
               "minLength": 1,
               "maxLength": 512
             },
-            "minItems": 1,
+            "minItems": 0,
             "uniqueItems": true
           },
           "owns_paths": {
@@ -171,7 +171,7 @@
               "minLength": 1,
               "maxLength": 512
             },
-            "minItems": 1,
+            "minItems": 0,
             "uniqueItems": true
           },
           "adapter_error_specs": {
@@ -181,7 +181,7 @@
               "minLength": 1,
               "maxLength": 512
             },
-            "minItems": 1,
+            "minItems": 0,
             "uniqueItems": true
           },
           "qualification_checks": {
@@ -194,7 +194,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "consumer": {
@@ -204,7 +204,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "negative_signature": {
@@ -214,7 +214,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "dependency_direction": {
@@ -224,7 +224,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "compatibility": {
@@ -234,7 +234,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               }
             },
@@ -257,7 +257,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "consumer": {
@@ -267,7 +267,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "dependency_direction": {
@@ -277,7 +277,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "compatibility": {
@@ -287,7 +287,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               },
               "semantics": {
@@ -297,7 +297,7 @@
                   "minLength": 1,
                   "maxLength": 512
                 },
-                "minItems": 1,
+                "minItems": 0,
                 "uniqueItems": true
               }
             },
@@ -309,6 +309,88 @@
               "semantics"
             ],
             "additionalProperties": false
+          },
+          "contract_package": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*$"
+          },
+          "provided_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "consumed_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "public_exports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "symbol": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "kind": {
+                  "enum": [
+                    "operation",
+                    "type",
+                    "service",
+                    "construction",
+                    "wiring"
+                  ]
+                },
+                "binding": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "specifications": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "symbol",
+                "path",
+                "kind",
+                "binding",
+                "specifications"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 0,
+            "uniqueItems": true
           }
         },
         "required": [
@@ -322,7 +404,11 @@
           "generated_paths",
           "adapter_error_specs",
           "qualification_checks",
-          "implementation_checks"
+          "implementation_checks",
+          "contract_package",
+          "provided_types",
+          "consumed_types",
+          "public_exports"
         ],
         "additionalProperties": false
       },
@@ -978,6 +1064,70 @@
         "additionalProperties": false
       },
       "uniqueItems": true
+    },
+    "domain_inventory": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "docs/specs/domain-inventory.json"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "s1_output_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "s1_output_digest"
+      ],
+      "additionalProperties": false
+    },
+    "boundary_bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "interaction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "interaction",
+          "operations",
+          "types"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "uniqueItems": true
     }
   },
   "required": [
@@ -1004,7 +1154,9 @@
     "resources",
     "environments",
     "contract_index_path",
-    "shared_generated_files"
+    "shared_generated_files",
+    "domain_inventory",
+    "boundary_bindings"
   ],
   "additionalProperties": false
 }

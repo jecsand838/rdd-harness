@@ -50,6 +50,28 @@ def verify_lock(root: Path, rel: str) -> dict:
     return lock
 
 
+def task_boundary_context(root: Path, spec: dict, plan: dict, task: dict) -> dict:
+    """Project the existing frozen ownership map into the bounded worker packet."""
+    inventory = artifacts.load_domain_inventory(root, spec)
+    selected = {element["module"] for element in spec["solution_elements"]
+                if element["id"] in task["solution_elements"] and element["module"] is not None}
+    for proof in plan["boundary_proofs"] + plan["type_import_proofs"]:
+        if any(task["id"] in proof.get(role, []) for role in
+               ("provider_tasks", "consumer_tasks", "adapter_tasks", "verification_tasks")):
+            selected.update((proof["consumer"], proof["provider"]))
+    interactions = {row["id"]: row for row in inventory["interactions"]
+                    if row["consumer"] in selected or row["provider"] in selected}
+    interfaces = selected | {row[key] for row in interactions.values() for key in ("consumer", "provider")}
+    return {"inventory": spec["domain_inventory"], "specification": ".rdd/spec.json",
+            "owners": [row for row in inventory["domains"] + inventory["supporting_modules"]
+                       if row["module"] in interfaces],
+            "modules": [{key: module[key] for key in ("id", "owns_paths", "contract_package", "public_exports",
+                         "provided_services", "consumed_operations", "provided_types", "consumed_types")}
+                        for module in spec["modules"] if module["id"] in interfaces],
+            "interactions": [{**interactions[binding["interaction"]], **binding}
+                             for binding in spec["boundary_bindings"] if binding["interaction"] in interactions]}
+
+
 class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
     def __init__(self, root: Path):
         self.root = root.resolve()
@@ -71,7 +93,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if locator.is_file():
             run_id = read_json(locator).get("run_id")
             if run_id and Store.read(self.root, run_id).get("workflow_version") != 2:
-                raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated v2 baseline.", "environment")
+                raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated baseline using the current specification schema.", "environment")
 
     def profile_settings(self, role: str) -> dict:
         return profile_settings(self.root, role)
@@ -87,7 +109,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if not isinstance(state, dict):
             raise RddError("Run policy requires a valid recorded state", "environment")
         if state.get("workflow_version") != 2:
-            raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated v2 baseline.", "environment")
+            raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated baseline using the current specification schema.", "environment")
         if (state.get("workflow_version") != 2 or state.get("workflow_graph_digest") != digest(NODES)
                 or state.get("agent_profile_digest") != profile_policy_digest(self.root)):
             raise RddError("This run belongs to an earlier workflow/profile policy. Inspect/export it, recover with its recorded source revision and matching harness, or start a fresh reviewed run.", "environment")
@@ -314,7 +336,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         path = self.root / ".rdd/spec.json"
         if path.exists():
             return {"path": ".rdd/spec.json", "status": "existing", "next": "Amend the existing manifest; initialization never overwrites it."}
-        spec = {"schema_version": 2, "author_sessions": [], "contract_index_path": "gen/rust/.rdd-generated.json", "shared_generated_files": [], "solution_elements": [], "target_tree": [], "resources": [], "environments": [], "id": state["id"], "requirements_digest": state["requirements_digest"],
+        spec = {"schema_version": 3, "author_sessions": [],
+                "domain_inventory": {"path": "docs/specs/domain-inventory.json", "sha256": "", "s1_output_digest": ""},
+                "boundary_bindings": [], "contract_index_path": "gen/rust/.rdd-generated.json", "shared_generated_files": [], "solution_elements": [], "target_tree": [], "resources": [], "environments": [], "id": state["id"], "requirements_digest": state["requirements_digest"],
                 "mode": state["mode"], "parent_spec_digest": state["parent_spec_digest"], "change_summary": "",
                 "documents": [], "decisions": [], "contract_files": [], "generated_files": [],
                 "contract_check_ids": ["C-CONTRACTS"], "project_check_ids": [], "modules": [], "scenarios": [],
@@ -335,6 +359,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if reqs["digest"] != state["requirements_digest"]:
             raise RddError("Requirements changed after run start; start a new specification run", "specification")
         result = artifacts.spec_validate(self.root, spec, reqs, self.config)
+        artifacts.validate_accepted_domain_inventory(self.root, spec, self._node_records(state))
         validate_resources(self.root, spec)
         if state["mode"] == "amend":
             if not set(state["changed_requirements"]) <= set(spec["amendment"]["requirements"]):
@@ -386,7 +411,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         path = self.root / ".rdd/plan/plan.json"
         if path.exists():
             return {"path": ".rdd/plan/plan.json", "status": "existing"}
-        write_json(path, {"schema_version": 2, "author_sessions": [], "boundary_proofs": [], "element_coverage": [], "resource_producers": [], "resource_uses": [], "spec_digest": self.state()["spec_digest"], "phases": [],
+        write_json(path, {"schema_version": 3, "author_sessions": [], "boundary_proofs": [], "type_import_proofs": [], "element_coverage": [], "resource_producers": [], "resource_uses": [], "spec_digest": self.state()["spec_digest"], "phases": [],
                           "tasks": [], "verticals": [], "target_paths": [], "shells": []})
         return {"path": ".rdd/plan/plan.json", "status": "authoring_template", "valid": False}
 
@@ -635,7 +660,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                   "spec_digest": state["spec_digest"], "plan_digest": state["plan_digest"],
                   "requirements": [reqs["records"][r] for r in task["requirements"]],
                   "contract_files": spec["contract_files"], "generated_files": spec["generated_files"],
+                  "boundary_context": task_boundary_context(self.root, spec, self.plan(), task),
                   "instructions": ["Read AGENTS.md and only the relevant skills/frozen solution sections.",
+                                   "Follow domain-boundaries and boundary_context for owned modules, permitted calls/types and frozen public exports.",
                                    "Edit only task.writes; preserve task markers until controller completion.",
                                    "Do not change requirements, contracts, generated types, tests' intended outcomes, or harness policy.",
                                    "Commit the isolated implementation; return its complete SHA and evidence to the coordinator.",
@@ -1452,7 +1479,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             if self.state()["status"] not in {"prepared", "implementation", "complete"}:
                 raise RddError("Implementation workflow requires completed preparation")
         prompt = (f"Use ${stage}-workflow. Read AGENTS.md first. Work in this repository using ./rdd. "
-                  "Requirements are authoritative. Complete the workflow's real artifacts and verification; do not declare success from prose. ")
+                  "Requirements are authoritative. Follow domain-boundaries for the accepted S1 inventory, distinct functional module owners and every internal call/type-only binding. Include relevant inventory and frozen interface identities in dispatch packets. Complete the workflow's real artifacts and verification; do not declare success from prose. ")
         if stage == "specification":
             prompt += (f"The requested run mode is {mode or 'regenerate if no prior frozen baseline; otherwise ask the user to choose amend or regenerate'}. "
                        "Ask and resolve architectural or directional questions here. Do not implement the Todo application in this workflow.")

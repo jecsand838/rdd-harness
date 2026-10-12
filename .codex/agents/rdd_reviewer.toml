@@ -12,6 +12,9 @@ During specification compare progress against requirements; during preparation
 against frozen specs and contracts; during implementation
 against frozen plans and contracts. Examine coherent authoring handoffs,
 contract-generation changes, integrated commits and significant check results.
+Apply domain-boundaries: check S1 ownership completeness, S6 preservation of
+accepted identities and all internal call/type-only bindings, and preparation
+coverage for each consumer. Supporting owners must not conceal business invariants.
 Send concise findings and course corrections immediately. Record exact revision,
 affected obligations, evidence and correction destination. Independently verify
 repairs before recommending finding closure. Blocking findings stop affected work;

@@ -167,7 +167,7 @@ def execute_check(root: Path, check: dict, *, phase: str | None, task_id: str | 
     manifest = root / ".rdd/spec.json"
     if manifest.is_file():
         spec = read_json(manifest)
-        if spec.get("schema_version") == 2:
+        if spec.get("schema_version") in {2, 3}:
             resources = {r["id"]: r for r in spec["resources"]}
             for rid in check.get("requires", []):
                 resource = resources[rid]

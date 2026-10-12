@@ -78,9 +78,9 @@ def _seal_contract_index(root: Path, candidate: Path) -> dict:
             dependencies.append(source)
     index["source_hashes"] = source_hashes
     index["descriptor_dependencies"] = dependencies
-    for service in index["services"]:
-        local = "contracts/" + service["descriptor_source"]
-        service["source"] = local if local in source_hashes else None
+    for symbol in index["services"] + index["types"]:
+        local = "contracts/" + symbol["descriptor_source"]
+        symbol["source"] = local if local in source_hashes else None
     index["binding_sources"] = {path: ["contracts/" + source if "contracts/" + source in source_hashes
         else "descriptor:" + source for source in sources] for path, sources in index["binding_sources"].items()}
     index["support_files"] = sorted(set(index["support_files"]) | {"gen/rust/Cargo.lock"})
@@ -106,6 +106,10 @@ def _boundary_proof(runtime: Path, candidate: Path, index: dict, *, defect: str 
         '[workspace]\n[dependencies]\nprost-types = "=0.14.4"\nrdd-contracts = { path = ' + dependency + ' }\n'
         'rdd-proof-provider = { path = ' + json.dumps(str(provider)) + ' }\n').encode("utf-8"))
     providers, callers = [], []
+    # Compile descriptor-derived data imports even when no RPC references them.
+    # This uses the existing application contract qualification, not a test suite.
+    callers.extend(f"pub type ImportedType{number} = {record['rust_type']};"
+                   for number, record in enumerate(index["types"]))
     caller_number = 0
     for number, service in enumerate(index["services"]):
         trait = service["rust_trait"]
