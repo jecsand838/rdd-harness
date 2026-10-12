@@ -1,8 +1,6 @@
 name: rdd-preparation
 
 on:
-  push:
-    branches: ['codex/*-baseline']
   workflow_dispatch:
     inputs:
       candidate:
@@ -14,11 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: rdd-preparation-${{ inputs.candidate || github.sha }}
+  group: rdd-preparation-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  RDD_HEAD_SHA: ${{ inputs.candidate || github.sha }}
+  RDD_HEAD_SHA: ${{ inputs.candidate }}
   RDD_HARNESS_SHA: ${{ vars.RDD_PREPARATION_HARNESS_SHA }}
   PYTHONDONTWRITEBYTECODE: '1'
   PYTHONUTF8: '1'
@@ -40,6 +38,12 @@ jobs:
         run: |
           python - <<'PY'
           import os, re
+          if os.environ.get('GITHUB_EVENT_NAME') != 'workflow_dispatch':
+              raise SystemExit('Preparation requires explicit workflow dispatch')
+          if not re.fullmatch(r'refs/heads/codex/[A-Za-z0-9][A-Za-z0-9._-]*-baseline', os.environ.get('GITHUB_REF', '')):
+              raise SystemExit('Preparation dispatch must use a single-component codex baseline branch ref')
+          if os.environ.get('GITHUB_SHA') != os.environ.get('RDD_HEAD_SHA'):
+              raise SystemExit('Preparation candidate must match the exact dispatch branch revision')
           for name in ('RDD_HEAD_SHA', 'RDD_HARNESS_SHA'):
               if not re.fullmatch(r'[0-9a-f]{40}', os.environ.get(name, '')):
                   raise SystemExit(f'{name} must be an explicitly pinned full commit SHA')

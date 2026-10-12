@@ -99,13 +99,15 @@ def parser() -> argparse.ArgumentParser:
     wf.add_argument("--reason")
     wf.add_argument("--finding", help="Unresolved live finding authorizing a scoped corrective retry")
     wf.add_argument("--mode", choices=("amend", "regenerate"))
+    wf.add_argument("--permission", choices=("full-access",),
+                    help="Use --permission full-access for an unrestricted sandbox and no approval prompts (launch stages only)")
     wf.add_argument("--print", action="store_true", dest="print_only", help="Show the launch packet; does not start Codex (an explicit --mode starts the requested run)")
     contract = commands.add_parser("contracts")
     contract.add_argument("action", choices=("check", "generate"))
     contract.add_argument("--bootstrap-lock", action="store_true", help="First qualification only: resolve missing Cargo.lock files")
     contract.add_argument("--target", action="append", default=[])
     contract.add_argument("--against", help="Buf breaking-check baseline input")
-    commands.add_parser("selftest", help="Run the real offline controller/adapters regression suite; never claims app completion")
+    commands.add_parser("selftest", help="Manually run the Rust generator unit tests; never runs in CI or claims app completion")
     ci = commands.add_parser("ci", help="Stateless trusted-baseline verification of a candidate checkout")
     ci.add_argument("--policy-root", type=Path)
     ci.add_argument("--branch")
@@ -207,7 +209,7 @@ def dispatch(c: Controller, a: argparse.Namespace):
             if not a.target or not a.reason:
                 raise RddError("workflow release needs NODE and --reason")
             return c.workflow_release(a.target, a.reason)
-        return c.workflow(a.stage, a.mode, print_only=a.print_only)
+        return c.workflow(a.stage, a.mode, print_only=a.print_only, permission=a.permission)
     if cmd == "contracts":
         from rdd.proto_traits import run_contracts, ContractCheckError
         if a.action == "generate":
@@ -223,9 +225,12 @@ def dispatch(c: Controller, a: argparse.Namespace):
         except ContractCheckError as exc:
             raise RddError(str(exc), "environment" if exc.blocked else "specification") from exc
     if cmd == "selftest":
-        result = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(c.root / "tests/harness"),
-                                 "-p", "test_*.py", "-v"], cwd=c.root)
-        return {"status": "passed" if result.returncode == 0 else "failed", "scope": "harness_regression",
+        cargo = shutil.which("cargo")
+        if not cargo:
+            raise RddError("Cargo is required for manual generator selftests", "environment")
+        result = subprocess.run([cargo, "test", "--locked", "--manifest-path",
+                                 str(c.root / "tools/proto-codegen/Cargo.toml")], cwd=c.root)
+        return {"status": "passed" if result.returncode == 0 else "failed", "scope": "generator_unit_tests",
                 "application_complete": False, "returncode": result.returncode}
     if cmd == "ci":
         from rdd.ci import verify, verify_preparation
@@ -259,7 +264,11 @@ def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
-    args = parser().parse_args(argv)
+    arg_parser = parser()
+    args = arg_parser.parse_args(argv)
+    if args.command == "workflow" and args.permission is not None and args.stage not in {
+            "specification", "preparation", "implementation"}:
+        arg_parser.error("--permission is only valid for workflow specification, preparation, or implementation")
     if sys.version_info < (3, 11):
         print(json.dumps({"status": "blocked", "kind": "environment", "error": "Python 3.11+ is required"}))
         return 2

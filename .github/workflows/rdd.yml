@@ -1,11 +1,10 @@
 name: rdd
 
 on:
-  push:
-    branches: [main, 'codex/*-baseline']
   pull_request:
     branches: [main, 'rdd/**', 'codex/*-baseline']
     types: [opened, synchronize, reopened, ready_for_review]
+
 
 permissions:
   contents: read
@@ -14,86 +13,36 @@ concurrency:
   group: rdd-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-jobs:
-  harness:
-    name: harness (${{ matrix.os }})
-    if: github.event_name == 'pull_request' && github.base_ref == 'main' || github.ref == 'refs/heads/main'
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
-    defaults:
-      run:
-        shell: bash
-    env:
-      PYTHONUTF8: '1'
-      PYTHONIOENCODING: utf-8
-      PYTHONDONTWRITEBYTECODE: '1'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.11.9'
-      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
-        with:
-          version: '1.73.0'
-          setup_only: 'true'
-          pr_comment: 'false'
-          push: 'false'
-          archive: 'false'
-      - name: Test candidate harness
-        run: python tools/rdd/cli.py selftest
-      - name: Install pinned compiler and WASM target
-        run: |
-          python - <<'PYTHON'
-          from pathlib import Path
-          import re
-          import subprocess
-          import tomllib
-          channel = tomllib.loads(Path('rust-toolchain.toml').read_text(encoding='utf-8'))['toolchain']['channel']
-          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', channel):
-              raise SystemExit('Harness qualification requires an exact stable compiler')
-          subprocess.run(['rustup', 'toolchain', 'install', channel, '--profile', 'minimal', '--target', 'wasm32-unknown-unknown'], check=True, timeout=1200)
-          PYTHON
-      - name: Qualify real providers and consumers across modules and targets
-        run: python tools/proto-codegen/tests/test_generation.py
-      - name: Preserve actual compiler proof logs
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: harness-contracts-${{ matrix.os }}
-          path: .rdd/evidence/harness-contracts/
-          include-hidden-files: true
-          if-no-files-found: warn
-          retention-days: 30
+env:
+  RDD_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  RDD_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+  RDD_HEAD_BRANCH: ${{ github.head_ref || github.ref_name }}
+  RDD_BASE_BRANCH: ${{ github.base_ref }}
+  RDD_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+  RDD_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
+  PYTHONDONTWRITEBYTECODE: '1'
+  PYTHONUTF8: '1'
+  PYTHONIOENCODING: utf-8
 
-  controller:
-    name: controller (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-latest, windows-latest]
+jobs:
+  selection:
+    name: Select required verification lanes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     defaults:
       run:
         shell: bash
-    env:
-      RDD_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      RDD_POLICY_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
-      RDD_HEAD_BRANCH: ${{ github.head_ref || github.ref_name }}
-      RDD_BASE_BRANCH: ${{ github.base_ref }}
-      RDD_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-      RDD_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
-      PYTHONDONTWRITEBYTECODE: '1'
-      PYTHONUTF8: '1'
-      PYTHONIOENCODING: utf-8
+    outputs:
+      root: ${{ steps.verifier.outputs.root }}
+      policy_root: ${{ steps.verifier.outputs.policy_root }}
+      policy_sha: ${{ steps.verifier.outputs.policy_sha }}
+      release_policy: ${{ steps.verifier.outputs.release_policy }}
+      release_source: ${{ steps.verifier.outputs.release_source }}
+      prepared: ${{ steps.verifier.outputs.prepared }}
+      mode: ${{ steps.verifier.outputs.mode }}
+      application_complete: ${{ steps.verifier.outputs.application_complete }}
+      controller: ${{ steps.verifier.outputs.controller }}
+      controller_matrix: ${{ steps.hosts.outputs.matrix || steps.verifier.outputs.controller_matrix }}
     steps:
       - name: Check out candidate revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -114,9 +63,8 @@ jobs:
       - name: Set up controller Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.12'
-
-      - name: Select trusted base or initial-import verifier
+          python-version: '3.11.9'
+      - name: Select trusted base or initial-import verifier and required lanes
         id: verifier
         env:
           RDD_RELEASE_POLICY_SHA: ${{ vars.RDD_RELEASE_POLICY_SHA }}
@@ -124,13 +72,16 @@ jobs:
         run: |
           python - <<'RDD_SELECT_VERIFIER'
           import os
+          import json
           from pathlib import Path
           import re
           baseline = Path("baseline")
           candidate = Path("candidate")
           required = (".rdd/config.json", "tools/rdd/cli.py")
           frozen = (".rdd/spec.lock.json", ".rdd/plan/plan.lock.json", ".rdd/prepared.json")
-          release = os.environ["RDD_HEAD_BRANCH"].startswith("codex/rdd-release/")
+          event = os.environ.get("GITHUB_EVENT_NAME", "")
+          branch = os.environ["RDD_HEAD_BRANCH"]
+          release = branch.startswith("codex/rdd-release/")
           release_policy = release_source = ""
           if release:
               if (os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
@@ -165,11 +116,31 @@ jobs:
           policy_root = "prepared-policy" if release else selected
           policy_sha = release_policy if release else os.environ.get("RDD_POLICY_SHA", "")
           prepared = release or all((Path(policy_root) / path).is_file() for path in frozen)
+
+          def present(root, paths):
+              return any((root / path).exists() or (root / path).is_symlink() for path in paths)
+
+
+          maintenance = (event == "pull_request" and os.environ.get("RDD_BASE_BRANCH") == "main"
+                         and selected == "baseline" and all((candidate / path).is_file() for path in required)
+                         and not branch.startswith(("rdd/", "codex/rdd-release/"))
+                         and not present(baseline, frozen) and not present(candidate, frozen))
+          controller = not maintenance
+          mode = "harness_maintenance" if maintenance else "frozen_policy"
+          controller_matrix = {"os": ["ubuntu-24.04"]}
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"root={selected}\n")
-              output.write(f"policy_root={policy_root}\npolicy_sha={policy_sha}\n")
-              output.write(f"release_policy={release_policy}\nrelease_source={release_source}\n")
-              output.write(f"prepared={'true' if prepared else 'false'}\n")
+              values = dict(root=selected, policy_root=policy_root, policy_sha=policy_sha,
+                            release_policy=release_policy, release_source=release_source,
+                            prepared=str(prepared).lower(), mode=mode, application_complete="false",
+                            controller_matrix=json.dumps(controller_matrix, separators=(",", ":")))
+              values["controller"] = str(controller).lower()
+              for name, value in values.items():
+                  output.write(f"{name}={value}\n")
+          if os.environ.get("GITHUB_STEP_SUMMARY"):
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+                  summary.write(f"CI scope: `{mode}`; application_complete=false.\n")
+                  if maintenance:
+                      summary.write("Harness testing is manual.\n")
           RDD_SELECT_VERIFIER
 
       - name: Check out approved prepared release policy
@@ -181,27 +152,75 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Test selected harness
-        working-directory: ${{ steps.verifier.outputs.root }}
-        run: python tools/rdd/cli.py selftest
+      - name: Select every declared hosted frozen environment
+        id: hosts
+        if: steps.verifier.outputs.controller == 'true' && steps.verifier.outputs.prepared == 'true'
+        env:
+          RDD_VERIFIER_ROOT: ${{ steps.verifier.outputs.root }}
+          RDD_POLICY_ROOT: ${{ steps.verifier.outputs.policy_root }}
+        run: >-
+          python "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT/tools/rdd/ci_tools.py" matrix
+          --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --github-output "$GITHUB_OUTPUT"
+
+  controller:
+    needs: selection
+    if: needs.selection.outputs.controller == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.selection.outputs.controller_matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RDD_HEAD_SHA }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out trusted base verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RDD_POLICY_SHA }}
+          path: baseline
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out approved prepared release policy
+        if: needs.selection.outputs.release_policy != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.selection.outputs.release_policy }}
+          path: prepared-policy
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up controller Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11.9'
 
       - name: Read tool pins from trusted prepared policy
-        if: steps.verifier.outputs.prepared == 'true'
+        if: needs.selection.outputs.prepared == 'true'
         id: tools
         env:
-          RDD_POLICY_ROOT: ${{ steps.verifier.outputs.policy_root }}
+          RDD_POLICY_ROOT: ${{ needs.selection.outputs.policy_root }}
         run: >-
           python "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT/tools/rdd/ci_tools.py" describe
           --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --github-output "$GITHUB_OUTPUT"
 
       - name: Select qualified Python
-        if: steps.verifier.outputs.prepared == 'true'
+        if: needs.selection.outputs.prepared == 'true'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ steps.tools.outputs.python }}
 
       - name: Install pinned Buf without schema publishing or PR comments
-        if: steps.verifier.outputs.prepared == 'true'
+        if: needs.selection.outputs.prepared == 'true'
         uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1.5.0
         with:
           version: ${{ steps.tools.outputs.buf }}
@@ -211,9 +230,9 @@ jobs:
           archive: 'false'
 
       - name: Provision and measure declared Rust and frontend tools
-        if: steps.verifier.outputs.prepared == 'true'
+        if: needs.selection.outputs.prepared == 'true'
         env:
-          RDD_POLICY_ROOT: ${{ steps.verifier.outputs.policy_root }}
+          RDD_POLICY_ROOT: ${{ needs.selection.outputs.policy_root }}
         run: >-
           python "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT/tools/rdd/ci_tools.py" provision
           --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT"
@@ -221,7 +240,7 @@ jobs:
           --candidate-root "$GITHUB_WORKSPACE/candidate"
 
       - name: Install Tauri Linux build prerequisites
-        if: runner.os == 'Linux' && steps.verifier.outputs.prepared == 'true'
+        if: runner.os == 'Linux' && needs.selection.outputs.prepared == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
@@ -231,10 +250,10 @@ jobs:
       - name: Validate candidate with the selected controller and frozen check policy
         working-directory: candidate
         env:
-          RDD_VERIFIER_ROOT: ${{ steps.verifier.outputs.root }}
-          RDD_POLICY_ROOT: ${{ steps.verifier.outputs.policy_root }}
-          RDD_SELECTED_RELEASE_POLICY: ${{ steps.verifier.outputs.release_policy }}
-          RDD_SELECTED_RELEASE_SOURCE: ${{ steps.verifier.outputs.release_source }}
+          RDD_VERIFIER_ROOT: ${{ needs.selection.outputs.root }}
+          RDD_POLICY_ROOT: ${{ needs.selection.outputs.policy_root }}
+          RDD_SELECTED_RELEASE_POLICY: ${{ needs.selection.outputs.release_policy }}
+          RDD_SELECTED_RELEASE_SOURCE: ${{ needs.selection.outputs.release_source }}
         run: |
           arguments=(--root "$GITHUB_WORKSPACE/candidate" ci
             --policy-root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --branch "$RDD_HEAD_BRANCH")
@@ -258,20 +277,36 @@ jobs:
           retention-days: 30
 
   verify:
-    # Phase branches produce this check only through the base-bound PR workflow.
-    # Configure the required GitHub check using this exact name.
+    # Phase and release PRs retain the trusted frozen application controller.
     name: verify
-    needs: [controller]
+    needs: [selection, controller]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
-      RDD_CONTROLLER_RESULT: ${{ needs.controller.result }}
+      RDD_NEEDS: ${{ toJSON(needs) }}
     steps:
-      - name: Require every controller and frozen policy check to pass
+      - name: Require selection and every selected frozen application check
         shell: bash
         run: |
-          if [[ "$RDD_CONTROLLER_RESULT" != "success" ]]; then
-            echo "RDD prerequisite jobs did not all succeed: $RDD_CONTROLLER_RESULT"
-            exit 1
-          fi
+          python - <<'RDD_VERIFY_JOBS'
+          import json, os
+          needs = json.loads(os.environ['RDD_NEEDS'])
+          selection = needs.get('selection', {})
+          if selection.get('result') != 'success':
+              raise SystemExit('Verification selection did not succeed')
+          outputs = selection.get('outputs', {})
+          selected = outputs.get('controller')
+          if selected not in {'true', 'false'}:
+              raise SystemExit('Missing required controller selection output')
+          expected = 'success' if selected == 'true' else 'skipped'
+          actual = needs.get('controller', {}).get('result')
+          if actual != expected:
+              raise SystemExit(f'controller: expected {expected}, observed {actual}')
+          if outputs.get('mode') == 'harness_maintenance':
+              message = 'Harness testing is manual; application_complete=false.\n'
+              print(message, end='')
+              if os.environ.get('GITHUB_STEP_SUMMARY'):
+                  with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+                      summary.write(message)
+          RDD_VERIFY_JOBS

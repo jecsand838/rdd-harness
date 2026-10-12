@@ -62,10 +62,10 @@ than bypassing them.
 
 ## Native Goal execution
 
-`CodexAdapter.native_argv(prompt, session_id=None)` supplies the launcher's
+`CodexAdapter.native_argv(prompt, session_id=None, *, permission=None)` supplies the launcher's
 canonical coordinator model, effort, sandbox and developer instructions. It
 encodes configuration as TOML and passes the prompt as one positional argument
-after `--`. It leaves approval policy to the runtime and does not create a second
+after `--`. By default it leaves approval policy to the runtime and does not create a second
 workflow loop or session ledger.
 
 1. Complete `$specification-workflow` and `$preparation-workflow` in sequence, including both independent review perspectives and `gate preparation` for the exact committed handoff.
@@ -99,6 +99,45 @@ describes the lifecycle and completion-evidence model. A budget stop or pause is
 not success. Missing benchmarks, model access, unresolved specs, and unavailable
 PR evidence must remain visible blockers.
 
+### Workflow permissions
+
+Each interactive launcher accepts `--permission full-access`:
+
+```sh
+./rdd workflow specification --mode regenerate --permission full-access
+./rdd workflow preparation --permission full-access
+./rdd workflow implementation --permission full-access
+```
+
+Use the option on each session that needs full access. It replaces the launcher's
+sandbox argument with `--sandbox danger-full-access` and adds
+`--ask-for-approval never`. Model, effort and coordinator instructions still come
+from the canonical profile. The launch packet's `requested_runtime` reports the
+effective requested sandbox and approval override; its profile identity still
+identifies the unchanged source profile. These are requested settings, not runtime
+attestation. Omission preserves the existing launch behavior and does not remember
+a previous invocation's override.
+
+Inspect the argv without starting Codex or an RDD run:
+
+```sh
+./rdd workflow specification --permission full-access --print
+```
+
+Leave out `--mode` for this inspection: an explicit mode can start a run even with
+`--print`. The option applies only to the three interactive workflow stages;
+graph commands such as `workflow claim` reject it. `./rdd goal` only prints the
+objective, so Goal mode uses the permissions of the implementation session in
+which you submit `/goal`. Controller branch restrictions, frozen artifacts,
+reviewer responsibilities and acceptance gates still apply.
+
+When reopening a recorded full-access session directly, select its exact UUID
+and request the same settings explicitly:
+
+```sh
+codex resume SESSION_UUID --cd REPOSITORY --sandbox danger-full-access --ask-for-approval never
+```
+
 ## Bounded worker adapter
 
 `CodexAdapter.exec()` is an optional one-turn adapter for automation. It is not an
@@ -117,9 +156,10 @@ headless subprocess. It never uses a shell to interpolate prompts, file names,
 model IDs or PR text.
 
 The existing bounded-exec `-a never` restriction suppresses fresh approval
-prompts for that one-turn subprocess. The native interactive launcher does not
-set this approval override. Neither interface bypasses sandbox enforcement, and
-profile requests alone are not evidence of a child's effective permissions.
+prompts for that one-turn subprocess while retaining its profile sandbox. The
+native interactive launcher sets an approval override only when explicitly
+invoked with `--permission full-access`, which also disables its sandbox. Profile
+requests alone are not evidence of a child's effective permissions.
 
 Every attempt uses a new directory below `.rdd/runtime/`. It contains the prompt,
 schema snapshot, streaming `events.jsonl`, `stderr.log`, final `answer.json`, and a
@@ -224,26 +264,32 @@ and [`gh pr checks`](https://cli.github.com/manual/gh_pr_checks).
 
 ## CI and reference-platform evidence
 
-`.github/workflows/rdd.yml` tests the Python controller on Linux, macOS and
-Windows and runs the frozen check inventory through the CI entry point. It uses
-read-only repository permissions, pinned action commits, no application secrets,
-and a `pull_request` trigger. There is no `pull_request_target` execution of
+`.github/workflows/rdd.yml` verifies frozen application phase and release PRs
+on their declared hosted environments. Ordinary unfrozen harness-maintenance
+PRs run no tests. There are no harness selftests, portability jobs, standalone
+generator test jobs, push triggers or native-harness dispatches.
+
+The workflow uses read-only repository permissions, pinned action commits, no
+application secrets, and a `pull_request` trigger. There is no `pull_request_target` execution of
 candidate code. A PR's head is checked explicitly; GitHub otherwise defaults to a
 synthetic merge revision for this trigger, as described in its
 [event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
 
 For an ordinary phase PR, the workflow checks out the candidate and its base into
-sibling directories. It tests the trusted base controller, then invokes the **base
+sibling directories. It invokes the **base
 controller's** CLI with `--root candidate ci --policy-root baseline --branch
 BRANCH`. The frozen verifier policy comes from that separate base checkout, so
 editing the candidate CLI does not change the validator being executed. The
-trusted phase base must already contain the harness and prepared plan. Push runs
-on `main` and `codex/*-baseline` use their own revision as policy and provide
-diagnostics. Phase branches produce the `verify` check only through the base-bound
-PR run, avoiding a same-name
-push/dispatch check with weaker provenance. Protect the workflow itself through
-repository rules and review; a repository-contained verifier cannot establish
-an external trust root for a workflow file it is allowed to replace.
+trusted phase base must already contain the harness and prepared plan. Ordinary
+unfrozen harness-maintenance PRs into `main` use a separate `harness_maintenance`
+route with no test execution. It permits intentional harness edits without
+claiming frozen application verification. Neither checkout may contain any freeze artifact;
+partial freezes and phase/release branches cannot take this route. A verifier
+failure never falls back to maintenance.
+
+Pushes do not launch CI. PRs retain the required `verify` aggregate. Protect the
+workflow itself through repository rules and review; a repository-contained
+verifier cannot establish an external trust root for a workflow it can replace.
 
 A same-repository `codex/rdd-release/RUN_ID` PR targeting `main` uses a separate
 release route. After project acceptance, the operator sets repository variables
@@ -267,17 +313,19 @@ release and subsequent releases whose prepared policy differs from `main`.
 The support change must be reviewed and installed on `main` before this route is
 used; a release cannot bootstrap its own verifier.
 
-The `verify` job succeeds only if all prerequisite jobs succeed. A canceled,
-failed, or skipped prerequisite cannot become a green aggregate. Pinning actions
+The `verify` job evaluates selection and every selected prerequisite. A canceled,
+failed, missing or unexpectedly skipped selected job cannot become a green
+aggregate; only jobs declared unnecessary by successful selection may be skipped.
+Pinning actions
 protects the selected dependency revision; it does not replace repository
 branch protections or review of changes to the verifier and workflow itself.
 
 Application build prerequisites and platform-specific command inventory must be
 qualified and pinned during specification, with task producers/timing resolved during preparation. Before those artifacts
-exist, CI validates the boilerplate/controller only. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
+exist, ordinary harness-maintenance PRs execute no tests. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
 its contracts and pending task projections without claiming implementation. Phase
 CI runs cumulative ordinary checks applicable to its platform. A complete source
-revision, including a release or post-merge `main`, also runs every project check
+revision verified through a phase/release PR also runs every project check
 applicable to that platform. A missing native dependency needed by those checks
 is an environment blocker.
 
@@ -303,13 +351,19 @@ and specification/plan file hashes. Failure preserves attempted command logs
 and cannot emit successful tool evidence. CLI and hosted execution use explicit
 UTF-8; persisted generated/evidence bytes use stable LF encoding.
 
-The separate preparation workflow operates while the run is `preparing` using
-the independently pinned `RDD_PREPARATION_HARNESS_SHA` verifier. It uploads
+The separate preparation workflow is dispatch-only while the run is `preparing`,
+using the independently pinned `RDD_PREPARATION_HARNESS_SHA` verifier:
+
+```sh
+gh workflow run preparation.yml --ref YOUR_BASELINE_BRANCH -f candidate=FULL_MATERIALIZATION_SHA
+```
+
+The selected `codex/*-baseline` branch must resolve to the supplied full SHA.
+Validation rejects a mismatched SHA, tag or nonbaseline ref before provisioning.
+Concurrency is grouped by baseline branch, so a successor dispatch supersedes an
+older attempt on the same baseline. The workflow uploads
 `preparation-ci.json`, check receipts and raw provisioning logs for transfer into
 the run. Qualified native/manual observations remain separate from hosted results.
-The harness PR matrix also tests the candidate controller and actual native/WASM
-generator/compiler proofs on Linux, macOS and Windows; those results do not prove
-Todo acceptance or replace trusted-base application CI.
 
 The specification workflow must still qualify and record its selected frontend
 builder, Tauri packaging commands, additional test tools, dependency locks, and
@@ -353,27 +407,18 @@ The pins were resolved from official release commit pages on 2026-10-07:
 [setup-python](https://github.com/actions/setup-python/commit/5fda3b95a4ea91299a34e894583c3862153e4b97),
 [upload-artifact](https://github.com/actions/upload-artifact/commit/cf430e030ddbb5b0abf93d22962f4752f3646cd9),
 [buf-action](https://github.com/bufbuild/buf-action/commit/8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3).
-Review release notes and rerun the controller tests when updating these pins.
-The version/source manifest is `.rdd/sources/runtime.json`. Source inspection, offline protocol fixtures, actual compiler proofs and hosted results have different evidence scopes; retain the tested revision and observations for each.
+Review release notes when updating these pins.
+The version/source manifest is `.rdd/sources/runtime.json`. Source inspection, actual application contract proofs and hosted results have different evidence scopes; retain the tested revision and observations for each.
 
-## Offline verification
+## Manual workflow verification
 
-The adapter tests exercise real local subprocesses and Git worktrees plus injected
-GitHub/Codex protocol fixtures. They cover command injection resistance, deadlines,
-streaming, stale-output rejection, schema rejection, dirty-worktree preservation,
-idempotent phase PR publication, moved bases, absent/skipped/pending checks,
-independent-review requirements, and requests-for-changes vetoes.
-
-```sh
-python -m unittest discover -s tests/harness -p test_adapters.py
-```
-
-Run `./rdd selftest` for controller regressions. `RDD_CODEX_SMOKE` may point to the installed binary for the optional client-support smoke check; this exercises syntax/catalog support, not paid account entitlement. Compiler proofs and workflow evaluations remain separate from that smoke. Use system temporary directories normally; `RDD_TEST_TMPDIR` may select a private writable test directory when workspace synchronization would race with clean-tree checks. Preserve strict verification instead of weakening it for a synchronization layer.
-
-The installed 0.162.1 smoke also parses the coordinator launch and exact-UUID
-resume options with `--help`, without starting an inference session. This does
-not qualify actual session resumption, native Goal execution or reviewer
-isolation; those observations require separate live evidence.
+Harness behavior is exercised manually during application generation. The
+Python harness regression and standalone generator suites have been deleted.
+The existing Rust generator unit tests remain available with `./rdd selftest`;
+this manual command is never invoked by CI/CD or application contract checks.
+Application contract generation still validates descriptors, compiles
+host/target bindings and verifies positive/negative provider-consumer proofs.
+All frozen application tests, benchmarks, reviews and gates remain mandatory.
 
 Runs pin the exact workflow graph and canonical profile/native configuration digest. The controller checks both before continuing mutations, including checks, reviews, recovery and publication, before recording state or evidence. A mismatch is a policy compatibility failure, not a new historical blocker to write automatically. `status` and `export-run` preserve original role names and evidence. Continue historical work with its recorded harness revision, or start an explicit fresh baseline; no role aliases, pin backfills or approval migrations are applied.
 

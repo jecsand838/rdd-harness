@@ -365,7 +365,7 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
             if release:
                 raise RddError("Release verification requires a frozen prepared policy baseline", "policy")
             report.update({"status": "harness_only", "scope": "bootstrap",
-                           "note": "No frozen implementation plan exists; only harness policy was verified. Trusted base selftests are a separate required CI step."})
+                           "note": "No frozen implementation plan exists; only harness policy was verified."})
             return report
         if not all(trusted_locks) or not all(candidate_locks):
             raise RddError("Specification, plan, and preparation freezes must exist on both trusted base and candidate", "policy")
