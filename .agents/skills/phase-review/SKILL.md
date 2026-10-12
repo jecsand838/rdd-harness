@@ -34,7 +34,7 @@ Review the exact candidate HEAD and source digest. Re-read the phase's promised 
 4. Check TDD receipts distinguish expected behavioral RED from infrastructure failure and link to the introduced assertions.
 5. Check requirement/spec/contract/plan digests and reproducible generated output. Confirm architecture checks detect forbidden direct calls, not just well-formed schemas.
 6. Check cumulative regressions and previously accepted guarantees. If a sealed guarantee was never true, record closure failure and route to specification amendment.
-7. Check every due NFR against its defined environment and measurement protocol. Skipped platforms, absent hardware, missing screen-reader evidence, and benchmarks without assertions remain incomplete.
+7. Check every due NFR against its defined environment and measurement protocol. Skipped platforms, absent hardware, and benchmarks without assertions remain incomplete.
 8. Check privacy, capability restrictions, diagnostics, cancellation, recovery, and data migration behavior where relevant. Verify no task content or secret leaked into logs or fixtures.
 9. Check additions against their reuse rationale. Flag duplicate business rules, speculative generics, unused APIs, unnecessary dependencies, placeholder operations, and inconsistent documentation.
 10. Check PR head, base, checks, and review evidence are current. Invalidate review after rebases, conflict resolution, code changes, or changed verification policy.

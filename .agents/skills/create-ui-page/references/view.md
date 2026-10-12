@@ -77,7 +77,7 @@ Better: bind a string to the framework's text-node rendering API. Use real butto
 | Empty and filtered-empty | Different messages and useful actions |
 | Midnight/resume | Derived dates refresh without changing stored dates |
 
-Keep native error recovery understandable without exposing traces or SQL. Prefer announced state changes over transient color-only signals. A visually polished screenshot cannot establish keyboard or screen-reader completion.
+Keep native error recovery understandable without exposing traces or SQL. Prefer announced state changes over transient color-only signals. A visually polished screenshot cannot establish keyboard completion.
 
 ## Primary references
 
