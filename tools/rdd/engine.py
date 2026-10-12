@@ -17,7 +17,7 @@ from .reviews import ReviewStream
 from .nodes import WorkflowNodes, NODES
 from .profiles import IMPLEMENTOR_SCOPES, load_profiles, profile_policy_digest, profile_settings
 from .readiness import validate_resources, validate_producers, required_probe_ids
-from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError
+from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError, validate_native_permission
 from .checks import execute_check, platform_name, verify_receipt
 from .common import (EXCLUDED_FILES, EXCLUDED_PREFIXES, RddError, RddStorageError, Store, assert_inventory, atomic_write, clean, digest, event,
                      file_hash, git, head, inventory, now, read_json, safe_path,
@@ -1431,9 +1431,14 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         else:
             self.guard_source_write(baseline=stage == "preparation")
 
-    def workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False) -> dict:
+    def workflow(self, stage: str, mode: str | None = None, *, print_only: bool = False,
+                 permission: str | None = None) -> dict:
         if stage not in {"specification", "preparation", "implementation"}:
             raise RddError("Unknown workflow")
+        try:
+            validate_native_permission(permission)
+        except RddAdapterError as exc:
+            raise RddError(str(exc)) from exc
         self.guard_workflow(stage, mode, print_only=print_only)
         if stage == "specification" and mode:
             locator = read_json(self.root / ".rdd/run.json")
@@ -1456,9 +1461,12 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         else:
             prompt += ("This session will use native goal mode. Print the exact output of ./rdd goal and ask the developer to submit it with /goal. "
                        "Do not claim that a normal prompt activated native goal mode. Once the goal is active, follow implementation-workflow through project validation.")
+        requested_runtime = self.profile_settings("rdd_coordinator")
+        if permission:
+            requested_runtime.update(sandbox="danger-full-access", approval_policy="never")
         return {"stage": stage, "prompt": prompt,
-                "requested_runtime": self.profile_settings("rdd_coordinator"),
-                "argv": CodexAdapter(self.root).native_argv(prompt),
+                "requested_runtime": requested_runtime,
+                "argv": CodexAdapter(self.root).native_argv(prompt, permission=permission),
                 "native_goal": self.goal() if stage == "implementation" else None}
 
 

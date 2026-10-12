@@ -153,6 +153,16 @@ Use that command **without `--mode`**. Supplying an explicit mode can start a ne
 
    In Codex, submit `/goal` followed by the exact objective printed by `./rdd goal`. The launcher provides the handoff; it does not activate native Goal mode itself. The objective is under 4,000 characters. Follow the [official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex) for the Goal lifecycle and the [workflow guide](docs/harness/workflow-guide.md#stage-three-implementation) for controller operations.
 
+For full access without command-approval prompts, add `--permission=full-access` to each interactive launch:
+
+```sh
+./rdd workflow specification --mode regenerate --permission=full-access
+./rdd workflow preparation --permission=full-access
+./rdd workflow implementation --permission=full-access
+```
+
+Run these separately as each stage becomes ready. The option passes `--sandbox danger-full-access --ask-for-approval never` to Codex for that session. Omitting it keeps the coordinator's configured sandbox and the runtime's approval policy. `./rdd goal` only prints the objective; submit it with `/goal` inside the implementation session to use that session's permissions. See [workflow permissions](docs/harness/codex-runtime.md#workflow-permissions) for launch inspection and recovery.
+
 ## Follow progress and recover
 
 Use `./rdd status` for the current run, active phase, tasks, blockers, and exact source identity. During an active run, preserve a checkpoint before moving or discarding the checkout:

@@ -99,6 +99,8 @@ def parser() -> argparse.ArgumentParser:
     wf.add_argument("--reason")
     wf.add_argument("--finding", help="Unresolved live finding authorizing a scoped corrective retry")
     wf.add_argument("--mode", choices=("amend", "regenerate"))
+    wf.add_argument("--permission", choices=("full-access",),
+                    help="Explicit native launch override: unrestricted sandbox and no approval prompts (launch stages only)")
     wf.add_argument("--print", action="store_true", dest="print_only", help="Show the launch packet; does not start Codex (an explicit --mode starts the requested run)")
     contract = commands.add_parser("contracts")
     contract.add_argument("action", choices=("check", "generate"))
@@ -209,7 +211,7 @@ def dispatch(c: Controller, a: argparse.Namespace):
             if not a.target or not a.reason:
                 raise RddError("workflow release needs NODE and --reason")
             return c.workflow_release(a.target, a.reason)
-        return c.workflow(a.stage, a.mode, print_only=a.print_only)
+        return c.workflow(a.stage, a.mode, print_only=a.print_only, permission=a.permission)
     if cmd == "contracts":
         from rdd.proto_traits import run_contracts, ContractCheckError
         if a.action == "generate":
@@ -259,7 +261,11 @@ def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
-    args = parser().parse_args(argv)
+    arg_parser = parser()
+    args = arg_parser.parse_args(argv)
+    if args.command == "workflow" and args.permission is not None and args.stage not in {
+            "specification", "preparation", "implementation"}:
+        arg_parser.error("--permission is only valid for workflow specification, preparation, or implementation")
     if sys.version_info < (3, 11):
         print(json.dumps({"status": "blocked", "kind": "environment", "error": "Python 3.11+ is required"}))
         return 2
