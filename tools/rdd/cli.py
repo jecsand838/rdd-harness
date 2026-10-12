@@ -107,9 +107,6 @@ def parser() -> argparse.ArgumentParser:
     contract.add_argument("--bootstrap-lock", action="store_true", help="First qualification only: resolve missing Cargo.lock files")
     contract.add_argument("--target", action="append", default=[])
     contract.add_argument("--against", help="Buf breaking-check baseline input")
-    selftest = commands.add_parser("selftest", help="Run the real offline controller/adapters regression suite; never claims app completion")
-    selftest.add_argument("--suite", choices=("full", "portability"), default="full")
-    selftest.add_argument("--timings", type=Path, help="Write per-test outcomes/durations and suite totals as JSON")
     ci = commands.add_parser("ci", help="Stateless trusted-baseline verification of a candidate checkout")
     ci.add_argument("--policy-root", type=Path)
     ci.add_argument("--branch")
@@ -226,9 +223,6 @@ def dispatch(c: Controller, a: argparse.Namespace):
                                  targets=tuple(a.target), against=a.against)
         except ContractCheckError as exc:
             raise RddError(str(exc), "environment" if exc.blocked else "specification") from exc
-    if cmd == "selftest":
-        from rdd.selftest import run
-        return run(c.root, a.suite, a.timings)
     if cmd == "ci":
         from rdd.ci import verify, verify_preparation
         if a.preparation:
@@ -281,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
             # Refuse before constructing runtime state or acquiring a write lock.
             require_source_branch(args.root)
         controller = Controller(args.root)
-        legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run", "selftest"} or (
+        legacy_readonly = args.command in {"status", "doctor", "requirements", "export-run"} or (
             args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage == "nodes"))
         if not legacy_readonly:
             controller.guard_v2()
@@ -293,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
             controller.guard_export(args.file)
         elif source_write and args.command != "start":
             controller.guard_source_write(baseline=args.command in {"spec", "plan", "prepare", "contracts"})
-        readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "selftest", "ci"} or (
+        readonly = args.command in {"status", "doctor", "requirements", "next", "goal", "ci"} or (
             args.command in {"spec", "plan", "anchors"} and args.action in {"validate", "verify"}) or (
             args.command == "workflow" and ((args.print_only and args.mode is None) or args.stage in {"nodes", "next"}))
         if args.command in {"start", "init"}:

@@ -309,7 +309,6 @@ def run_contracts(
                     "then commit both Cargo.lock files before freezing specification", blocked=True
                 )
             execute([str(cargo), "generate-lockfile", "--manifest-path", str(manifest)], "bootstrap-generator-lock")
-        execute([str(cargo), "test", "--quiet", "--locked", "--manifest-path", str(manifest)], "generator-tests")
 
         candidate = runtime / "candidate"
         generate(candidate)

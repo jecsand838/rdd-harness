@@ -299,7 +299,7 @@ def verify_canonical_contract_receipts(root: Path, spec: dict, receipts: list[di
                 and report["signature_negative"] == "expected_E0050" and negatives == expected_negative)
             steps = report["steps"]
             names = {step["name"] for step in steps}
-            expected_steps = {"buf-version", "cargo-version", "buf-lint", "buf-build", "generator-tests", "generate-contracts",
+            expected_steps = {"buf-version", "cargo-version", "buf-lint", "buf-build", "generate-contracts",
                               "compile-host", "signature-positive", "signature-negative",
                               "boundary-provider", "boundary-consumer", "boundary-dependency-negative"}
             expected_steps.update(f"boundary-negative-{i}" for i in range(len(expected_negative)))

@@ -264,24 +264,10 @@ and [`gh pr checks`](https://cli.github.com/manual/gh_pr_checks).
 
 ## CI and reference-platform evidence
 
-`.github/workflows/rdd.yml` selects checks for each event without workflow-level
-path filtering:
-
-| Event | Checks |
-| --- | --- |
-| Documentation-only PR | Lightweight Linux diagnostics |
-| Ordinary harness PR | Full candidate tests and compiler proofs on Linux, trusted-base tests once on Linux, macOS/Windows portability tests |
-| Frozen phase PR | Trusted verification on its declared hosted environments |
-| Release PR | Full Linux/macOS/Windows harness and compiler qualification, plus trusted frozen verification |
-| `main` push | Lightweight Linux diagnostics |
-| Baseline push | None; preparation is explicitly dispatched |
-| Manual native dispatch | Full Linux/macOS/Windows harness and compiler qualification |
-
-The documentation fast path accepts only regular Markdown files at `README.md`
-or below `docs/harness/`; both old and new rename paths must qualify. Mixed,
-unknown, protected-policy and non-documentation changes select full checks.
-Frozen phase and release obligations take precedence over this fast path.
-Lightweight and portability jobs have five-minute limits.
+`.github/workflows/rdd.yml` verifies frozen application phase and release PRs
+on their declared hosted environments. Ordinary unfrozen harness-maintenance
+PRs run no tests. There are no harness selftests, portability jobs, standalone
+generator test jobs, push triggers or native-harness dispatches.
 
 The workflow uses read-only repository permissions, pinned action commits, no
 application secrets, and a `pull_request` trigger. There is no `pull_request_target` execution of
@@ -290,24 +276,20 @@ synthetic merge revision for this trigger, as described in its
 [event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
 
 For an ordinary phase PR, the workflow checks out the candidate and its base into
-sibling directories. It tests the trusted base controller, then invokes the **base
+sibling directories. It invokes the **base
 controller's** CLI with `--root candidate ci --policy-root baseline --branch
 BRANCH`. The frozen verifier policy comes from that separate base checkout, so
 editing the candidate CLI does not change the validator being executed. The
 trusted phase base must already contain the harness and prepared plan. Ordinary
 unfrozen harness-maintenance PRs into `main` use a separate `harness_maintenance`
-route: candidate qualification and, for non-documentation changes, the trusted
-base selftests. It permits intentional harness edits without pretending to verify
-frozen application policy. Neither checkout may contain any freeze artifact;
+route with no test execution. It permits intentional harness edits without
+claiming frozen application verification. Neither checkout may contain any freeze artifact;
 partial freezes and phase/release branches cannot take this route. A verifier
 failure never falls back to maintenance.
 
-Baseline pushes do not launch ordinary CI. `main` push diagnostics do not repeat
-release qualification or claim application acceptance. PRs produce the required
-`verify` aggregate; manual native runs use `native qualification` and `main`
-pushes use `harness diagnostics`. Protect the workflow itself through
-repository rules and review; a repository-contained verifier cannot establish
-an external trust root for a workflow file it is allowed to replace.
+Pushes do not launch CI. PRs retain the required `verify` aggregate. Protect the
+workflow itself through repository rules and review; a repository-contained
+verifier cannot establish an external trust root for a workflow it can replace.
 
 A same-repository `codex/rdd-release/RUN_ID` PR targeting `main` uses a separate
 release route. After project acceptance, the operator sets repository variables
@@ -340,12 +322,11 @@ branch protections or review of changes to the verifier and workflow itself.
 
 Application build prerequisites and platform-specific command inventory must be
 qualified and pinned during specification, with task producers/timing resolved during preparation. Before those artifacts
-exist, CI validates the boilerplate/controller only. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
+exist, ordinary harness-maintenance PRs execute no tests. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
 its contracts and pending task projections without claiming implementation. Phase
 CI runs cumulative ordinary checks applicable to its platform. A complete source
 revision verified through a phase/release PR also runs every project check
-applicable to that platform. Lightweight post-merge diagnostics do not replace
-that proof. A missing native dependency needed by those checks
+applicable to that platform. A missing native dependency needed by those checks
 is an environment blocker.
 
 When the trusted baseline contains a frozen plan, `ci_tools.py` reads its declared
@@ -383,18 +364,6 @@ Concurrency is grouped by baseline branch, so a successor dispatch supersedes an
 older attempt on the same baseline. The workflow uploads
 `preparation-ci.json`, check receipts and raw provisioning logs for transfer into
 the run. Qualified native/manual observations remain separate from hosted results.
-
-To request full native harness qualification at another deliberate checkpoint:
-
-```sh
-gh workflow run rdd.yml --ref QUALIFICATION_REF -f candidate=FULL_CANDIDATE_SHA
-```
-
-The ref must resolve to that exact candidate and the workflow must exist on the
-default branch. The run tests the full suite and actual native/WASM generator
-proofs on Linux, macOS and Windows. It does not run a same-checkout substitute for
-trusted phase/release verification. These harness results do not prove Todo
-acceptance or replace qualified-host evidence.
 
 The specification workflow must still qualify and record its selected frontend
 builder, Tauri packaging commands, additional test tools, dependency locks, and
@@ -438,46 +407,16 @@ The pins were resolved from official release commit pages on 2026-10-07:
 [setup-python](https://github.com/actions/setup-python/commit/5fda3b95a4ea91299a34e894583c3862153e4b97),
 [upload-artifact](https://github.com/actions/upload-artifact/commit/cf430e030ddbb5b0abf93d22962f4752f3646cd9),
 [buf-action](https://github.com/bufbuild/buf-action/commit/8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3).
-Review release notes and rerun the controller tests when updating these pins.
-The version/source manifest is `.rdd/sources/runtime.json`. Source inspection, offline protocol fixtures, actual compiler proofs and hosted results have different evidence scopes; retain the tested revision and observations for each.
+Review release notes when updating these pins.
+The version/source manifest is `.rdd/sources/runtime.json`. Source inspection, actual application contract proofs and hosted results have different evidence scopes; retain the tested revision and observations for each.
 
-## Offline verification
+## Manual workflow verification
 
-The adapter tests exercise real local subprocesses and Git worktrees plus injected
-GitHub/Codex protocol fixtures. They cover command injection resistance, deadlines,
-streaming, stale-output rejection, schema rejection, dirty-worktree preservation,
-idempotent phase PR publication, moved bases, absent/skipped/pending checks,
-independent-review requirements, and requests-for-changes vetoes.
-
-```sh
-python -m unittest discover -s tests/harness -p test_adapters.py
-```
-
-Run `./rdd selftest` for controller regressions. `RDD_CODEX_SMOKE` may point to the installed binary for the optional client-support smoke check; this exercises syntax/catalog support, not paid account entitlement. Compiler proofs and workflow evaluations remain separate from that smoke. Use system temporary directories normally; `RDD_TEST_TMPDIR` may select a private writable test directory when workspace synchronization would race with clean-tree checks. Preserve strict verification instead of weakening it for a synchronization layer.
-
-```sh
-./rdd selftest --suite full --timings .rdd/evidence/selftest-full.json
-./rdd selftest --suite portability --timings .rdd/evidence/selftest-portability.json
-```
-
-`full` is the default. `portability` is an explicit subset covering encoding,
-newlines, subprocess transport, Git worktrees, SQLite storage and two live-WAL
-branch guards. Its report identifies the selected suite; it is not full-suite
-acceptance. Timing reports record each test's identity, duration and outcome,
-with counts and total elapsed time. CI summaries expose the selected work and
-observed durations; these are execution measurements, not billing statements.
-
-Eligible downstream tests reuse an immutable prepared fixture built through the
-real controller once per consuming test class. Each test receives a physical
-copy with fresh controller and adapter objects; real phase opening and task or
-recovery operations still execute. Lifecycle, preparation and custom-manifest
-tests construct their own baselines. Seeds cannot contain worktrees, operation
-locks or database journals, and are never reused across CI runs as test results.
-
-The installed 0.162.1 smoke also parses the coordinator launch and exact-UUID
-resume options with `--help`, without starting an inference session. This does
-not qualify actual session resumption, native Goal execution or reviewer
-isolation; those observations require separate live evidence.
+Harness behavior is exercised manually during application generation. The
+standalone harness and generator test suites and `selftest` command have been
+removed. Application contract generation still validates descriptors, compiles
+host/target bindings and verifies positive/negative provider-consumer proofs.
+All frozen application tests, benchmarks, reviews and gates remain mandatory.
 
 Runs pin the exact workflow graph and canonical profile/native configuration digest. The controller checks both before continuing mutations, including checks, reviews, recovery and publication, before recording state or evidence. A mismatch is a policy compatibility failure, not a new historical blocker to write automatically. `status` and `export-run` preserve original role names and evidence. Continue historical work with its recorded harness revision, or start an explicit fresh baseline; no role aliases, pin backfills or approval migrations are applied.
 

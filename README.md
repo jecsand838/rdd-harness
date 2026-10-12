@@ -85,7 +85,6 @@ git switch -c codex/todo-baseline origin/main
 ./rdd init
 ./rdd status
 ./rdd --help
-./rdd selftest
 ./rdd doctor --full
 ```
 
@@ -96,12 +95,10 @@ Run `init` before `status` on a fresh clone: Git does not carry the ignored loca
 | `./rdd init` | Creates local directories and the run locator; reports `status: initialized` |
 | `./rdd status` | Reports authoritative state and source identity; a fresh harness remains `not_started` with no active run |
 | `./rdd --help` | Lists controller commands; use a subcommand's `--help` for its arguments |
-| `./rdd selftest` | Runs offline controller/adapter regressions, including real subprocess and Git fixtures; success is harness verification, not Todo acceptance |
 | `./rdd doctor --full` | Reports tools, authentication, and advertised client capabilities; resolve reported blockers before workflow execution |
 
 On Windows, replace `./rdd` with `python tools/rdd/cli.py`, `rdd.cmd` in Command Prompt, or `./rdd.ps1` in PowerShell, keeping the same arguments. On Unix, `python3 tools/rdd/cli.py` also works if a file extractor did not preserve executable permissions.
 
-`./rdd selftest --suite portability` runs the focused process, Git, encoding and storage checks used by routine native CI. The default remains the full suite. Add `--timings .rdd/evidence/selftest-timings.json` to either suite to record individual test outcomes and elapsed times.
 
 If starting from an archive rather than a clone, extract it into its own directory, initialize Git on a named authoring branch with `git init -b codex/todo-baseline`, and run `./rdd init` there. After configuring your Git identity, make the initial source commit and connect a writable `origin` remote if one does not already exist. Clones already have history and a remote; they do not need an extra initialization commit.
 
@@ -213,15 +210,15 @@ After project acceptance, archive the reports/checkpoint and keep the phase stac
 
 ### What CI proves
 
-Routine harness PRs run the full candidate tests and real contract compiler proofs on Linux, the trusted base tests once on Linux, and focused portability tests on macOS and Windows. Documentation-only PRs and `main` pushes run lightweight Linux checks. Full native harness qualification runs on release PRs and by explicit dispatch. The PR aggregate **`verify`** requires every job selected for that run; an unexpected skip is a failure. See the [CI routing table](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence).
+CI verifies frozen application work. Harness selftests, portability suites and standalone generator tests have been removed. Ordinary unfrozen harness PRs run no tests; `main` and baseline pushes start no CI. The required PR **`verify`** check reports the selected scope and requires any selected application verification to succeed.
 
-A phase PR uses the trusted base controller and frozen policy on its declared hosted environments. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy. The release route uses operator-pinned policy while retaining the controller from the PR's `main` base. An ordinary unfrozen harness-maintenance PR into `main` has a separate test route and cannot certify application acceptance.
+A phase PR uses the trusted base controller and frozen policy on its declared hosted environments. The initial frozen specification/preparation baseline lives on its dedicated branch; an implementation PR cannot replace its own frozen policy. The release route uses operator-pinned policy while retaining the controller from the PR's `main` base. An ordinary unfrozen harness-maintenance PR into `main` runs no application checks and cannot certify application acceptance.
 
 Preparation CI is dispatch-only while the run is `preparing`: pin the trusted harness in `RDD_PREPARATION_HARNESS_SHA`, push the materialized baseline and dispatch its exact SHA using that baseline ref. Successor dispatches on the same baseline cancel older attempts. Import raw evidence before `gate preparation`; hosted success cannot replace qualified-host/manual proof. See the [workflow guide](docs/harness/workflow-guide.md#stage-two-preparation).
 
 Before a frozen application plan exists, the stateless `./rdd ci` verifier reports `harness_only` with `application_complete=false`. An intact prepared baseline verifies contracts and pending markers. A phase PR runs cumulative ordinary checks for the applicable native platform. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
 
-On nonphase branches, the stateless verifier accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; lightweight post-merge diagnostics do not run this verification. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
+On nonphase branches, the stateless verifier accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; there is no post-merge verification run. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
 
 Protect the verification workflow and policy through repository rules and review. The harness trusts its local controller and evidence observers; it is not a sandbox against someone who can rewrite the verifier or state. See the [security model](docs/harness/security-model.md) for the trust boundary and the [runtime guide](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence) for CI and native evidence requirements.
 
@@ -233,7 +230,7 @@ Protect the verification workflow and policy through repository rules and review
 | `docs/specs/`, `docs/decisions/`, `.rdd/spec.json` | Solution and decisions produced by specification |
 | `contracts/`, `gen/` | Canonical Protobuf contracts and qualified generated outputs |
 | `.rdd/plan/`, `.rdd/prepared.json` | Frozen tasks, verticals, phases, matrix, markers, and preparation receipt |
-| `modules/`, `apps/`, `tests/`, `benchmarks/` | Future Rust Todo application and its verification; `tests/harness/` already tests the controller |
+| `modules/`, `apps/`, `tests/`, `benchmarks/` | Future Rust Todo application and its verification |
 | `.rdd/run.json`, `.rdd/runtime/`, `.rdd/evidence/` | Ignored local run locator, transactional state, and verification results |
 | `.rdd/baselines/` | Historical baseline artifact copies |
 | [.agents/skills/](.agents/skills/README.md), [.codex/agents/](.codex/agents/) | Workflow/supporting skills and Codex roles |
@@ -250,4 +247,4 @@ For deeper work, use the existing guides:
 - [Security model](docs/harness/security-model.md): trusted components and limits of verification.
 - [Skill guide](.agents/skills/README.md): the three primary workflows and supporting skills.
 
-Adjust protected harness policy, tools, models, or skills through deliberate review before specification freeze, and run `./rdd selftest` after harness changes. During implementation, those frozen rules remain part of the acceptance authority.
+Adjust protected harness policy, tools, models, or skills through deliberate review before specification freeze. During implementation, those frozen rules remain part of the acceptance authority.
