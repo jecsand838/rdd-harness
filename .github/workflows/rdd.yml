@@ -163,7 +163,6 @@ jobs:
           --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --github-output "$GITHUB_OUTPUT"
 
   controller:
-    name: controller (${{ matrix.os }})
     needs: selection
     if: needs.selection.outputs.controller == 'true'
     runs-on: ${{ matrix.os }}
