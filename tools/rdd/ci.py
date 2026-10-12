@@ -238,8 +238,8 @@ def verify_preparation(root: Path, policy_root: Path, harness_source: str) -> di
         raise RddError("Preparation candidate changed the independently pinned harness", "policy")
     config = read_json(policy_root / ".rdd/config.json")
     spec, plan = read_json(root / ".rdd/spec.json"), read_json(root / ".rdd/plan/plan.json")
-    if spec.get("schema_version") != 2 or plan.get("schema_version") != 2:
-        raise RddError("Preparation CI requires a fresh v2 baseline", "policy")
+    if spec.get("schema_version") != 3 or plan.get("schema_version") != 3:
+        raise RddError("Preparation CI requires a fresh reviewed v3 baseline; historical freezes remain unchanged", "policy")
     spec_lock = _read_lock(root, ".rdd/spec.lock.json", ".rdd/spec.json")
     plan_lock = _read_lock(root, ".rdd/plan/plan.lock.json", ".rdd/plan/plan.json")
     prepared = _read_prepared(root, spec_lock, plan_lock)
@@ -375,8 +375,8 @@ def verify(root: Path, policy_root: Path | None = None, branch: str | None = Non
         prepared = _read_prepared(root, spec_lock, plan_lock)
         spec = read_json(safe_path(root, ".rdd/spec.json", allow_missing=False))
         plan = read_json(safe_path(root, ".rdd/plan/plan.json", allow_missing=False))
-        if spec.get("schema_version") != 2 or plan.get("schema_version") != 2:
-            raise RddError("Legacy baselines are read/export only; create a fresh reviewed v2 baseline", "policy")
+        if spec.get("schema_version") != 3 or plan.get("schema_version") != 3:
+            raise RddError("Legacy baselines are read/export only; create a fresh reviewed v3 baseline", "policy")
         validate_artifact(root, "spec", spec)
         validate_artifact(root, "plan", plan)
         if (plan["spec_digest"] != spec_lock["digest"]

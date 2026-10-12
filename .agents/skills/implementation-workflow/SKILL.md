@@ -17,6 +17,8 @@ Requirements and frozen specifications are immutable in this workflow. The task/
 
 ## Allocate roles and write ownership
 
+Apply `domain-boundaries` to the packet's frozen inventory and interfaces. Module replacement uses the existing lease and approved implementation paths, with unchanged consumer/provider signatures and explicit per-consumer checks.
+
 Request exact named profiles: `rdd_coordinator`, `rdd_complex_implementor`, `rdd_light_implementor` and `rdd_reviewer`. Large tasks require the complex implementor; small tasks permit either, with light work bounded and unambiguous. Canonical profile TOMLs own instructions, model, effort and permissions. The bounded adapter must apply those instructions too. Use `doctor` for advertised availability; requested settings are not backend attestation or account entitlement. If a required role is unavailable, report the capability blocker without silent substitution.
 
 Delegate a coherent large target to the large implementor. Use the smaller implementor for bounded edits with a clear oracle, such as a narrowly defined documentation or mapping change. Choose by dependency surface and ambiguity, not just line count. Each worker receives the already groomed full primary task packet, all local work sites, allowed write paths, predecessor capabilities, relevant contract/spec slices, expected evidence, category, phase and verticals. Do not ask an implementor to discover missing scope or refine an unfinished plan.

@@ -144,75 +144,139 @@ def validate_producers(root: Path, spec: dict, plan: dict) -> None:
         actual = [(u["resource"], u["consumer_kind"], u["consumer"]) for u in plan["resource_uses"]]
         if len(actual) != len(set(actual)) or set(actual) != expected:
             raise RddError("Resource use timing must exactly cover preparation, RED/completion, cumulative phase and project consumers", "planning")
-    validate_boundary_plan(spec, plan)
+    validate_boundary_plan(spec, plan, root)
 
 
-def validate_boundary_plan(spec: dict, plan: dict) -> None:
-    """Real adapter proofs become due only once their planned producers exist."""
-    modules = {m["id"]: m for m in spec.get("modules", []) if "implementation_checks" in m}
-    if not modules:
-        return
+def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> None:
+    """Schedule each frozen interaction against its actual source owners."""
+    from .artifacts import load_domain_inventory
+    if spec.get("schema_version") != 3 or plan.get("schema_version") != 3:
+        raise RddError("Boundary preparation requires v3 specification and plan artifacts; preserve older baselines without conversion", "specification")
+    inventory = load_domain_inventory(root or Path.cwd(), spec)
+    interactions = unique(inventory["interactions"], "domain interaction")
+    modules = unique(spec["modules"], "module")
     tasks = unique(plan["tasks"], "task")
     phases = {p["id"]: i for i, p in enumerate(plan["phases"])}
-    proofs = {}
     checks = unique(spec["checks"], "check")
     resources = unique(spec["resources"], "resource")
-    operations = {e["id"]: set(e.get("contract_operations", [])) for e in spec["solution_elements"]}
-    for proof in plan["boundary_proofs"]:
-        mid, operation = proof["module"], proof["operation"]
-        if mid not in modules or operation in proofs:
-            raise RddError(f"Unknown or duplicated module operation boundary proof {mid}:{operation}", "planning")
-        proofs[operation] = proof
-        if proof["first_phase"] not in phases:
-            raise RddError(f"Module {mid} boundary proof has no first phase", "planning")
-        expected = {c for group in modules[mid]["implementation_checks"].values() for c in group}
-        if (not set(proof["checks"]) <= expected or any(not set(proof["checks"]) & set(group)
-                for group in modules[mid]["implementation_checks"].values())):
-            raise RddError(f"Module {mid} operation proof must cover every implementation proof role", "planning")
-        due = next(p for p in plan["phases"] if p["id"] == proof["first_phase"])
-        if not set(proof["checks"]) <= set(due["checks"]):
-            raise RddError(f"Module {mid} real adapter checks must run in their first due phase", "planning")
-        module_operations = {op for e in spec["solution_elements"] if e["module"] == mid
-                             for op in e.get("contract_operations", [])}
-        if operation not in module_operations:
-            raise RddError(f"Module {mid} proof references an unowned contract operation", "planning")
-        required_operations = {operation}
-        for role in ("provider_tasks", "consumer_tasks", "adapter_tasks", "verification_tasks"):
+    elements = unique(spec["solution_elements"], "solution element")
+    operations = {eid: set(element.get("contract_operations", [])) for eid, element in elements.items()}
+    bindings = {}
+    expected_calls, expected_types = set(), set()
+    for binding in spec["boundary_bindings"]:
+        iid = binding["interaction"]
+        if iid not in interactions or iid in bindings:
+            raise RddError(f"Unknown or duplicate frozen interaction binding {iid}", "specification")
+        bindings[iid] = binding
+        interaction = interactions[iid]
+        identity = (iid, interaction["consumer"], interaction["provider"])
+        if interaction["kind"] == "call":
+            expected_calls.update((*identity, operation) for operation in binding["operations"])
+        else:
+            expected_types.update((*identity, symbol) for symbol in binding["types"])
+    if set(bindings) != set(interactions):
+        raise RddError("Every domain interaction needs an exact frozen boundary binding", "specification")
+    all_operations = {operation for values in operations.values() for operation in values}
+    if {identity[3] for identity in expected_calls} != all_operations:
+        raise RddError("Every frozen contract operation needs an explicit callable interaction before preparation", "specification")
+
+    module_checks = {mid: {cid for group in module["implementation_checks"].values() for cid in group}
+                     for mid, module in modules.items()}
+    scheduled = {mid: set() for mid in modules}
+    actual_calls, actual_types = set(), set()
+
+    def owned_source(mid, path):
+        return Path(path).suffix == ".rs" and any(
+            path == base or (base.endswith("/") and path.startswith(base)) for base in modules[mid]["owns_paths"])
+
+    def source_inputs(ids):
+        return {resources[rid]["path"] for cid in ids for rid in checks[cid]["requires"]
+                if resources[rid]["kind"] == "repository"}
+
+    def validate_proof(proof, field, expected, actual):
+        identity = (proof["interaction"], proof["consumer"], proof["provider"], proof[field])
+        if identity not in expected or identity in actual:
+            raise RddError(f"Unknown or duplicate {field} interaction boundary proof {identity}", "planning")
+        actual.add(identity)
+        iid, consumer, provider, symbol = identity
+        label = f"Interaction {iid} {consumer}->{provider}:{symbol}"
+        first_phase = proof["first_phase"]
+        if first_phase not in phases:
+            raise RddError(f"{label} has no first phase", "planning")
+        provider_groups = modules[provider]["implementation_checks"]
+        consumer_groups = {role: ids for role, ids in modules[consumer]["implementation_checks"].items()
+                           if role != "provider"}
+        groups = list(provider_groups.values()) + list(consumer_groups.values())
+        expected_checks = {cid for group in groups for cid in group}
+        selected = set(proof["checks"])
+        subset(selected, checks, f"{label} checks")
+        if not selected <= expected_checks or any(group and not selected & set(group) for group in groups):
+            raise RddError(f"{label} must cover every applicable implementation proof role", "planning")
+        due = next(phase for phase in plan["phases"] if phase["id"] == first_phase)
+        if not selected <= set(due["checks"]):
+            raise RddError(f"{label} real boundary checks must run in their first due phase", "planning")
+        scheduled[provider].update(selected & module_checks[provider])
+        scheduled[consumer].update(selected & module_checks[consumer])
+        roles = ("provider_tasks", "consumer_tasks", "adapter_tasks", "verification_tasks") if field == "operation" else (
+            "consumer_tasks", "verification_tasks")
+        if field == "operation":
+            owned_operations = {operation for element in elements.values() if element["module"] == provider
+                                for operation in element.get("contract_operations", [])}
+            if symbol not in owned_operations or symbol not in modules[consumer]["consumed_operations"]:
+                raise RddError(f"{label} contradicts frozen callable provider/consumer ownership", "planning")
+        elif symbol not in modules[provider]["provided_types"] or symbol not in modules[consumer]["consumed_types"]:
+            raise RddError(f"{label} contradicts frozen type provider/consumer ownership", "planning")
+        for role in roles:
             if not proof[role]:
-                raise RddError(f"Module {mid} needs explicit {role}", "planning")
-            subset(proof[role], tasks, f"module {mid} {role}")
+                raise RddError(f"{label} needs explicit {role}", "planning")
+            subset(proof[role], tasks, f"{label} {role}")
             for tid in proof[role]:
-                if phases[tasks[tid]["phase"]] > phases[proof["first_phase"]]:
-                    raise RddError(f"Module {mid} boundary proof precedes its {role} producer {tid}", "planning")
+                task = tasks[tid]
+                if task["phase"] not in phases or phases[task["phase"]] > phases[first_phase]:
+                    raise RddError(f"{label} boundary proof precedes its {role} producer {tid}", "planning")
                 wanted = {"tests"} if role == "verification_tasks" else {"modification", "addition"}
-                if tasks[tid]["category"] not in wanted:
-                    raise RddError(f"Module {mid} {role} must name actual {'test' if role == 'verification_tasks' else 'production'} owners", "planning")
-            covered = {op for tid in proof[role] for eid in tasks[tid]["solution_elements"] for op in operations[eid]}
-            if not required_operations <= covered:
-                raise RddError(f"Module {mid} {role} omits operation ownership: {sorted(required_operations - covered)}", "planning")
-            role_ids = modules[mid]["implementation_checks"].get("provider" if role == "provider_tasks" else "consumer", [])
+                if task["category"] not in wanted:
+                    raise RddError(f"{label} {role} must name actual {'test' if role == 'verification_tasks' else 'production'} owners", "planning")
+                subset(task["solution_elements"], elements, f"{label} task {tid} elements")
+            if field == "operation":
+                covered = {operation for tid in proof[role] for eid in tasks[tid]["solution_elements"]
+                           for operation in operations[eid]}
+                if symbol not in covered:
+                    raise RddError(f"{label} {role} omits operation ownership", "planning")
             if role == "verification_tasks":
-                if any(not set(tasks[tid]["checks"]) & expected for tid in proof[role]):
-                    raise RddError(f"Module {mid} verification task lacks its real boundary checks", "planning")
+                if any(not set(tasks[tid]["checks"]) & selected for tid in proof[role]):
+                    raise RddError(f"{label} verification task lacks its real boundary checks", "planning")
                 continue
-            dependencies = {resources[r]["path"] for c in role_ids for r in checks[c]["requires"]
-                            if resources[r]["kind"] == "repository"}
+            provider_ids = selected & set(provider_groups["provider"])
+            consumer_ids = selected & (set(provider_groups["consumer"]) | set(consumer_groups["consumer"]))
+            role_ids = provider_ids if role == "provider_tasks" else consumer_ids
+            if role == "adapter_tasks":
+                role_ids |= provider_ids
+            dependencies = source_inputs(role_ids)
+            owners = {provider} if role == "provider_tasks" else {consumer}
+            if role == "adapter_tasks":
+                owners.add(provider)
             for tid in proof[role]:
-                owned = set(tasks[tid]["writes"]) & dependencies
-                if role == "provider_tasks":
-                    owned = {p for p in owned if any(p == base or (base.endswith('/') and p.startswith(base))
-                                                    for base in modules[mid]["owns_paths"])}
+                owned = {path for path in set(tasks[tid]["writes"]) & dependencies
+                         if any(owned_source(mid, path) for mid in owners)}
                 if not owned:
-                    raise RddError(f"Module {mid} {role} task {tid} has no real adapter source consumed by its checks", "planning")
-        producer_phase = max(phases[tasks[t]["phase"]] for role in ("provider_tasks", "adapter_tasks") for t in proof[role])
-        if phases[proof["first_phase"]] != producer_phase:
-            raise RddError(f"Operation {operation} proofs cannot be deferred beyond its provider/adapter delivery phase", "planning")
-    all_operations = {op for e in spec["solution_elements"] if e["module"] in modules for op in e.get("contract_operations", [])}
-    if set(proofs) != all_operations:
-        raise RddError("Every contract operation needs scheduled real provider, consumer, adapter and verification proofs", "planning")
-    for mid, module in modules.items():
-        if {c for p in proofs.values() if p["module"] == mid for c in p["checks"]} != {c for group in module["implementation_checks"].values() for c in group}:
-            raise RddError(f"Module {mid} operation proofs omit frozen implementation checks", "planning")
+                    raise RddError(f"{label} {role} task {tid} has no owned Rust boundary source consumed by its checks", "planning")
+        production_roles = roles[:-1]
+        delivery_phase = max(phases[tasks[tid]["phase"]] for role in production_roles for tid in proof[role])
+        if phases[first_phase] != delivery_phase:
+            raise RddError(f"{label} proofs must run in its actual provider/consumer/adapter delivery phase", "planning")
+
+    for proof in plan["boundary_proofs"]:
+        validate_proof(proof, "operation", expected_calls, actual_calls)
+    for proof in plan["type_import_proofs"]:
+        validate_proof(proof, "type", expected_types, actual_types)
+    if actual_calls != expected_calls:
+        raise RddError(f"Every callable consumer/provider/operation interaction needs real boundary proofs; missing={sorted(expected_calls - actual_calls)}", "planning")
+    if actual_types != expected_types:
+        raise RddError(f"Every type import consumer/provider/type interaction needs real source proofs; missing={sorted(expected_types - actual_types)}", "planning")
+    for mid, expected in module_checks.items():
+        if scheduled[mid] != expected:
+            raise RddError(f"Module {mid} interaction proofs omit frozen implementation checks: {sorted(expected - scheduled[mid])}", "planning")
 
 
 def required_probe_ids(spec: dict, plan: dict | None = None) -> list[str]:

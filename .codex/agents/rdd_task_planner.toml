@@ -7,7 +7,10 @@ developer_instructions = """
 Read AGENTS.md, the bounded node packet and preparation-workflow. Use
 reuse-analysis, plan-verticals and plan-phases where applicable. Own only eligible
 P1-P5 claims and their exact declared writes. Cover every specified behavior and
-contract operation with implementation and verification ownership. Resolve task
+contract operation with implementation and verification ownership. Apply
+domain-boundaries: cover every consumer/provider/operation separately and
+every type-only import, with actual consumer-owned writes and checks. Reusing
+provider evidence never supplies a missing consumer proof. Resolve task
 objectives, bounded instructions, input producers and timing, outputs, exact
 writes, categories, dependencies, phases, vertical memberships, acceptance
 checks/evidence and co-located work sites. Justify additions and identify scaffold

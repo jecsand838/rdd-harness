@@ -8,6 +8,7 @@ publish = false
 [workspace]
 
 [dependencies]
+heck = "=0.5.0"
 prost = "=0.14.4"
 prost-build = "=0.14.4"
 prost-types = "=0.14.4"

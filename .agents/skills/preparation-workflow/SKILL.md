@@ -13,6 +13,8 @@ Follow P0–P8 with `workflow nodes`, `workflow next`, bounded claims and record
 
 ## Preserve the solution boundary
 
+Apply `domain-boundaries` to the frozen S1 inventory and S6 bindings. Plan real implementation and verification for each consumer/provider/operation and each type-only import; provider evidence may be shared, consumer coverage may not. A module replacement stays within its leased implementation paths and preserves frozen exports and contracts.
+
 Treat requirements, frozen specification, accepted decisions, and canonical contracts as immutable inputs. A missing behavioral decision, incompatible contract, unqualified dependency, or contradictory requirement after specification freeze is a critical harness regression originating in specification. Record the detection stage, affected IDs, exact candidate and evidence immediately; stop affected execution and require a preventive-control repair and regression before a new trial. Do not turn an unresolved architecture question into an implementation task.
 
 Inspect the existing codebase before planning. For regenerate, plan explicit replacement or removal; do not destroy an existing application merely because active specs were regenerated. For amendment, include the complete change impact closure and preserve unrelated behavior.

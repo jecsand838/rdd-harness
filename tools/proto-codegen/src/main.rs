@@ -1,6 +1,7 @@
 //! Generate Rust messages and local unary service traits from a descriptor set.
 //! No application implementation or network transport is generated.
 
+use heck::ToUpperCamelCase;
 use prost::Message;
 use prost_build::{Config, Module, Service, ServiceGenerator};
 use prost_types::FileDescriptorSet;
@@ -149,6 +150,62 @@ fn rust_type(package: &str, resolved: &str) -> String {
     format!("rdd_contracts::{prefix}{suffix}")
 }
 
+fn type_record(prefix: &str, name: &str, source: &str, binding: &str, kind: &str) -> Value {
+    // Match the pinned Prost identifier rules. Module handles keyword escaping
+    // and nested-message namespaces; Heck is Prost's own pinned case converter.
+    let mut ident = name.to_upper_camel_case();
+    if ident == "Self" {
+        ident.push('_');
+    }
+    let namespace = Module::from_protobuf_package_name(prefix).to_string();
+    let rust_type = if namespace.is_empty() {
+        format!("rdd_contracts::{ident}")
+    } else {
+        format!("rdd_contracts::{namespace}::{ident}")
+    };
+    json!({"symbol": format!("{prefix}.{name}").trim_start_matches('.'),
+        "descriptor_source": source, "generated_path": binding, "kind": kind, "rust_type": rust_type})
+}
+
+fn type_index(
+    prefix: &str,
+    messages: &[prost_types::DescriptorProto],
+    enums: &[prost_types::EnumDescriptorProto],
+    source: &str,
+    binding: &str,
+    result: &mut Vec<Value>,
+) {
+    for message in messages {
+        // Protobuf map entries are descriptors, not generated standalone types.
+        if message
+            .options
+            .as_ref()
+            .is_some_and(|options| options.map_entry.unwrap_or(false))
+        {
+            continue;
+        }
+        let name = message.name.as_deref().unwrap_or_default();
+        result.push(type_record(prefix, name, source, binding, "message"));
+        type_index(
+            &format!("{prefix}.{name}"),
+            &message.nested_type,
+            &message.enum_type,
+            source,
+            binding,
+            result,
+        );
+    }
+    for enumeration in enums {
+        result.push(type_record(
+            prefix,
+            enumeration.name.as_deref().unwrap_or_default(),
+            source,
+            binding,
+            "enum",
+        ));
+    }
+}
+
 fn write_index(
     fds: &FileDescriptorSet,
     resolved: &BTreeMap<String, Service>,
@@ -163,6 +220,7 @@ fn write_index(
         );
     }
     let mut services = Vec::new();
+    let mut types = Vec::new();
     let mut bindings = BTreeSet::new();
     let mut binding_sources: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut sources = BTreeSet::new();
@@ -179,6 +237,19 @@ fn write_index(
             .is_file()
         {
             bindings.insert(binding.clone());
+            let first_type = types.len();
+            type_index(
+                package,
+                &file.message_type,
+                &file.enum_type,
+                &source,
+                &binding,
+                &mut types,
+            );
+            for record in &mut types[first_type..] {
+                // A nested message's namespace is not its Protobuf package.
+                record["package"] = json!(package);
+            }
             binding_sources
                 .entry(binding.clone())
                 .or_default()
@@ -206,8 +277,9 @@ fn write_index(
         }
     }
     services.sort_by(|left, right| left["symbol"].as_str().cmp(&right["symbol"].as_str()));
+    types.sort_by(|left, right| left["symbol"].as_str().cmp(&right["symbol"].as_str()));
     let index = json!({"schema_version": 1, "descriptor_sources": sources, "binding_files": bindings, "binding_sources": binding_sources,
-        "services": services, "support_files": ["gen/rust/Cargo.toml", "gen/rust/src/lib.rs", "gen/rust/.rdd-generated.json"]});
+        "services": services, "types": types, "support_files": ["gen/rust/Cargo.toml", "gen/rust/src/lib.rs", "gen/rust/.rdd-generated.json"]});
     let mut bytes = serde_json::to_vec_pretty(&index)?;
     bytes.push(b'\n');
     fs::write(destination.join(".rdd-generated.json"), bytes)?;

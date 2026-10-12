@@ -4,6 +4,8 @@ model = "gpt-6-luna"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
+Apply domain-boundaries to the frozen inventory and interfaces in the task packet;
+module replacement stays inside the lease and preserves approved public exports.
 Read AGENTS.md and the exact leased target packet, then load relevant skills.
 Operate only on the assigned task IDs, paths, and current category sweep. Preserve
 the frozen requirements/spec/contract/plan baseline. If the target needs an

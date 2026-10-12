@@ -19,6 +19,7 @@ COMMENTS = {".rs": ("// ", ""), ".py": ("# ", ""), ".sh": ("# ", ""),
             ".md": ("<!-- ", " -->"), ".js": ("// ", ""), ".ts": ("// ", ""),
             ".tsx": ("// ", ""), ".css": ("/* ", " */"), ".html": ("<!-- ", " -->")}
 INLINE_FORMATS = {".rs", ".py", ".md"}
+DOMAIN_INVENTORY_PATH = "docs/specs/domain-inventory.json"
 
 
 def requirements(root: Path, rel: str) -> dict:
@@ -94,12 +95,213 @@ def specification_refs(references, documents, label):
             raise RddError(f"{label}: specification reference is not in document inventory: {ref}")
 
 
+def domain_inventory_validate(root: Path, reqs: dict, value: dict | None = None) -> dict:
+    """Validate S1's authority before contracts or the final solution exist."""
+    value = read_json(safe_path(root, DOMAIN_INVENTORY_PATH, allow_missing=False)) if value is None else value
+    validate_artifact(root, "domain-inventory", value)
+    if value["requirements_digest"] != reqs["digest"]:
+        raise RddError("Domain inventory targets different requirements bytes", "specification")
+    domains = unique(value["domains"], "domain")
+    supporting = unique(value["supporting_modules"], "supporting owner")
+    if set(domains) & set(supporting):
+        raise RddError("Domain and supporting owner identities overlap", "specification")
+    owners = list(domains.values()) + list(supporting.values())
+    modules, identities, allocations = {}, {}, {}
+    req_ids = set(reqs["records"])
+    for owner in owners:
+        mid = owner["module"]
+        if mid in modules:
+            raise RddError(f"Duplicate domain/supporting module owner {mid}", "specification")
+        modules[mid] = owner
+        subset(owner["requirements"], req_ids, f"Inventory owner {owner['id']}")
+        if owner["id"] in domains:
+            if any(not rid.startswith("FR-") for rid in owner["requirements"]):
+                raise RddError(f"Domain {owner['id']} allocations must be functional requirements", "specification")
+            for rid in owner["requirements"]:
+                allocations.setdefault(rid, []).append(owner["id"])
+        for identity in [owner["id"], *owner["behaviors"], *owner.get("invariants", [])]:
+            if identity in identities:
+                raise RddError(f"Duplicate inventory behavior/invariant/owner identity {identity}", "specification")
+            identities[identity] = mid
+    functional = {rid for rid in req_ids if rid.startswith("FR-")}
+    if set(allocations) != functional:
+        raise RddError(f"Domain inventory functional ownership mismatch; missing={sorted(functional-set(allocations))}", "specification")
+    interactions = unique(value["interactions"], "interaction")
+    directions = set()
+    for interaction in interactions.values():
+        iid, consumer, provider = interaction["id"], interaction["consumer"], interaction["provider"]
+        if iid in identities or consumer not in modules or provider not in modules or consumer == provider:
+            raise RddError(f"Interaction {iid} has an unresolved/duplicate identity or owner", "specification")
+        direction = (consumer, provider, interaction["kind"])
+        if direction in directions:
+            raise RddError(f"Duplicate directed interaction {consumer} -> {provider} ({interaction['kind']})", "specification")
+        directions.add(direction)
+        subset(interaction["requirements"], req_ids, f"Interaction {iid}")
+        if not set(interaction["requirements"]) <= set(modules[consumer]["requirements"]) | set(modules[provider]["requirements"]):
+            raise RddError(f"Interaction {iid} exceeds its consumer/provider requirement scope", "specification")
+        if interaction["kind"] == "call":
+            if not interaction["behaviors"]:
+                raise RddError(f"Callable interaction {iid} requires provider behavior identities", "specification")
+            subset(interaction["behaviors"], modules[provider]["behaviors"], f"Interaction {iid} provider behaviors")
+        elif interaction["behaviors"]:
+            raise RddError(f"Type-only interaction {iid} cannot introduce callable behavior", "specification")
+    topological({mid: sorted({i["provider"] for i in interactions.values() if i["consumer"] == mid}) for mid in modules})
+    return value
+
+
+def load_domain_inventory(root: Path, spec: dict) -> dict:
+    """Load the exact S1 document frozen by a v3 specification."""
+    reference = spec.get("domain_inventory", {})
+    if reference.get("path") != DOMAIN_INVENTORY_PATH:
+        raise RddError("Specification requires the canonical S1 domain inventory", "specification")
+    if file_hash(safe_path(root, DOMAIN_INVENTORY_PATH, allow_missing=False)) != reference.get("sha256"):
+        raise RddError("Accepted S1 domain inventory bytes changed", "specification")
+    reqs = {"digest": spec["requirements_digest"], "records": {row["requirement"]: row for row in spec["requirement_map"]}}
+    return domain_inventory_validate(root, reqs)
+
+
+def validate_accepted_domain_inventory(root: Path, spec: dict, records: dict) -> None:
+    """Bind S6 to controller-accepted S1 provenance, never worker prose."""
+    load_domain_inventory(root, spec)
+    row = records.get("S1", {})
+    reference = spec["domain_inventory"]
+    if (row.get("status") != "complete" or row.get("outputs", {}).get(DOMAIN_INVENTORY_PATH) != reference["sha256"]
+            or row.get("output_digest") != reference["s1_output_digest"]
+            or digest(row.get("outputs", {})) != reference["s1_output_digest"]):
+        raise RddError("Specification does not bind the exact accepted S1 artifact handoff", "specification")
+
+
+def domain_solution_validate(root, spec, modules, elements):
+    value = load_domain_inventory(root, spec)
+    domains = unique(value["domains"], "domain")
+    supporting = unique(value["supporting_modules"], "supporting owner")
+    owners = {owner["module"]: owner for owner in [*domains.values(), *supporting.values()]}
+    if set(owners) != set(modules):
+        raise RddError("S6 module inventory differs from accepted S1 owners", "specification")
+    expected = {}
+    for mid, owner in owners.items():
+        domain = owner["id"] in domains
+        allocated = set(modules[mid]["requirements"])
+        accepted_allocation = {rid for rid in allocated if rid.startswith("FR-")} if domain else allocated
+        if accepted_allocation != set(owner["requirements"]):
+            raise RddError(f"Module {mid} changed accepted S1 requirement allocations", "specification")
+        if domain:
+            expected[owner["id"]] = (mid, "subdomain")
+        else:
+            expected[owner["id"]] = (mid, "enabling")
+        for eid in owner["behaviors"]:
+            expected[eid] = (mid, "behavior")
+        for eid in owner.get("invariants", []):
+            expected[eid] = (mid, "invariant")
+    for eid, (mid, kind) in expected.items():
+        element = elements.get(eid)
+        allowed = {"operation", "enabling"} if kind == "behavior" else {kind}
+        if element is None or element["module"] != mid or element["kind"] not in allowed:
+            raise RddError(f"Accepted S1 identity {eid} was dropped, merged or reassigned", "specification")
+        owner = owners[mid]
+        if owner["id"] in domains and not set(element["requirements"]) <= set(owner["requirements"]):
+            raise RddError(f"Accepted S1 identity {eid} exceeds its domain allocation", "specification")
+        if kind == "subdomain" and set(element["requirements"]) != set(owner["requirements"]):
+            raise RddError(f"Domain {eid} changed its accepted S1 functional scope", "specification")
+    for element in elements.values():
+        if element["module"] is not None and element["id"] not in expected:
+            raise RddError(f"Solution identity {element['id']} lacks accepted S1 ownership", "specification")
+        if element["kind"] in {"subdomain", "invariant"} and element["module"] in owners:
+            if owners[element["module"]]["id"] not in domains:
+                raise RddError(f"Business invariant/domain {element['id']} cannot reside in a supporting owner", "specification")
+    return value
+
+
 def boundary_check_ids(spec: dict, stage: str) -> list[str]:
     """Keep disposable qualification separate from real-adapter acceptance."""
     if stage not in {"qualification", "implementation"}:
         raise RddError(f"Unknown boundary proof stage {stage}")
     return sorted({cid for module in spec["modules"]
                    for ids in module[f"{stage}_checks"].values() for cid in ids})
+
+
+def boundary_bindings_validate(root, spec, modules, elements, services, operations, types, service_owners, type_owners, docs):
+    value = load_domain_inventory(root, spec)
+    interactions = unique(value["interactions"], "interaction")
+    bindings = {}
+    for binding in spec["boundary_bindings"]:
+        iid = binding["interaction"]
+        if iid in bindings or iid not in interactions:
+            raise RddError(f"Unknown/duplicate accepted interaction binding {iid}", "specification")
+        bindings[iid] = binding
+    if set(bindings) != set(interactions):
+        raise RddError("Every accepted S1 interaction requires its exact contract binding", "specification")
+    expected_dependencies = {mid: set() for mid in modules}
+    expected_calls, expected_types = {mid: set() for mid in modules}, {mid: set() for mid in modules}
+    bound_operations = set()
+    for iid, interaction in interactions.items():
+        consumer, provider = interaction["consumer"], interaction["provider"]
+        if consumer not in modules or provider not in modules:
+            raise RddError(f"Interaction {iid} refers to an absent S6 module", "specification")
+        expected_dependencies[consumer].add(provider)
+        binding = bindings[iid]
+        if interaction["kind"] == "call":
+            if not binding["operations"] or binding["types"]:
+                raise RddError(f"Callable interaction {iid} requires operations, without a type-only binding", "specification")
+            subset(binding["operations"], operations, f"Interaction {iid} operations")
+            behavior_operations = set()
+            for eid in interaction["behaviors"]:
+                element = elements.get(eid)
+                if not element or element["kind"] != "operation" or element["module"] != provider:
+                    raise RddError(f"Interaction {iid} callable behavior {eid} disagrees with its provider", "specification")
+                behavior_operations.update(element["contract_operations"])
+            if set(binding["operations"]) != behavior_operations:
+                raise RddError(f"Interaction {iid} operation mapping differs from its accepted behaviors", "specification")
+            for oid in binding["operations"]:
+                if service_owners[operations[oid][0]] != provider:
+                    raise RddError(f"Interaction {iid} has a wrong operation provider for {oid}", "specification")
+            expected_calls[consumer].update(binding["operations"])
+            bound_operations.update(binding["operations"])
+        else:
+            if not binding["types"] or binding["operations"]:
+                raise RddError(f"Type-only interaction {iid} requires generated types, without invented operations", "specification")
+            subset(binding["types"], types, f"Interaction {iid} generated types")
+            if any(type_owners[symbol] != provider for symbol in binding["types"]):
+                raise RddError(f"Interaction {iid} generated type provider disagrees with its owner", "specification")
+            expected_types[consumer].update(binding["types"])
+    if bound_operations != set(operations):
+        raise RddError(f"Generated operations lack accepted consumer interactions: {sorted(set(operations)-bound_operations)}", "specification")
+    exported = set()
+    domain_modules = {domain["module"] for domain in value["domains"]}
+    domain_packages = {}
+    for mid, module in modules.items():
+        if set(module["depends_on"]) != expected_dependencies[mid]:
+            raise RddError(f"Module {mid} dependency inventory differs from accepted call/type interactions", "specification")
+        if set(module["consumed_operations"]) != expected_calls[mid] or set(module["consumed_types"]) != expected_types[mid]:
+            raise RddError(f"Module {mid} consumed boundary inventory differs from accepted interactions", "specification")
+        provided = bool(module["provided_services"] or module["provided_types"])
+        package = module["contract_package"]
+        if (provided and package is None) or (not provided and package is not None):
+            raise RddError(f"Module {mid} contract_package must identify exactly its provided boundary", "specification")
+        if mid in domain_modules:
+            if not provided:
+                raise RddError(f"Domain module {mid} requires a provided service or generated type boundary", "specification")
+            if package in domain_packages:
+                raise RddError(f"Distinct domains {mid}/{domain_packages[package]} share a Protobuf package", "specification")
+            domain_packages[package] = mid
+        if any(symbol.rsplit(".", 1)[0] != package for symbol in module["provided_services"]):
+            raise RddError(f"Module {mid} provided services disagree with its contract package", "specification")
+        if any(types[symbol]["package"] != package for symbol in module["provided_types"]):
+            raise RddError(f"Module {mid} provided types disagree with its contract package", "specification")
+        for entry in module["public_exports"]:
+            symbol, path, kind, binding = entry["symbol"], entry["path"], entry["kind"], entry["binding"]
+            if symbol in exported:
+                raise RddError(f"Duplicate public Rust export {symbol}", "specification")
+            exported.add(symbol)
+            safe_path(root, path)
+            if path.startswith(("contracts/", "gen/")) or not any(path == rel.rstrip("/") or path.startswith(rel.rstrip("/") + "/") for rel in module["owns_paths"]):
+                raise RddError(f"Public export {symbol} is outside module {mid} implementation ownership", "specification")
+            specification_refs(entry["specifications"], docs, f"Public export {symbol}")
+            allowed = (set(module["provided_services"]) if kind == "service" else
+                       set(module["provided_types"]) if kind == "type" else
+                       {oid for oid, (service, _) in operations.items() if service_owners[service] == mid} if kind == "operation" else {None})
+            if binding not in allowed:
+                raise RddError(f"Public export {symbol} has an unowned or incompatible descriptor binding", "specification")
 
 
 def module_contracts_validate(root, spec, modules, elements, checks, docs):
@@ -147,6 +349,8 @@ def module_contracts_validate(root, spec, modules, elements, checks, docs):
                 or service["source"] not in sources or not isinstance(service.get("generated_path"), str) or service["generated_path"] not in bindings):
             raise RddError("Descriptor index contains an invalid/duplicate service source or generated binding")
         services[symbol] = service
+        if spec.get("schema_version") == 3 and service["source"] not in binding_sources[service["generated_path"]]:
+            raise RddError("Generated service source disagrees with binding provenance")
         for operation in service.get("operations", []):
             if not isinstance(operation, dict):
                 raise RddError("Descriptor operation inventory must contain objects")
@@ -158,31 +362,68 @@ def module_contracts_validate(root, spec, modules, elements, checks, docs):
                     or any(not isinstance(field, str) for field in o["fields"]) or len(o["fields"]) != len(set(o["fields"])) for o in oneofs):
                 raise RddError("Descriptor response outcome inventory is malformed")
             operations[oid] = (symbol, operation)
+    types = {}
+    if spec.get("schema_version") == 3:
+        if not isinstance(index.get("types"), list):
+            raise RddError("V3 boundaries require the descriptor-derived generated type catalog")
+        for entry in index["types"]:
+            if (not isinstance(entry, dict) or not isinstance(entry.get("symbol"), str) or not entry["symbol"]
+                    or entry["symbol"] in types or not isinstance(entry.get("kind"), str) or entry["kind"] not in {"message", "enum"}
+                    or not isinstance(entry.get("package"), str) or not entry["package"]
+                    or not entry["symbol"].startswith(entry["package"] + ".")
+                    or not isinstance(entry.get("source"), str) or entry["source"] not in sources
+                    or not isinstance(entry.get("generated_path"), str) or entry["generated_path"] not in bindings
+                    or not isinstance(entry.get("descriptor_source"), str) or not entry["descriptor_source"]
+                    or not isinstance(entry.get("rust_type"), str) or not entry["rust_type"].startswith("rdd_contracts::")):
+                raise RddError("Descriptor generated type catalog contains an invalid/duplicate symbol or provenance")
+            if entry["source"] not in binding_sources[entry["generated_path"]]:
+                raise RddError("Generated type source disagrees with binding provenance")
+            types[entry["symbol"]] = entry
     if shared_paths & {service["generated_path"] for service in services.values()}:
         raise RddError("Public service bindings require module ownership rather than shared support")
-    service_owners, generated = {}, set()
+    service_owners, type_owners, generated = {}, {}, set()
     qualification, implementation = set(), set()
     for module in modules.values():
         mid = module["id"]
         subset(module["provided_services"], services, f"Module {mid} provided services")
         subset(module["consumed_operations"], operations, f"Module {mid} consumed operations")
         subset(module["generated_paths"], bindings, f"Module {mid} generated bindings")
+        if spec.get("schema_version") == 3:
+            subset(module["provided_types"], types, f"Module {mid} provided types")
+            subset(module["consumed_types"], types, f"Module {mid} consumed types")
+            for symbol in module["provided_types"]:
+                if symbol in type_owners:
+                    raise RddError(f"Generated type {symbol} has duplicate module providers")
+                type_owners[symbol] = mid
         specification_refs(module["adapter_error_specs"], docs, f"Module {mid} adapter errors")
         for symbol in module["provided_services"]:
             if symbol in service_owners:
                 raise RddError(f"Service {symbol} has duplicate module providers")
             service_owners[symbol] = mid
         touched = set(module["provided_services"]) | {operations[o][0] for o in module["consumed_operations"]}
-        if not touched:
+        touched_types = set(module.get("provided_types", [])) | set(module.get("consumed_types", []))
+        if not touched and not touched_types and spec.get("schema_version") != 3:
             raise RddError(f"Module {mid} has no provided or consumed contract boundary")
         expected_paths = {path for path, paths in binding_sources.items() if set(paths) & set(module["contract_paths"])} - shared_paths
         if expected_paths != set(module["generated_paths"]):
             raise RddError(f"Module {mid} generated binding ownership differs from its descriptor sources")
         if any(services[s]["source"] not in module["contract_paths"] for s in touched):
             raise RddError(f"Module {mid} boundary source is absent from its contract_paths")
+        if any(types[s]["source"] not in module["contract_paths"] for s in touched_types):
+            raise RddError(f"Module {mid} type boundary source is absent from its contract_paths")
+        if spec.get("schema_version") == 3:
+            boundary_sources = {services[s]["source"] for s in touched} | {types[s]["source"] for s in touched_types}
+            if set(module["contract_paths"]) != boundary_sources:
+                raise RddError(f"Module {mid} contract_paths contain unrepresented boundary sources")
         generated.update(module["generated_paths"])
         for stage, group_ids in (("qualification", qualification), ("implementation", implementation)):
             for group, ids in module[f"{stage}_checks"].items():
+                if spec.get("schema_version") == 3:
+                    required = (bool(module["provided_services"]) if group == "provider" else
+                                bool(module["consumed_operations"] or module["consumed_types"]) if group == "consumer" else
+                                bool(touched) if group == "negative_signature" else bool(touched or touched_types))
+                    if bool(ids) != required:
+                        raise RddError(f"Module {mid} {stage} {group} proofs must match its actual boundary role")
                 subset(ids, checks, f"Module {mid} {stage} {group}")
                 group_ids.update(ids)
                 if stage == "qualification" and any(checks[c]["kind"] != "contract" for c in ids):
@@ -191,6 +432,8 @@ def module_contracts_validate(root, spec, modules, elements, checks, docs):
                     raise RddError(f"Module {mid} actual provider/consumer proofs must be executable")
     if set(service_owners) != set(services):
         raise RddError(f"Public generated services lack exact module ownership: {sorted(set(services) - set(service_owners))}")
+    if spec.get("schema_version") == 3 and set(type_owners) != set(types):
+        raise RddError(f"Generated public types lack exact module ownership: {sorted(set(types)-set(type_owners))}")
     if generated & shared_paths or generated | (shared_paths & bindings) != bindings:
         raise RddError("Generated binding files lack module ownership")
     if not qualification <= set(spec["contract_check_ids"]):
@@ -216,6 +459,8 @@ def module_contracts_validate(root, spec, modules, elements, checks, docs):
             represented.add(oid)
     if represented != set(operations):
         raise RddError(f"Generated public operations lack solution mappings: {sorted(set(operations) - represented)}")
+    if spec.get("schema_version") == 3:
+        boundary_bindings_validate(root, spec, modules, elements, services, operations, types, service_owners, type_owners, docs)
 
 
 def target_tree(root: Path, spec: dict) -> dict:
@@ -241,6 +486,10 @@ def target_tree(root: Path, spec: dict) -> dict:
 
 def solution_validate(root, spec, req_ids, modules, scenarios, checks, docs):
     elements = unique(spec["solution_elements"], "solution element")
+    domain_modules = None
+    if spec.get("schema_version") == 3:
+        accepted = domain_solution_validate(root, spec, modules, elements)
+        domain_modules = {domain["module"] for domain in accepted["domains"]}
     for element in elements.values():
         eid = element["id"]
         if element["kind"] == "operation" and not element.get("contract_operations"):
@@ -293,24 +542,30 @@ def solution_validate(root, spec, req_ids, modules, scenarios, checks, docs):
     claims = []
     for module in modules.values():
         mid = module["id"]
-        if not any(element["module"] == mid and element["kind"] == "subdomain"
+        if (domain_modules is None or mid in domain_modules) and not any(element["module"] == mid and element["kind"] == "subdomain"
                    and any(rid.startswith("FR-") for rid in element["requirements"]) for element in elements.values()):
             raise RddError(f"Module {mid} requires a functional subdomain derived from functional requirements")
         covered = {rid for element in elements.values() if element["module"] == mid and element["kind"] == "subdomain"
                    for rid in element["requirements"] if rid.startswith("FR-")}
         missing = {rid for rid in module["requirements"] if rid.startswith("FR-")} - covered
-        if missing:
+        if missing and (domain_modules is None or mid in domain_modules):
             raise RddError(f"Module {mid} functional subdomains omit requirements {sorted(missing)}")
         if not any(element["module"] == mid for element in elements.values()):
             raise RddError(f"Module {mid} has no represented solution element")
         for rel in module["owns_paths"]:
             key = rel.rstrip("/")
+            if spec.get("schema_version") == 3 and any(key == p or p.startswith(key + "/") for p in spec["contract_files"] + spec["generated_files"]):
+                raise RddError(f"Module {mid} implementation ownership overlaps frozen/generated contract paths: {rel}")
             if key not in paths:
                 raise RddError(f"Module {mid} ownership is absent from frozen target tree: {rel}")
             entry = paths[key]
             if elements[entry["owner"]]["module"] != mid:
                 raise RddError(f"Module {mid} disagrees with target owner for {rel}")
             claims.append((key, entry["kind"], mid))
+        for entry in module.get("public_exports", []):
+            path = entry["path"]
+            if path not in paths or paths[path]["kind"] != "file" or elements[paths[path]["owner"]]["module"] != mid:
+                raise RddError(f"Public export {entry['symbol']} has no module-owned frozen source file")
     for index, (path, kind, owner) in enumerate(claims):
         for other, other_kind, other_owner in claims[index+1:]:
             if owner != other_owner and (path == other or (kind == "directory" and other.startswith(path + "/"))
@@ -334,6 +589,8 @@ def spec_validate(root: Path, spec: dict, reqs: dict, config: dict) -> dict:
     checks = unique(spec["checks"], "check")
     req_ids = set(reqs["records"])
     docs = spec["documents"] + spec["decisions"]
+    if spec.get("schema_version") == 3 and DOMAIN_INVENTORY_PATH not in spec["documents"]:
+        raise RddError("Accepted S1 domain inventory must be frozen in specification documents", "specification")
     if len(set(docs)) != len(docs):
         raise RddError("Specification document inventories overlap or contain duplicates")
     for rel in spec["documents"]:
@@ -409,7 +666,7 @@ def spec_validate(root: Path, spec: dict, reqs: dict, config: dict) -> dict:
         if set(row["scenarios"]) != {s["id"] for s in scenarios.values() if rid in s["requirements"]}:
             raise RddError(f"{rid}: reverse scenario coverage mismatch")
     result = {"requirements": len(req_ids), "modules": len(modules), "scenarios": len(scenarios), "checks": len(checks), "words": words}
-    if spec["schema_version"] == 2:
+    if spec["schema_version"] in {2, 3}:
         result["solution_elements"] = len(solution_validate(root, spec, req_ids, modules, scenarios, checks, docs))
     return result
 
@@ -570,12 +827,10 @@ def plan_validate(root: Path, plan: dict, spec: dict, lock: dict, config: dict) 
     unowned_shells = set(shells) - declared_writes
     if unowned_shells:
         raise RddError("Every shell needs an implementation task; unowned shells: " + ", ".join(sorted(unowned_shells)))
-    if plan["schema_version"] == 2 and spec.get("schema_version") != 2:
-        raise RddError("A v2 plan requires a v2 frozen specification; create a fresh reviewed baseline", "specification")
-    approved = target_tree(root, spec) if plan["schema_version"] == 2 else None
+    if plan["schema_version"] in {2, 3} and spec.get("schema_version") != plan["schema_version"]:
+        raise RddError("Plan and frozen specification versions differ; create a fresh reviewed baseline", "specification")
+    approved = target_tree(root, spec) if plan["schema_version"] in {2, 3} else None
     if approved is not None:
-        if spec["schema_version"] != 2:
-            raise RddError("A v2 plan requires a v2 frozen specification")
         for rel in target:
             if rel.rstrip("/") not in approved:
                 raise RddError(f"Preparation path is absent from frozen target tree: {rel}", "specification")
@@ -907,7 +1162,7 @@ def materialize(root: Path, plan: dict, state: dict, *, create_shells: bool = Tr
     for shell in (plan["shells"] if create_shells else []):
         path = safe_path(root, shell["path"])
         if not path.exists():
-            if plan.get("schema_version") == 2 and Path(shell["path"]).suffix not in COMMENTS:
+            if plan.get("schema_version") in {2, 3} and Path(shell["path"]).suffix not in COMMENTS:
                 raise RddError(f"Noncommentable target {shell['path']} must remain absent; use only an adjacent sidecar")
             updates[shell["path"]] = shell["content"]
             created.append(shell["path"])
