@@ -599,10 +599,16 @@ def spec_validate(root: Path, spec: dict, reqs: dict, config: dict) -> dict:
     for rel in spec["decisions"]:
         if not rel.startswith("docs/decisions/"):
             raise RddError(f"Decision documents belong under docs/decisions/: {rel}")
+    from .refinement import SNAPSHOT_PATH, validate_snapshot
+    if spec.get("schema_version") == 3:
+        if SNAPSHOT_PATH not in spec["documents"]:
+            raise RddError("Specification must inventory its refinement snapshot", "specification")
+        validate_snapshot(root, read_json(safe_path(root, SNAPSHOT_PATH, allow_missing=False)), reqs, spec)
     words = 0
     for rel in docs:
         p = safe_path(root, rel, allow_missing=False)
-        words += len(p.read_text(encoding="utf-8").split())
+        text = p.read_text(encoding="utf-8")
+        words += len(re.findall(r"\w+|[^\w\s]", text)) if rel == SNAPSHOT_PATH else len(text.split())
         if p.stat().st_size == 0:
             raise RddError(f"Empty specification artifact {rel}")
     if words > config["limits"]["max_spec_words"]:

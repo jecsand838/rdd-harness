@@ -9,6 +9,7 @@ The schemas in `.rdd/schemas/` and the controller's semantic validators define m
 | `requirements/requirements.md` | Canonical supplied product requirements; change only under the user's requirements direction |
 | `docs/specs/` | Selected solution, scenarios/protocol detail, operations and boundary semantics; freeze in specification |
 | `docs/decisions/` | Resolved architectural choices and source evidence; freeze in specification |
+| `docs/specs/refinement.json` | Controller-materialized refinement closure snapshot listed in specification `documents` |
 | `contracts/` | Exact canonical Protobuf source; immutable downstream |
 | `gen/` | Exact generated boundary artifacts; reproduce rather than hand-edit |
 | `apps/`, `modules/` | Navigational application roots; the complete target layout is drafted and frozen in specification |
@@ -65,6 +66,33 @@ Benchmark metrics include `name`, `statistic`, `limit`, `comparison`, `minimum_s
 The module array contains the enforceable dependency/path map. Each functional subdomain has a distinct owner module; supporting modules remain explicit and cannot own business invariants. Modules declare `contract_package`, `provided_services`, `consumed_operations`, `provided_types`, `consumed_types`, `generated_paths`, `public_exports`, `adapter_error_specs`, `qualification_checks` and `implementation_checks`. Each public export records `symbol`, owned source `path`, `kind`, descriptor `binding` (null for construction/wiring), and normative `specifications`. Domain contract packages are separate within the shared generated crate. Start with private implementations inside shared crates; dependency or independent-build isolation must justify a separate implementation crate. Qualification groups cover disposable provider/consumer, negative signature, dependency direction and compatibility proofs; implementation groups cover real provider/consumer, dependency direction, compatibility and semantics. Detailed atomicity, error/retry behavior and adapter mappings live in linked frozen sections. Private implementation submodules do not need artificial standalone contracts.
 
 Operation solution elements link through `contract_operations` to fully qualified methods. The generated `contract_index` inside `gen/rust/.rdd-generated.json` derives services, methods, message/enum types, source imports, Rust symbols and binding paths from descriptors and Prost names. It is generated evidence, never a second handwritten schema. Shared support/message files have explicit purposes. Reject unexplained operations, unowned bindings and inconsistent consumer/dependency links. Every FR and positive operation has golden coverage; every golden scenario references an FR. Schema/link completeness still requires independent semantic review.
+
+## Refinement records
+
+The coordinator follows [rdd-spec-grill](../../.agents/skills/rdd-spec-grill/SKILL.md) for the conversation. `./rdd spec refine FILE` consumes a version 1 JSON envelope with `schema_version`, `operation`, `session_id` and `record`. This extends the existing run state and audit trail; specification and plan formats remain version 3. Use the controller for updates rather than editing runtime state or the snapshot.
+
+| Operation | Record |
+|---|---|
+| `question` | `id`, `revision`, `previous_revision`, `issue`, `material: true`; optional `sources`, `requirements`, `nodes`, `status` (`open`, `resolved`, `deferred`), `options` (`id`, `text`), `recommended_option` (displayed option ID or null), `disposition`, `decision` (`id`, `revision`) and `finding` |
+| `decision` | `id`, `revision`, `previous_revision`, `statement`, `provenance`; optional `sources`, `requirements`, `nodes` and `prerequisites` (decision `id`, `revision`) |
+| `publish` | `decision` (`id`, `revision`), publication `revision`, `previous_revision`, canonical `path`, exact `text` and `scenarios` |
+
+First revisions use `previous_revision: null`; later revisions name the previous revision. Retain accepted history rather than overwriting it. Publication revisions form one sequence per decision ID and retain the file hash observed at publication. The unique exact canonical statement remains current when another section changes; the candidate inventory separately binds complete file bytes. Resolve an answered question through its next revision referencing the accepted decision. Scope uses existing requirement and workflow-node IDs; unmapped material concerns remain blocking. `sources` use repository `path` and `sha256`; an optional unique `text` excerpt binds the digest of that UTF-8 excerpt instead of the entire file. Use excerpt bindings when an author also writes elsewhere in the governing file, so its unchanged input stays valid.
+
+Decision provenance records one actual authority source:
+
+| `kind` | Required evidence |
+|---|---|
+| `choice` | `question`, question `revision`, `option`, `turn`, actual reply `text`, `qualifications` |
+| `direct` | Actual `turn`, direction `text`, `qualifications` |
+| `inherited` | Governing `path`, `sha256` of the unique excerpt, and exact `text` |
+| `delegated` | `authority` source reference, authorized `scope`, and `rationale` |
+
+The controller checks structural references and freshness. It cannot authenticate actor labels or establish semantic equivalence between different prose; the coordinator preserves the actual meaning and semantic review checks it. A bare ambiguous answer remains unresolved. Qualifiers must appear in the operative statement; publication requires that exact statement in the canonical file and linked scenarios covering its requirements. A matching active artifact-owner claim must authorize the publishing session and path.
+
+`status.refinement` exposes unresolved questions, unpublished and stale decisions, and closure identity separately from readiness. Accepted-but-unpublished decisions survive restart but cannot close clarification. A question that references a reviewer finding uses that finding's resolution from the existing review stream.
+
+The S6 owner prelists `docs/specs/refinement.json` in `documents` and its write claim, then invokes `./rdd spec snapshot --session-id ID`. A changed material closure makes the completed S6 snapshot stale even when its scoped decision inputs are unchanged. Reclaim S6 through `workflow next` and `workflow claim`, retaining every prior S6 output path, including recorded deletions; regenerate and record the snapshot, then renew S7 qualification and both final review perspectives. Normal ownership, review, lease and attempt limits still apply. Materialization validates current inputs before writing its output atomically. The versioned snapshot binds accepted decisions/publications, governing question sources, requirements, policy and current closure state; it contains no transcript or separate approval. Candidate, validation, readiness and freeze compare it with current durable state. Mutating CLI commands share the existing operation lock so refinement and freeze cannot interleave. Snapshot/review/freeze bookkeeping is excluded from what the snapshot certifies, avoiding circular identity. Late material concerns require current closure and renewed affected evidence; post-freeze changes use a new amendment run.
 
 ## S1 domain inventory
 

@@ -15,6 +15,7 @@ from . import artifacts
 from .stages import StageWorkflow
 from .reviews import ReviewStream
 from .nodes import WorkflowNodes, NODES
+from .refinement import RefinementWorkflow, new_state as refinement_state, validate_state as validate_refinement, POLICY as REFINEMENT_POLICY
 from .profiles import IMPLEMENTOR_SCOPES, load_profiles, profile_policy_digest, profile_settings
 from .readiness import validate_resources, validate_producers, required_probe_ids
 from .adapters import CodexAdapter, GitAdapter, GitHubAdapter, RddAdapterError, validate_native_permission
@@ -72,7 +73,7 @@ def task_boundary_context(root: Path, spec: dict, plan: dict, task: dict) -> dic
                              for binding in spec["boundary_bindings"] if binding["interaction"] in interactions]}
 
 
-class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
+class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow):
     def __init__(self, root: Path):
         self.root = root.resolve()
         self.config = read_json(self.root / ".rdd/config.json")
@@ -111,7 +112,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if state.get("workflow_version") != 2:
             raise RddError("Legacy runs are read/export only. Preserve history and start a fresh isolated baseline using the current specification schema.", "environment")
         if (state.get("workflow_version") != 2 or state.get("workflow_graph_digest") != digest(NODES)
-                or state.get("agent_profile_digest") != profile_policy_digest(self.root)):
+                or state.get("agent_profile_digest") != profile_policy_digest(self.root)
+                or not isinstance(state.get("refinement"), dict)
+                or state["refinement"].get("policy") != REFINEMENT_POLICY):
             raise RddError("This run belongs to an earlier workflow/profile policy. Inspect/export it, recover with its recorded source revision and matching harness, or start a fresh reviewed run.", "environment")
 
     def guard_source_write(self, state: dict | None = None, *, baseline: bool = False) -> str:
@@ -151,6 +154,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         if not locator.get("run_id"):
             raise RddError("No active run. Start with ./rdd start --mode regenerate.")
         state = Store.read(self.root, locator["run_id"])
+        if state.get("workflow_graph_digest") == digest(NODES):
+            validate_refinement(self.root, state, self.config)
         if not allow_blocked and any(not b["resolved"] for b in state["blockers"]):
             raise RddError("Run is blocked. Read ./rdd status; resolve environment/review issues with resume, or start a new specification run for authority/closure changes.", "environment")
         return state
@@ -311,7 +316,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             for task in read_json(previous_plan)["tasks"]:
                 artifacts.remove_anchor(self.root, task)
         state = {"workflow_version": 2, "workflow_graph_digest": digest(NODES), "agent_profile_digest": profiles_digest,
-                 "workflow_nodes": {}, "id": run_id, "mode": mode, "status": "specification", "created_at": now(),
+                 "workflow_nodes": {}, "refinement": refinement_state(), "id": run_id, "mode": mode, "status": "specification", "created_at": now(),
                  "base_commit": head(self.root), "base_branch": baseline_branch,
                  "parent_spec_digest": old_lock["digest"] if old_lock else None,
                  "requirements_digest": reqs["digest"], "changed_requirements": changed,
@@ -340,7 +345,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 "domain_inventory": {"path": "docs/specs/domain-inventory.json", "sha256": "", "s1_output_digest": ""},
                 "boundary_bindings": [], "contract_index_path": "gen/rust/.rdd-generated.json", "shared_generated_files": [], "solution_elements": [], "target_tree": [], "resources": [], "environments": [], "id": state["id"], "requirements_digest": state["requirements_digest"],
                 "mode": state["mode"], "parent_spec_digest": state["parent_spec_digest"], "change_summary": "",
-                "documents": [], "decisions": [], "contract_files": [], "generated_files": [],
+                "documents": ["docs/specs/refinement.json"], "decisions": [], "contract_files": [], "generated_files": [],
                 "contract_check_ids": ["C-CONTRACTS"], "project_check_ids": [], "modules": [], "scenarios": [],
                 "checks": [{"id": "C-CONTRACTS", "kind": "contract", "argv": ["{python}", "tools/rdd/proto_traits.py"],
                             "cwd": ".", "timeout_seconds": 1800, "platforms": ["any"], "red_pattern": None,
@@ -358,6 +363,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
             raise RddError("Specification mode/parent does not match active run", "specification")
         if reqs["digest"] != state["requirements_digest"]:
             raise RddError("Requirements changed after run start; start a new specification run", "specification")
+        self.guard_run_policy(state)
+        self.require_refinement(state)
         result = artifacts.spec_validate(self.root, spec, reqs, self.config)
         artifacts.validate_accepted_domain_inventory(self.root, spec, self._node_records(state))
         validate_resources(self.root, spec)
@@ -395,6 +402,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
         """Identity of a complete draft for native qualification before freezing."""
         state, spec = self.state(), self.spec()
         paths = set(spec["documents"] + spec["decisions"] + spec["contract_files"] + spec["generated_files"])
+        refinement = self.require_refinement(state)["snapshot"]
+        paths.update(s["path"] for s in refinement["question_sources"])
+        paths.update(s["path"] for d in refinement["decisions"] for s in d["sources"])
         paths.update({self.config["requirements"], ".rdd/spec.json", ".rdd/requirements.index.json"})
         paths.update(p for p in inventory(self.root) if p.startswith(("contracts/", "gen/", ".rdd/sources/")))
         qualification = set(spec["contract_check_ids"] + required_probe_ids(spec))
@@ -503,6 +513,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 "blockers": [b for b in state["blockers"] if not b["resolved"]],
                 "spec_digest": state.get("spec_digest"), "plan_digest": state.get("plan_digest"),
                 "workflow_nodes": self.workflow_nodes(), "review_cursor": len(state.get("live_reviews", [])),
+                "refinement": self.refinement_status(state) if state.get("workflow_graph_digest") == digest(NODES) else {"historical": True},
                 "last_events": state["events"][-8:]}
 
     def active(self, state: dict) -> str:
@@ -1245,6 +1256,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
     def export_run(self, path: Path) -> dict:
         self.guard_export(path)
         state = self.state(allow_blocked=True)
+        if state.get("workflow_graph_digest") == digest(NODES):
+            validate_refinement(self.root, state, self.config)
         evidence = {}
         for receipt in state["checks"].values():
             log = safe_path(self.root, receipt["log_path"], allow_missing=False)
@@ -1307,6 +1320,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                 atomic_write(safe_path(self.root, rel), content.encode())
             self.save(state)
         state = self.state(allow_blocked=True)
+        validate_refinement(self.root, state, self.config)
+        self.validate_workflow_checkpoint(state)
         permanent = [b for b in state["blockers"] if not b["resolved"] and b["kind"] not in {"environment", "review"}]
         if permanent:
             raise RddError("This run has authority, phase-closure, or budget blockers. Preserve the evidence and start the specification workflow for a new amendment/regenerate run.", permanent[0]["kind"])
@@ -1349,6 +1364,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes):
                     "requirements_digest", "policy_inventory", "active_phase"}
         if not isinstance(state, dict) or not required <= state.keys():
             raise RddError("Checkpoint run record is incomplete")
+        validate_refinement(self.root, state, self.config)
+        if state.get("spec_digest"):
+            self.require_refinement(state)
         self.validate_stage_checkpoint(state, checkpoint)
         self.validate_review_stream(state)
         self.validate_workflow_checkpoint(state)
