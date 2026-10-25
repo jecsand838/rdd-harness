@@ -121,7 +121,7 @@ After project acceptance, archive the reports/checkpoint and keep the phase stac
 
 ### What CI proves
 
-Ordinary unfrozen harness-maintenance PRs run the [focused refinement suite](docs/harness/codex-runtime.md#harness-verification). Frozen phase and release PRs use trusted policy; preparation uses explicit dispatch. The required `verify` job requires every selected job to succeed. See [CI and reference-platform evidence](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence) for route selection, policy pins and platform obligations.
+Ordinary unfrozen harness-maintenance PRs run the [harness regression suite](docs/harness/codex-runtime.md#harness-verification). Frozen phase and release PRs use trusted policy; preparation uses explicit dispatch. The required `verify` job requires every selected job to succeed. See [CI and reference-platform evidence](docs/harness/codex-runtime.md#ci-and-reference-platform-evidence) for route selection, policy pins and platform obligations.
 
 Harness tests and stateless CI do not establish application acceptance; `application_complete` remains false. The [security model](docs/harness/security-model.md) explains the controller's local trust boundary.
 

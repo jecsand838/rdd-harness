@@ -1,101 +1,45 @@
 # Codex runtime, external adapters, and CI
 
-This guide describes the harness runtime. Current measured client observations
-and their primary sources are recorded in `.rdd/sources/runtime.json`; run
-`./rdd doctor` to inspect the installed environment.
+This guide owns native runtime, adapter and CI policy. Use the [workflow guide](workflow-guide.md) for lifecycle commands and the [evidence guide](evidence-guide.md) for receipts and review. Measured client observations and primary sources live in [runtime.json](../../.rdd/sources/runtime.json). Run `./rdd doctor` against the installed environment.
 
 ## Runtime contract
 
-The normal execution surface is an interactive local Codex session opened in the
-repository. Repository skills perform specification, preparation, and
-implementation in sequence. The Python controller supplies validation, durable
-state, task ownership, evidence, and PR lifecycle operations. Model reasoning is
-responsible for producing and reviewing artifacts; the controller decides whether
-the evidence permits a transition.
-
-The primary thread normally coordinates directly; `rdd_coordinator` is also an explicit role. Native delegation selects the exact `agent_type` with `fork_turns="none"` and a bounded packet, keeping child context limited to its assignment. Let the registered profile supply model and effort without overrides. Reload changed profiles in a fresh Codex session. The canonical roster is:
+The primary thread coordinates the three workflows; the deterministic controller validates transitions, state, evidence and PR operations. Native delegation selects the exact `agent_type` with `fork_turns="none"` and a bounded packet. Let the registered profile supply model/effort; reload changed profiles in a fresh session. The coordinator cannot replace a required specialist.
 
 | Profile | Model / effort | Responsibility |
 |---|---|---|
 | `rdd_coordinator` | `gpt-6-astra` / `ultra` | Intake, transitions, integration and acceptance execution |
-| `rdd_domain_analyst` | `gpt-6.1-sol` / `xhigh` | S1: subdomains, behaviors, invariants and ownership |
-| `rdd_verification_designer` | `gpt-6.1-sol` / `xhigh` | S2–S4: constraints, independent oracles, scenarios and benchmarks |
-| `rdd_qualification_engineer` | `gpt-6.1-sol` / `xhigh` | S5: disposable dependency, compiler, provisioning, host and transfer experiments |
-| `rdd_contract_architect` | `gpt-6-astra` / `ultra` | Early boundary advice; S6 architecture, target tree, contracts and bindings |
-| `rdd_task_planner` | `gpt-6.1-sol` / `xhigh` | P1–P5: groomed tasks, producer DAG, verticals, phases and sites |
-| `rdd_complex_implementor` | `gpt-6.1-sol` / `xhigh` | Small or large leased implementation tasks |
-| `rdd_light_implementor` | `gpt-6-luna` / `xhigh` | Small, unambiguous leased implementation tasks |
-| `rdd_researcher` | `gpt-6.1-sol` / `xhigh` | Read-only evidence gathering and advice |
-| `rdd_reviewer` | `gpt-6.1-sol` / `xhigh` | Read-only live review and independent final perspectives |
+| `rdd_domain_analyst` | `gpt-6.1-sol` / `xhigh` | S1 domain inventory |
+| `rdd_verification_designer` | `gpt-6.1-sol` / `xhigh` | S2–S4 goals, scenarios and benchmarks |
+| `rdd_qualification_engineer` | `gpt-6.1-sol` / `xhigh` | S5 dependency, compiler, host and transfer experiments |
+| `rdd_contract_architect` | `gpt-6-astra` / `ultra` | Early advice; S6 architecture, target tree and contracts |
+| `rdd_task_planner` | `gpt-6.1-sol` / `xhigh` | P1–P5 tasks, DAG, verticals, phases and sites |
+| `rdd_complex_implementor` | `gpt-6.1-sol` / `xhigh` | Small or large leased tasks |
+| `rdd_light_implementor` | `gpt-6-luna` / `xhigh` | Small, unambiguous leased tasks |
+| `rdd_researcher` | `gpt-6.1-sol` / `xhigh` | Read-only evidence gathering |
+| `rdd_reviewer` | `gpt-6.1-sol` / `xhigh` | Read-only live and final review |
 
-Three child slots permit two authors and a continuous reviewer; the primary coordinator is outside that child limit. A second final reviewer uses a released author slot. More profiles do not increase concurrency. Use bounded node/task packets and disjoint write ownership.
+Canonical `.codex/agents/` TOMLs own role instructions, model, effort and sandbox. The loader checks them against native defaults in `.codex/config.toml`. Three child slots accommodate two authors and a continuous reviewer; a second final reviewer uses a released author slot. Unrelated custom profiles gain no claim authority. Procedures belong in skills.
 
-Canonical `.codex/agents/` TOMLs are the single authority for each role's instructions, model, effort and sandbox. The shared loader validates names, paths, required settings and read-only research/review permissions. `.codex/config.toml` retains native defaults checked against the coordinator and default complex implementor, plus the three-slot limit. Unrelated custom profiles receive no controller claim authority. Procedures stay in the existing skills.
-
-Profile sandbox settings describe requested configuration. Native children inherit
-the parent's current sandbox and approval policy; Codex reapplies live runtime
-overrides even when a custom profile requests a different default. A read-only
-profile therefore does not establish isolated reviewer permissions. Inspect the
-effective runtime permissions before delegation and keep the reviewer's work
-read-only. See the [subagent permission rules](https://learn.chatgpt.com/docs/agent-configuration/subagents#approvals-and-sandbox-controls).
-
-Request the exact named `agent_type` during native delegation and verify discovery in a fresh session after profile changes. An already running session may retain the previous roster. Do not treat the CLI's `--profile` option as custom-agent selection. Consult [custom-subagent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents) and the [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) when changing the installed client.
+Profile settings are requested configuration, not effective permission or backend attestation. Native children inherit live parent sandbox/approval overrides; inspect actual permissions and keep reviewers read-only. `--profile` is not custom-agent selection. Consult the [custom-agent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents) and [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference) when changing the client.
 
 ### Capability checks
 
-`CodexAdapter.doctor()` checks executable/version, native launch/resume flags,
-bounded exec flags, bundled-catalog support, login and every distinct configured
-model/effort pair, with affected roles in its output. Catalog availability is
-advertised client support; it does not prove account entitlement or sandbox
-isolation. `account_access_verified` remains false until supported actual evidence
-exists. A model-access error blocks the role; the harness never silently
-substitutes a model or effort.
+`CodexAdapter.doctor()` checks executable/version, launch/resume and bounded-exec flags, login, catalog support and every configured model/effort pair. Advertised support does not prove account entitlement; `account_access_verified` remains false without actual supporting evidence. Missing access blocks the role without substitution. The measured reference client is 0.162.1; the first client supporting Goals is not necessarily sufficient for the current roster. Install/authenticate through official instructions and honor local project trust.
 
-`requested_runtime` records the role, profile identity/hash, model, effort and sandbox requested by the controller. Keep these declarations distinct from observed session events, exit status and captured results. The JSONL stream supplies actual thread/turn events, not authenticated backend-model or effort attestation. A submitted `verified: true` or remembered session label cannot establish those observations.
-
-Install or update Codex using its official installation instructions, authenticate
-locally, then run the repository doctor. A current client compatible with the
-configuration above is required. The measured reference client is 0.162.1; the older
-minimum version that introduced Goals does not establish support for all current
-role/configuration features. Follow normal local project-trust prompts rather
-than bypassing them.
+`requested_runtime` records role/profile identity, model, effort and sandbox. JSONL thread/turn events, process exits and results are separate observations. A role label, `verified: true`, or remembered session ID cannot attest an unobserved backend.
 
 ## Native Goal execution
 
-`CodexAdapter.native_argv(prompt, session_id=None, *, permission=None)` supplies the launcher's
-canonical coordinator model, effort, sandbox and developer instructions. It
-encodes configuration as TOML and passes the prompt as one positional argument
-after `--`. By default it leaves approval policy to the runtime and does not create a second
-workflow loop or session ledger.
+`CodexAdapter.native_argv` applies canonical coordinator settings and encoded TOML configuration, passing the prompt as one argument after `--`. It leaves approval policy to the runtime unless explicitly overridden. It creates no second workflow loop or session ledger.
 
-1. Complete `$specification-workflow` and `$preparation-workflow` in sequence, including both independent review perspectives and `gate preparation` for the exact committed handoff.
-2. Run `./rdd goal` to print `.rdd/goals/implementation.txt`.
-3. Open Codex in the repository, or use `./rdd workflow implementation`.
-4. Set the native Goal by entering `/goal ` followed by the printed objective.
-5. Inspect progress with the controller and Codex subagent views. Resume an
-   interrupted Goal with the native `/goal resume` command after checking state.
+After specification and preparation acceptance, run `./rdd goal`, open `./rdd workflow implementation`, and submit `/goal ` followed by the printed objective. The objective is under 4,000 characters; detailed procedure stays in the workflow skill. A launcher exit or Goal stop does not establish controller acceptance.
 
-To reopen the recorded native session, use `codex resume SESSION_UUID --cd
-REPOSITORY`, then inspect the Goal before continuing it. The argv builder accepts
-only a canonical UUID for explicit resume, reapplies the coordinator settings and
-never selects `--last`. The [CLI reference](https://learn.chatgpt.com/docs/cli/reference#codex-resume)
-documents this native command. `./rdd resume` recovers controller state; it does
-not select a native session. Keep the actual session identity for recovery.
-
-The [runtime source record](../../.rdd/sources/runtime.json) retains measured native launch/resume observations and their limits. Those observations do not establish Goal execution, native reviewer isolation or application acceptance.
-
-The file is a distribution convenience. The goal text itself is under 4,000
-characters and is pasted as the native objective. The workflow skill contains
-the detailed procedure and reads the canonical plan and state as needed. Do not
-inline every requirement, specification, skill or task into the goal. The
-[official Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex)
-describes the lifecycle and completion-evidence model. A budget stop or pause is
-not success. Missing benchmarks, model access, unresolved specs, and unavailable
-PR evidence must remain visible blockers.
+Resume the exact native session with `codex resume SESSION_UUID --cd REPOSITORY`, inspect its Goal, then use `/goal resume` when appropriate. Explicit resume requires a canonical UUID, reapplies coordinator settings and never selects `--last`. `./rdd resume` recovers controller state; it does not select a native session. Measured launch/resume observations in the source record do not prove Goal execution, isolated reviewer permissions or application acceptance. See the [CLI resume reference](https://learn.chatgpt.com/docs/cli/reference#codex-resume) and [Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex).
 
 ### Workflow permissions
 
-Each interactive launcher accepts `--permission full-access`:
+Each interactive launcher accepts a per-session `--permission full-access`:
 
 ```sh
 ./rdd workflow specification --mode regenerate --permission full-access
@@ -103,30 +47,15 @@ Each interactive launcher accepts `--permission full-access`:
 ./rdd workflow implementation --permission full-access
 ```
 
-Use the option on each session that needs full access. It replaces the launcher's
-sandbox argument with `--sandbox danger-full-access` and adds
-`--ask-for-approval never`. Model, effort and coordinator instructions still come
-from the canonical profile. The launch packet's `requested_runtime` reports the
-effective requested sandbox and approval override; its profile identity still
-identifies the unchanged source profile. These are requested settings, not runtime
-attestation. Omission preserves the existing launch behavior and does not remember
-a previous invocation's override.
+The option selects `--sandbox danger-full-access --ask-for-approval never`; it does not change the canonical model/effort or profile identity. `requested_runtime` records the requested override. Omission retains normal launch behavior; no previous override is remembered. Controller ownership, frozen inputs and acceptance rules still apply.
 
-Inspect the argv without starting Codex or an RDD run:
+Inspect launch arguments without starting a run by omitting `--mode`:
 
 ```sh
 ./rdd workflow specification --permission full-access --print
 ```
 
-Leave out `--mode` for this inspection: an explicit mode can start a run even with
-`--print`. The option applies only to the three interactive workflow stages;
-graph commands such as `workflow claim` reject it. `./rdd goal` only prints the
-objective, so Goal mode uses the permissions of the implementation session in
-which you submit `/goal`. Controller branch restrictions, frozen artifacts,
-reviewer responsibilities and acceptance gates still apply.
-
-When reopening a recorded full-access session directly, select its exact UUID
-and request the same settings explicitly:
+An explicit mode may start a run even with `--print`. Graph commands reject this permission option. `./rdd goal` only prints; Goal execution uses the implementation session's permissions. To reopen a full-access session directly, explicitly select its UUID and settings:
 
 ```sh
 codex resume SESSION_UUID --cd REPOSITORY --sandbox danger-full-access --ask-for-approval never
@@ -134,131 +63,48 @@ codex resume SESSION_UUID --cd REPOSITORY --sandbox danger-full-access --ask-for
 
 ## Bounded worker adapter
 
-`CodexAdapter.exec()` is an optional one-turn adapter for automation. It is not an
-emulation of native Goals. It resolves a canonical role, loads its developer instructions and builds an argv list equivalent to:
+`CodexAdapter.exec()` is an optional one-turn adapter, not Goal emulation. It loads a canonical profile, encodes supported settings as TOML, supplies the prompt on stdin, and invokes `codex -a never exec` with JSON events, explicit cwd, output schema and result path. It never interpolates prompts, filenames, model IDs or PR text through a shell. Its `-a never` prevents headless approval prompts while retaining the profile sandbox; unavailable permission fails.
 
-```text
-codex -a never exec --json --color never --model MODEL
-  --config model_reasoning_effort="EFFORT"
-  --config developer_instructions="ENCODED_PROFILE_INSTRUCTIONS" --sandbox SANDBOX
-  --cd REPOSITORY --output-schema SCHEMA --output-last-message ANSWER -
-```
+Each attempt creates an ignored runtime directory containing the prompt, schema snapshot, `events.jsonl`, `stderr.log`, `answer.json` and receipt. A deadline terminates the process group. Success requires a completed event, observed session identity, no error event, zero exit and schema-valid output. The controller still validates meaning, provenance and baseline; valid JSON is not implementation evidence. See [noninteractive mode](https://learn.chatgpt.com/docs/non-interactive-mode).
 
-The adapter applies the profile’s supported model, effort, sandbox and `developer_instructions` settings; supplying only a model is insufficient. Configuration values are encoded as TOML values, not interpolated shell fragments. The prompt is supplied on stdin. The adapter keeps sandbox enforcement enabled;
-an action that needs unavailable permission fails instead of prompting from a
-headless subprocess. It never uses a shell to interpolate prompts, file names,
-model IDs or PR text.
-
-The existing bounded-exec `-a never` restriction suppresses fresh approval
-prompts for that one-turn subprocess while retaining its profile sandbox. The
-native interactive launcher sets an approval override only when explicitly
-invoked with `--permission full-access`, which also disables its sandbox. Profile
-requests alone are not evidence of a child's effective permissions.
-
-Every attempt uses a new directory below `.rdd/runtime/`. It contains the prompt,
-schema snapshot, streaming `events.jsonl`, `stderr.log`, final `answer.json`, and a
-`receipt.json` with requested profile settings, observed session ID and outcome. A deadline terminates the process
-group. The result requires a completed event, session identity, no error event,
-a zero process exit, and schema-valid output. The controller must still validate
-the artifact's meaning, provenance and baseline: valid JSON is not implementation
-evidence. See [Codex noninteractive mode](https://learn.chatgpt.com/docs/non-interactive-mode).
-
-Use a fresh bounded context packet when a target or baseline changes. Keep raw
-logs out of version control; they may contain repository contents. Copy only
-reviewed, relevant evidence summaries into the run's validation artifacts. On
-resume, recover the run and inspect its current source digest before continuing.
-A remembered session ID cannot override the repository baseline. Claims and reports remain declarations unless the runtime exposes corresponding evidence; the controller is not a session-authentication service.
+Use fresh bounded context when the target/baseline changes. Raw logs can contain repository content; retain them outside version control and copy only reviewed relevant summaries into authority artifacts. Resume from current controller/source state, not remembered session labels.
 
 ### Python adapter interface
 
-All adapters use only the Python standard library. They accept an injected
-`runner(argv, cwd=..., timeout=..., **kwargs)` returning `CommandResult` for offline
-testing. `RddAdapterError.code` distinguishes capability, malformed-evidence,
-timeout, revision-mismatch and safety failures.
+Adapters use the standard library and accept an injected `runner(argv, cwd=..., timeout=..., **kwargs)` returning `CommandResult`. `RddAdapterError.code` distinguishes capability, malformed evidence, timeout, revision and safety failures. Workflows use public controller commands to retain locking and lease checks.
 
-The controller normally wraps these operations with a run transaction and task
-lease. Invoke its public commands during a workflow. Worktree reuse is allowed
-only for the exact repository and branch with a clean working tree and the
-expected base ancestry. Existing user files or dirty worktrees are preserved and
-reported for deliberate recovery. No automatic reset, clean, force branch
-replacement or force push is implemented.
+Reuse worktrees only for the exact repository/branch with clean state and expected base ancestry. Preserve dirty work/user files for deliberate recovery. The adapters implement no automatic reset, clean, force branch replacement or force push.
 
 ## Stacked PR policy
 
-The phase branch name is `rdd/RUN_ID/pNN`. Specification and preparation use a
-dedicated `codex/*-baseline` branch; `main` is merge-only. Phase 1 targets that
-recorded base branch;
-each later phase targets its predecessor's branch. The body includes a stable
-run/phase marker. `publish_phase_pr()` checks all PR states for this exact head
-branch before creation and verifies the resulting head/base afterward. Repeating
-publication updates the branch without creating another PR. A previously closed
-or merged phase PR blocks publication of a replacement. The controller serializes
-publication through its run lock.
+Phase branches are `rdd/RUN_ID/pNN`. P01 targets the recorded `codex/*-baseline`; later PRs target the preceding sealed branch. Publication reconciles all PR states for the exact head using a stable run/phase marker, verifies head/base, and reuses the same PR. A closed/merged PR or missing/moved remote base blocks replacement. The run lock serializes publication.
 
-PR descriptions are written to a real file and passed to `gh pr create` using
-`--body-file`. The adapter never sends messages, requests reviewers, merges, closes
-PRs, force-pushes, or restacks sealed phases. A changed or missing remote base
-blocks publication. These rules follow the chosen `ready` completion policy: the
-deliverable is a validated open stack. After project acceptance, the operator
-publishes a separate release branch at the accepted final commit and merges one
-release PR into `main`, preserving the stack and its accepted revisions.
+Descriptions use a real `--body-file`. The adapter does not send messages, request reviewers, merge/close PRs, force-push or restack seals. The supported completion policy is `ready`: accepted open PRs, with a separate operator-authorized release after project acceptance.
 
-`phase_status()` reads both PR metadata and required checks, then rereads the PR
-revision to detect movement during collection. It verifies the expected complete
-head SHA, recorded base SHA and branch, optionally the phase branch name, open
-non-draft state, confirmed mergeability, every configured check, every reported
-server-required check, and independent review evidence. Skipped, pending, absent,
-unknown, truncated, or unreadable check results cannot produce readiness.
+`phase_status()` reads PR metadata/checks and rereads revision to detect movement. It requires exact head/base SHA and branch, open non-draft state, confirmed mergeability, every configured and server-required check, and independent review. Pending, skipped, absent, unknown, truncated or unreadable results cannot establish readiness. GitHub change requests veto a local pass; optional GitHub approval must bind the exact head.
 
-The configured required-check list must be nonempty. The supplied workflow exposes
-the aggregate check **`verify`**. Configure GitHub branch rules to require this
-check for `main`, the prepared baseline, and each exact sealed phase branch before
-it becomes a successor's base. Do not protect active or future phase branches
-with a wildcard rule that prevents their publication or repair. See the
-[preparation handoff](workflow-guide.md#stage-two-preparation)
-and [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
-If `gh pr checks --required` cannot establish the server-required checks, inspect
-the repository rules and CLI response; do not waive the controller check.
-
-The controller validates [independent review evidence](evidence-guide.md#independent-phase-review)
-at the exact candidate head. GitHub requests for
-changes veto a local pass. `require_github_approval=True` additionally requires an
-approval attached to the exact head. This supports teams without making a solo
-repository owner self-approve a PR. See [`gh pr view`](https://cli.github.com/manual/gh_pr_view)
-and [`gh pr checks`](https://cli.github.com/manual/gh_pr_checks).
+Require the nonempty aggregate **`verify`** check on `main`, the prepared baseline, and each exact sealed predecessor before a successor uses it. Do not wildcard-protect active/future phase branches so they cannot publish or repair. If `gh pr checks --required` cannot establish server rules, inspect configuration instead of waiving validation. See [branch protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [`gh pr view`](https://cli.github.com/manual/gh_pr_view), and [`gh pr checks`](https://cli.github.com/manual/gh_pr_checks).
 
 ## CI and reference-platform evidence
 
-`.github/workflows/rdd.yml` verifies frozen application phase and release PRs on their declared hosted environments.
-Ordinary unfrozen harness-maintenance PRs use the [focused refinement suite](#harness-verification).
+`.github/workflows/rdd.yml` selects one verification route. All routes retain read-only permissions, pinned actions and explicit PR-head checkout, with no application secrets or privileged `pull_request_target` execution. Pushes do not launch CI. Protect the workflow through independent repository rules/review; an editable verifier cannot establish its own external trust root.
 
-The workflow uses read-only repository permissions, pinned action commits, no
-application secrets, and a `pull_request` trigger. There is no `pull_request_target` execution of
-candidate code. A PR's head is checked explicitly; GitHub otherwise defaults to a
-synthetic merge revision for this trigger, as described in its
-[event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
+| Route | Trusted policy and checks |
+|---|---|
+| Unfrozen harness maintenance into `main` | Candidate harness regression suite; neither checkout may have any freeze artifact; phase/release branches excluded |
+| Frozen phase PR | Separate base controller and prepared policy; cumulative ordinary checks applicable to each declared hosted platform |
+| Release PR | Trusted `main` controller plus separately pinned prepared policy/source; complete source and project checks |
+| Preparation dispatch | Independently pinned harness; exact committed materialization and prerequisite proofs |
 
-For an ordinary phase PR, the workflow checks out the candidate and its base into
-sibling directories. It invokes the **base
-controller's** CLI with `--root candidate ci --policy-root baseline --branch
-BRANCH`. The frozen verifier policy comes from that separate base checkout, so
-editing the candidate CLI does not change the validator being executed. The
-trusted phase base must already contain the harness and prepared plan. Ordinary
-unfrozen harness-maintenance PRs into `main` use a separate `harness_maintenance`
-route that requires the [focused suite](#harness-verification) on the candidate. It permits intentional harness edits without
-claiming frozen application verification. Neither checkout may contain any freeze artifact;
-partial freezes and phase/release branches cannot take this route. A verifier
-failure never falls back to maintenance.
+Partial freezes or verifier failures never fall back to maintenance. `verify` requires successful selection and every selected job to succeed; only explicitly unselected jobs may be skipped. Harness CI and stateless application CI always report `application_complete=false`.
 
-Pushes do not launch CI. PRs retain the required `verify` aggregate. Protect the
-workflow itself through repository rules and review; a repository-contained
-verifier cannot establish an external trust root for a workflow it can replace.
+Ordinary phase verification uses sibling candidate/base checkouts:
 
-A same-repository `codex/rdd-release/RUN_ID` PR targeting `main` uses a separate
-release route. After project acceptance, the operator sets repository variables
-`RDD_RELEASE_POLICY_SHA` to the committed prepared baseline and
-`RDD_RELEASE_SOURCE_SHA` to the project-gated final commit. The workflow runs the
-trusted `main` base controller with a third checkout at the approved policy SHA:
+```text
+python baseline/tools/rdd/cli.py --root candidate ci --policy-root baseline --branch BRANCH
+```
+
+A same-repository `codex/rdd-release/RUN_ID` PR into `main` requires operator-set repository variables `RDD_RELEASE_POLICY_SHA` (prepared baseline) and `RDD_RELEASE_SOURCE_SHA` (project-accepted head). Candidate files, PR text and branch names cannot select these pins. The trusted verifier must already be installed on `main`:
 
 ```text
 python baseline/tools/rdd/cli.py --root candidate ci
@@ -266,121 +112,36 @@ python baseline/tools/rdd/cli.py --root candidate ci
   --release-policy POLICY_SHA --release-source SOURCE_SHA
 ```
 
-Both pins are required; the candidate, PR body and branch name cannot select
-them. Before executing frozen checks, the verifier requires clean checkouts at
-those exact revisions, prepared-baseline ancestry, intact frozen artifacts,
-identical protected policy, a complete phase projection and no remaining anchors.
-Missing, stale or unrelated pins fail explicitly. The selected prepared policy
-also supplies the toolchain inventory. This route supports the first application
-release and subsequent releases whose prepared policy differs from `main`.
-The support change must be reviewed and installed on `main` before this route is
-used; a release cannot bootstrap its own verifier.
+Before frozen checks, require clean exact revisions, prepared-baseline ancestry, intact frozen artifacts, identical protected policy, complete phase projection and no remaining anchors. Stale/unrelated/missing pins fail. The prepared policy supplies toolchain inventory. This verifies source, not new native/manual acceptance; preserve original acceptance evidence.
 
-The `verify` job evaluates selection and every selected prerequisite. A canceled,
-failed, missing or unexpectedly skipped selected job cannot become a green
-aggregate; only jobs declared unnecessary by successful selection may be skipped.
-Pinning actions
-protects the selected dependency revision; it does not replace repository
-branch protections or review of changes to the verifier and workflow itself.
+Before a plan exists, stateless `./rdd ci` reports `harness_only`. A prepared baseline verifies contracts/pending projections without claiming implementation. On nonphase branches, only a complete phase prefix may select checks; reports use `source_cumulative` or explicit `release_source`, `observed_through_phase`, `phase: null`, and `task_history_verified: false`. Final source boundaries include project checks. Marker inference never proves task history, seals or reviews; there is no post-merge verification run.
 
-Application build prerequisites and platform-specific command inventory must be
-qualified and pinned during specification, with task producers/timing resolved during preparation. Before those artifacts
-exist, ordinary harness-maintenance PRs run only the focused refinement suite. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
-its contracts and pending task projections without claiming implementation. Phase
-CI runs cumulative ordinary checks applicable to its platform. A complete source
-revision verified through a phase/release PR also runs every project check
-applicable to that platform. A missing native dependency needed by those checks
-is an environment blocker.
+Frozen checks determine hosted environments. `ci_tools.py` rejects conflicting tool pins, selects Python/Buf, installs the exact Rust toolchain/components/targets and declared supported Cargo frontend tools (`cargo-tauri`, `trunk`, `wasm-bindgen`, `wasm-pack`), and measures installed versions. Other tools require qualified installed executables; manifests cannot inject installer commands. Initial pins are in `rust-toolchain.toml` and the workflows; release/source observations remain in the runtime source record rather than a second prose version table.
 
-Before a frozen application plan exists, the stateless `./rdd ci` verifier reports `harness_only` with `application_complete=false`. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
+Linux uses Ubuntu 24.04 with [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#linux); macOS/Windows use native hosted images. Qualification must establish the actual frontend builder, packaging, dependency locks, automation route and additional tools before policy freeze. Hosted macOS does not supply every licensed desktop driver. Signing credentials and reference-device qualification remain separate. Buf runs setup-only, publishing no schemas or PR comments.
 
-On nonphase branches, the stateless verifier accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; there is no post-merge verification run. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
+Provisioning evidence binds commands, measured versions and raw logs to candidate/policy/verifier commits and specification/plan hashes. Failed attempts retain logs without successful tool evidence. CLI/hosted execution uses explicit UTF-8 and stable LF output.
 
-When the trusted baseline contains a frozen plan, `ci_tools.py` reads its declared
-hosted tool resources, rejects conflicting pins and selects Python and Buf explicitly.
-It installs the exact `rust-toolchain.toml` version, components and targets, plus
-declared supported Cargo frontend tools (`cargo-tauri`, `trunk`, `wasm-bindgen`,
-`wasm-pack`). Other tools require a qualified installed executable;
-manifest text cannot supply arbitrary installer commands. Every installed version
-is measured before checks run. The initial Rust pin is **1.99.0**, released on 2026-10-01 according
-to the [official announcement](https://blog.rust-lang.org/2026/10/01/Rust-1.99.0/).
-`rustfmt`, `clippy`, and `wasm32-unknown-unknown` support native Rust and the Rust
-frontend requirement. A [Buf setup-only action](https://buf.build/docs/bsr/ci-cd/github-actions/#run-setup-only)
-defaults to **Buf 1.73.0** unless the specification selects another exact version; its [official release](https://github.com/bufbuild/buf/releases/tag/v1.73.0)
-is dated 2026-09-11. It publishes no schemas and writes no PR comments.
-
-Linux uses Ubuntu 24.04 and installs the
-[Tauri native build prerequisites](https://v2.tauri.app/start/prerequisites/#linux).
-macOS and Windows use hosted native development images. The workflow records
-actual installed versions and raw provisioning logs under
-`.rdd/evidence/provisioning/`, bound to candidate, policy and verifier commits
-and specification/plan file hashes. Failure preserves attempted command logs
-and cannot emit successful tool evidence. CLI and hosted execution use explicit
-UTF-8; persisted generated/evidence bytes use stable LF encoding.
-
-The separate preparation workflow is dispatch-only while the run is `preparing`,
-using the independently pinned `RDD_PREPARATION_HARNESS_SHA` verifier:
+Preparation CI is dispatch-only while the run is `preparing`:
 
 ```sh
 gh workflow run preparation.yml --ref YOUR_BASELINE_BRANCH -f candidate=FULL_MATERIALIZATION_SHA
 ```
 
-The selected `codex/*-baseline` branch must resolve to the supplied full SHA.
-Validation rejects a mismatched SHA, tag or nonbaseline ref before provisioning.
-Concurrency is grouped by baseline branch, so a successor dispatch supersedes an
-older attempt on the same baseline. The workflow uploads
-`preparation-ci.json`, check receipts and raw provisioning logs for transfer into
-the run. Qualified native/manual observations remain separate from hosted results.
+`RDD_PREPARATION_HARNESS_SHA` independently pins its verifier. The selected single-component `codex/*-baseline` branch must resolve to the supplied full SHA; tags and mismatches fail before provisioning. Branch-grouped concurrency supersedes older dispatch attempts. Transfer `preparation-ci.json`, check receipts and raw provisioning logs into the run; obtain both final review perspectives before `gate preparation`.
 
-The specification workflow must still qualify and record its selected frontend
-builder, Tauri packaging commands, additional test tools, dependency locks, and
-platform coverage. Add their required installation to the trusted baseline
-before freezing policy. The harness cannot choose these application-specific
-versions before the corresponding solution decisions exist. Hosted macOS does
-not imply that an unavailable or licensed desktop automation driver is supplied;
-choose a supported automation route or an explicit manual protocol in the
-specification. Packaging/signing credentials and reference-device qualification
-remain separate from this ordinary hosted CI setup.
+Manual/reference-host checks appear in `pending_external` and remain mandatory at local gates. Hosted subsets may pass while those observations are pending; absent ordinary applicable checks cannot yield a vacuous pass. Artifacts contain the CI index and every executed check's receipt/log. [Evidence transfer](evidence-guide.md#check-receipts-and-ci-transfer) defines their import and provenance verification.
 
-Manual verification and checks requiring a qualified reference host are listed
-under `pending_external` in the CI report. They are mandatory at the phase/project
-gates through separate exact-revision evidence. Their presence does not make the
-hosted CI subset fail or fabricate a hardware qualification. The CI report always
-sets `application_complete: false`; successful CI alone cannot close a phase.
-If no ordinary applicable check can run, CI blocks instead of returning a vacuous
-pass. Artifacts include the CI index and each executed check's JSON receipt and
-log so later validation can inspect the underlying evidence.
-
-The Todo requirements specify reference devices, operating systems and benchmark
-protocols. Hosted runner measurements are not substitutes for those results.
-Run the actual frozen benchmark and accessibility protocols on qualified local
-or controlled reference machines, and import their revision-bound evidence.
-Do not expose a persistent self-hosted machine to unreviewed pull request code.
-If a separate reference-runner workflow is later needed, select its policy and
-runner environment during specification instead of silently changing the
-performance requirement to fit convenient hosted hardware.
+The Todo reference devices, benchmark and accessibility protocols require actual qualified environments. Hosted measurements cannot substitute. Do not expose a persistent self-hosted machine to unreviewed PR code; select any future reference-runner route during specification.
 
 ### Action revisions
 
-Executable action pins live in [rdd.yml](../../.github/workflows/rdd.yml) and [preparation.yml](../../.github/workflows/preparation.yml); the [runtime source record](../../.rdd/sources/runtime.json) retains measured identities. Review upstream release notes when changing a pin instead of maintaining a second version table here.
-
-Source inspection, application contract proofs and hosted results have different evidence scopes; retain the tested revision and observations for each.
+Executable pins live in [rdd.yml](../../.github/workflows/rdd.yml) and [preparation.yml](../../.github/workflows/preparation.yml). Review upstream changes and the measured runtime source record when updating them. Pins complement repository protection; they do not replace it.
 
 ## Harness verification
 
-The focused conversational refinement regressions use disposable repositories and
-the real controller, storage and CLI. Run them with
-`python3 -m unittest discover -s tests/harness -p test_refinement.py -v` on Unix
-(use `python` on Windows or in CI after Python setup). The maintenance lane requires this suite. Its success does not establish
-conversational understanding or application acceptance. Exercise the specification
-conversation in a real local Codex session as well. Historical broad Python
-harness and standalone generator suites remain deleted. The existing Rust
-generator unit tests remain available with `./rdd selftest`; this manual command
-is never invoked by CI/CD or application contract checks.
-Application contract generation still validates descriptors, compiles
-host/target bindings and verifies positive/negative provider-consumer proofs.
-All frozen application tests, benchmarks, reviews and gates remain mandatory.
+Run every Python harness regression with `python3 -m unittest discover -s tests/harness -p 'test_*.py' -v` (use `python` on Windows/CI). The maintenance lane uses the same discovery pattern. Refinement, specification/preparation and runtime tests use disposable repositories; individual tests identify substituted compiler/platform/remote prerequisites. Passing them is controller evidence, not Todo acceptance or proof of conversational understanding. Exercise the real native workflow separately.
 
-Runs pin the exact workflow graph, refinement policy and canonical profile/native configuration digest. The controller checks these before continuing mutations, including checks, reviews, recovery and publication, before recording state or evidence. A mismatch is a policy compatibility failure, not a new historical blocker to write automatically. `status` and `export-run` preserve original role names and evidence. Continue historical work with its recorded harness revision, or start an explicit fresh baseline; no role aliases, pin backfills or approval migrations are applied.
+`./rdd selftest` retains manual Rust generator unit tests; CI does not invoke this command. Application contract checks still compile descriptors/bindings and positive/negative provider-consumer proofs. All frozen application checks remain mandatory.
 
-Keep raw test logs and workflow evaluation results in ignored evidence directories or CI artifacts tied to the tested revision. Historical delivery snapshots live in Git history; a checked-in transcript cannot establish current acceptance. Seeded forward traces evaluate routing, handoff quality, defect detection and verified correction, following [evaluation guidance](https://developers.openai.com/api/docs/guides/evaluation-best-practices). Record elapsed time and available token usage without inventing unavailable observations.
+Runs pin graph, refinement and profile/native policy before mutations, checks, review, recovery and publication. A mismatch requires the recorded harness or a fresh reviewed run; status/export preserve original identities without aliases, pin backfills or migrated approvals. Keep raw test logs/evaluation results in ignored evidence or CI artifacts bound to source. Historical transcripts cannot establish current acceptance; record measured elapsed/token usage without inventing unavailable observations.

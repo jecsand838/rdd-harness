@@ -452,6 +452,16 @@ def closure(root, state, spec=None):
             "ready": not (unresolved or unpublished or stale), "closure_digest": digest(body)}
 
 
+def guard_choice_prerequisites(root, state, projection):
+    """Unanswered investigation is provisional; accepted choices need closure."""
+    selected = {row["id"] for row in projection["decisions"]}
+    unresolved = set(closure(root, state)["unresolved"])
+    for identity, decision in _latest(_rows(state, "decisions")).items():
+        provenance = decision["provenance"]
+        if identity in selected and provenance["kind"] == "choice" and provenance["question"] in unresolved:
+            _error(f"accepted choice {identity} has unresolved origin question {provenance['question']}")
+
+
 def validate_snapshot(root, value, reqs=None, spec=None):
     """Stateless source/candidate proof, also usable by trusted CI without runtime."""
     _keys(value, ("schema_version", "policy", "run_id", "requirements_digest", "questions_digest", "question_sources", "decisions", "closure_digest"))

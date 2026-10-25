@@ -652,6 +652,8 @@ def spec_validate(root: Path, spec: dict, reqs: dict, config: dict) -> dict:
     for s in scenarios.values():
         subset(s["requirements"], req_ids, f"scenario {s['id']}")
         subset(s["check_ids"], checks, f"scenario {s['id']} checks")
+        if s["kind"] == "golden" and not any(rid.startswith("FR-") for rid in s["requirements"]):
+            raise RddError(f"Scenario {s['id']}: golden paths require a functional requirement", "specification")
     mapping = {}
     for row in spec["requirement_map"]:
         rid = row["requirement"]
@@ -699,7 +701,7 @@ def anchor_paths(task: dict) -> list[str]:
     return sorted({site_path(task, site) for site in task_sites(task)})
 
 
-def placement_offset(text: str, placement: dict, label: str) -> int:
+def placement_offset(text: str, placement: dict, label: str, *, allow_missing: bool = False) -> int:
     context = placement["context"]
     if placement["kind"] == "append":
         if context is not None:
@@ -716,6 +718,8 @@ def placement_offset(text: str, placement: dict, label: str) -> int:
                  if (match.start() == 0 or text[match.start()-1] == "\n")
                  and (match.start() + len(match.group(1)) == len(text)
                       or text.startswith(("\n", "\r\n"), match.start() + len(match.group(1))))]
+    if not positions and allow_missing:
+        return len(text)
     if len(positions) != 1:
         raise RddError(f"{label}: placement context must identify exactly one complete source region; found {len(positions)}")
     start, end = positions[0]
@@ -837,6 +841,11 @@ def plan_validate(root: Path, plan: dict, spec: dict, lock: dict, config: dict) 
         raise RddError("Plan and frozen specification versions differ; create a fresh reviewed baseline", "specification")
     approved = target_tree(root, spec) if plan["schema_version"] in {2, 3} else None
     if approved is not None:
+        actionable = {path for path, entry in approved.items()
+                      if entry["kind"] == "file" and entry["disposition"] in {"add", "modify", "delete"}}
+        missing = (actionable - target) | (actionable - declared_writes)
+        if missing:
+            raise RddError(f"Plan omits actionable frozen files from its target/task inventories: {sorted(missing)}", "planning")
         for rel in target:
             if rel.rstrip("/") not in approved:
                 raise RddError(f"Preparation path is absent from frozen target tree: {rel}", "specification")
@@ -1161,7 +1170,10 @@ def _scan_markers(root: Path, plan: dict) -> dict:
     return found
 
 
-def materialize(root: Path, plan: dict, state: dict, *, create_shells: bool = True) -> list[str]:
+def materialize(root: Path, plan: dict, state: dict, *, create_shells: bool = True,
+                repair_tasks: frozenset[str] = frozenset(), preflight: bool = False) -> list[str]:
+    if repair_tasks and (create_shells or set(repair_tasks) - {t["id"] for t in plan["tasks"]}):
+        raise RddError("Repair projection requires existing tasks and cannot create shells")
     found = _scan_markers(root, plan)  # Validate before changing any file.
     created = []
     updates = {}
@@ -1192,11 +1204,14 @@ def materialize(root: Path, plan: dict, state: dict, *, create_shells: bool = Tr
                 recognized = {p["line_number"] for p in parsed}
                 if any(line.strip() and i not in recognized for i, line in enumerate(text.splitlines())):
                     raise RddError(f"Adjacent sidecar path collision: {rel}")
-            offset = placement_offset(text, site["placement"], f"Site {task['id']}:{site['id']}")
+            offset = placement_offset(text, site["placement"], f"Site {task['id']}:{site['id']}",
+                                      allow_missing=task["id"] in repair_tasks)
             first_newline = re.search(r"\r?\n", text)
             newline = first_newline.group() if first_newline else "\n"
             lead = newline if offset and text[offset-1] != "\n" else ""
             updates[rel] = text[:offset] + lead + marker_line(task, site, plan) + newline + text[offset:]
+    if preflight:
+        return created
     for rel in plan["target_paths"]:
         if rel.endswith("/"):
             safe_path(root, rel).mkdir(parents=True, exist_ok=True)
@@ -1259,10 +1274,16 @@ def anchors_verify(root: Path, plan: dict, state: dict) -> dict:
     return {"remaining": len(found), "orphaned": 0}
 
 
-def implementation_matrix(plan: dict) -> str:
+def implementation_matrix(plan: dict, spec: dict | None = None) -> str:
+    operations = {element["id"]: element.get("contract_operations", [])
+                  for element in (spec or {}).get("solution_elements", [])}
     lines = ["# Implementation matrix", "", "Generated from the frozen task manifest. Runtime status is reported by `./rdd status`.", "",
-             "| Phase | Task | Category | Requirements | Writes | Dependencies |", "| --- | --- | --- | --- | --- | --- |"]
+             "| Phase | Task | Category | Requirements | Specifications | Elements | Operations | Scenarios | Verticals | Writes | Dependencies | Checks |",
+             "| " + " | ".join(["---"] * 12) + " |"]
     for t in plan["tasks"]:
-        lines.append("| " + " | ".join([t["phase"], t["id"], t["category"], ", ".join(t["requirements"]),
-                                        ", ".join(t["writes"]), ", ".join(t["depends_on"]) or "None"]) + " |")
+        groups = [t["requirements"], t["specifications"], t.get("solution_elements", []),
+                  sorted({operation for eid in t.get("solution_elements", []) for operation in operations.get(eid, [])}),
+                  t.get("scenarios", []), task_verticals(plan, t), t["writes"], t["depends_on"], t["checks"]]
+        lines.append("| " + " | ".join([t["phase"], t["id"], t["category"],
+                                        *(", ".join(group) or "None" for group in groups)]) + " |")
     return "\n".join(lines) + "\n"

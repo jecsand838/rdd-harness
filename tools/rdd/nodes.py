@@ -9,7 +9,7 @@ import time
 
 from .common import RddError, digest, event, file_hash, git, head, inventory, read_json, safe_path, source_digest, validate_artifact
 from .profiles import WORKFLOW_AUTHOR_ROLES
-from .refinement import POLICY as REFINEMENT_POLICY, SNAPSHOT_PATH, closure, node_projection, validate_budget
+from .refinement import POLICY as REFINEMENT_POLICY, SNAPSHOT_PATH, closure, guard_choice_prerequisites, node_projection, validate_budget
 from .artifacts import DOMAIN_INVENTORY_PATH, domain_inventory_validate, requirements
 
 _SPEC = [
@@ -119,7 +119,7 @@ for _node, _definition in NODES.items():
     if _node == "S6":
         _definition["write_prefixes"] += ["contracts/", "gen/"]
         _definition["write_paths"] += [".rdd/spec.json"]
-    if _node.startswith("P") and _node not in DERIVED:
+    if _node == "P5":
         _definition["write_paths"] += [".rdd/plan/plan.json"]
     if _node in DERIVED:
         _definition["write_prefixes"], _definition["write_paths"] = [], []
@@ -257,6 +257,7 @@ class WorkflowNodes:
             if other.get("status") == "claimed" and set(other["claim"]["writes"]) & set(writes):
                 raise RddError("Workflow claims must have disjoint write ownership")
         inputs = self._node_input(state, node, records)
+        guard_choice_prerequisites(self.root, state, inputs["refinement"])
         if any(s["observed"] != s["sha256"] for s in inputs["refinement"]["sources"]):
             raise RddError("Refinement prerequisite changed; resolve it before claiming work", "specification")
         if any(s["path"] in writes and not s["excerpt"] for s in inputs["refinement"]["sources"]):
@@ -300,7 +301,9 @@ class WorkflowNodes:
             raise RddError("Node output does not match its current claim")
         if claim["expires"] < time.time():
             raise RddError("Workflow claim expired; preserve its output and release/retry", "budget")
-        if (digest(self._node_input(state, node, records)) != claim["input_digest"]
+        inputs = self._node_input(state, node, records)
+        guard_choice_prerequisites(self.root, state, inputs["refinement"])
+        if (digest(inputs) != claim["input_digest"]
                 or any(records[d]["status"] != "complete" for d in NODES[node]["depends_on"])):
             raise RddError("Workflow node inputs changed during execution")
         self.live_review_guard(final=False, node=node)
