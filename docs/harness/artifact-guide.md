@@ -9,6 +9,7 @@ The schemas in `.rdd/schemas/` and the controller's semantic validators define m
 | `requirements/requirements.md` | Canonical supplied product requirements; change only under the user's requirements direction |
 | `docs/specs/` | Selected solution, scenarios/protocol detail, operations and boundary semantics; freeze in specification |
 | `docs/decisions/` | Resolved architectural choices and source evidence; freeze in specification |
+| `docs/specs/refinement.json` | Controller-materialized refinement closure snapshot listed in specification `documents` |
 | `contracts/` | Exact canonical Protobuf source; immutable downstream |
 | `gen/` | Exact generated boundary artifacts; reproduce rather than hand-edit |
 | `apps/`, `modules/` | Navigational application roots; the complete target layout is drafted and frozen in specification |
@@ -66,6 +67,33 @@ The module array contains the enforceable dependency/path map. Each functional s
 
 Operation solution elements link through `contract_operations` to fully qualified methods. The generated `contract_index` inside `gen/rust/.rdd-generated.json` derives services, methods, message/enum types, source imports, Rust symbols and binding paths from descriptors and Prost names. It is generated evidence, never a second handwritten schema. Shared support/message files have explicit purposes. Reject unexplained operations, unowned bindings and inconsistent consumer/dependency links. Every FR and positive operation has golden coverage; every golden scenario references an FR. Schema/link completeness still requires independent semantic review.
 
+## Refinement records
+
+The coordinator follows [rdd-spec-grill](../../.agents/skills/rdd-spec-grill/SKILL.md) for the conversation. `./rdd spec refine FILE` consumes a version 1 JSON envelope with `schema_version`, `operation`, `session_id` and `record`. This extends the existing run state and audit trail; specification and plan formats remain version 3. Use the controller for updates rather than editing runtime state or the snapshot.
+
+| Operation | Record |
+|---|---|
+| `question` | `id`, `revision`, `previous_revision`, `issue`, `material: true`; optional `sources`, `requirements`, `nodes`, `status` (`open`, `resolved`, `deferred`), `options` (`id`, `text`), `recommended_option` (displayed option ID or null), `disposition`, `decision` (`id`, `revision`) and `finding` |
+| `decision` | `id`, `revision`, `previous_revision`, `statement`, `provenance`; optional `sources`, `requirements`, `nodes` and `prerequisites` (decision `id`, `revision`) |
+| `publish` | `decision` (`id`, `revision`), publication `revision`, `previous_revision`, canonical `path`, exact `text` and `scenarios` |
+
+First revisions use `previous_revision: null`; later revisions name the previous revision. Retain accepted history rather than overwriting it. Publication revisions form one sequence per decision ID and retain the file hash observed at publication. The unique exact canonical statement remains current when another section changes; the candidate inventory separately binds complete file bytes. Resolve an answered question through its next revision referencing the accepted decision. Scope uses existing requirement and workflow-node IDs; unmapped material concerns remain blocking. `sources` use repository `path` and `sha256`; an optional unique `text` excerpt binds the digest of that UTF-8 excerpt instead of the entire file. Use excerpt bindings when an author also writes elsewhere in the governing file, so its unchanged input stays valid.
+
+Decision provenance records one actual authority source:
+
+| `kind` | Required evidence |
+|---|---|
+| `choice` | `question`, question `revision`, `option`, `turn`, actual reply `text`, `qualifications` |
+| `direct` | Actual `turn`, direction `text`, `qualifications` |
+| `inherited` | Governing `path`, `sha256` of the unique excerpt, and exact `text` |
+| `delegated` | `authority` source reference, authorized `scope`, and `rationale` |
+
+The controller checks structural references and freshness. It cannot authenticate actor labels or establish semantic equivalence between different prose; the coordinator preserves the actual meaning and semantic review checks it. A bare ambiguous answer remains unresolved. Qualifiers must appear in the operative statement; publication requires that exact statement in the canonical file and linked scenarios covering its requirements. A matching active artifact-owner claim must authorize the publishing session and path.
+
+`status.refinement` exposes unresolved questions, unpublished and stale decisions, and closure identity separately from readiness. Accepted-but-unpublished decisions survive restart but cannot close clarification. A question that references a reviewer finding uses that finding's resolution from the existing review stream.
+
+The S6 owner prelists `docs/specs/refinement.json` in `documents` and its write claim, then invokes `./rdd spec snapshot --session-id ID`. A changed material closure makes the completed S6 snapshot stale even when its scoped decision inputs are unchanged. Reclaim S6 through `workflow next` and `workflow claim`, retaining every prior S6 output path, including recorded deletions; regenerate and record the snapshot, then renew S7 qualification and both final review perspectives. Normal ownership, review, lease and attempt limits still apply. Materialization validates current inputs before writing its output atomically. The versioned snapshot binds accepted decisions/publications, governing question sources, requirements, policy and current closure state; it contains no transcript or separate approval. Candidate, validation, readiness and freeze compare it with current durable state. Mutating CLI commands share the existing operation lock so refinement and freeze cannot interleave. Snapshot/review/freeze bookkeeping is excluded from what the snapshot certifies, avoiding circular identity. Late material concerns require current closure and renewed affected evidence; post-freeze changes use a new amendment run.
+
 ## S1 domain inventory
 
 `docs/specs/domain-inventory.json` uses `.rdd/schemas/domain-inventory.schema.json`. S1 must claim and record it; later nodes cannot rewrite it. Its `requirements_digest` binds the input baseline.
@@ -110,21 +138,11 @@ A task may extend a file used by a later phase. Sealing a phase preserves its ac
 
 ## Evidence, review, and digests
 
-The controller records source commit and source digest, spec and plan digests, exact command, platform, timestamps, return code, expectation/outcome, log path/digest, origin/provenance, and benchmark metrics. A hash establishes content identity; it does not prove the logged observation was truthful.
+Use the [evidence guide](evidence-guide.md) for check receipts, imports, exact-candidate readiness/reviews, golden execution results and retention. The [workflow guide](workflow-guide.md) defines live findings, bounded claims and gate transitions. Use the [live-review schema](../../.rdd/schemas/live-review.schema.json) for progress reports. Final approval references the current live-review cursor; progress reports and submitted `passed` flags cannot substitute for controller evidence.
 
-Local evidence is produced by `./rdd check`. External platform or manual evidence is submitted with `./rdd check import FILE` using the evidence schema and explicit provenance. Preserve the actual CI/run identity, observer/environment, and raw logs required by the schema/controller. Do not manufacture absent results or reclassify a skipped check as success.
+The source inventory includes Git-tracked and nonignored untracked files, excluding transactional runtime, evidence and the generated active-run locator. Governing refinement sources must be present in that inventory before affected work can be claimed. Capture may retain accepted direction while its source awaits inclusion; a rejected claim records no attempt. Deliberately include the source in Git or revise the reference to an included source, then retry. Do not force-add secrets or runtime receipts. Existing historical claims use their recorded inventories rather than today's ignore rules.
 
-Stage reviews identify `specification`, `plan` or `preparation` and the `semantic` or `execution` perspective. Use the active schema for exact fields. Register authors with `./rdd author record --stage STAGE --session-id ID`; the manifest inventory must match. Each perspective has a distinct actual reviewer session, separate from the authors. Both reviews bind the exact candidate, reference actual readiness evidence, retain finding history and independently verified resolutions, and have zero unresolved findings. A session/model assertion is provenance, not cryptographic authentication.
-
-Live review is a separate report kind accepted by `review record`, valid while authoring is incomplete. Assign the independent reviewer at intake and preserve exact-revision findings, correction destinations and reviewer-verified resolutions in the event history. Final approval references the current review cursor. Inspect the active live-review schema rather than converting a progress report into a final approval. Workflow node records similarly contain actual assignments, bounded writes, input/output hashes and evidence; a submitted `passed` flag has no authority. Acceptance node status derives from the existing gates, and implementation node status derives from existing tasks/phases.
-
-Implementation phase reviews retain their exact phase/source identity and actual check evidence. `review record` rejects stale candidates and invalid independence. Check results must explicitly enumerate golden scenario execution; passing an aggregate command is insufficient when required scenarios are missing, filtered or skipped.
-
-`prepare` creates materialization artifacts and enters `preparing`. Commit/push the candidate and obtain its actual readiness/CI receipts and final two-perspective review before `gate preparation` grants `prepared`. The gate receipt is ignored runtime/evidence state bound to the committed source, not a tracked output that changes its own subject.
-
-The source digest excludes transactional runtime, evidence, and the generated active-run locator so that creating a receipt does not invalidate its own candidate. Executable code, build configuration, and policy source remain in the reviewed inventory. Follow the controller's inventory rather than inventing ignore rules. Keep tested source committed before acceptance gates.
-
-Ignored runtime/evidence files are still critical work products. Preserve them when moving the working repository between machines or archive a completed run as described in the README. Git alone does not transfer ignored receipts. Historical baseline copies retain design history; they are not a substitute for full check logs.
+Preserve ignored evidence as described in [artifacts and retention](evidence-guide.md#artifacts-and-retention). Historical baseline copies retain design history; they do not replace full check logs. Keep tested source committed before acceptance gates.
 
 ## What belongs outside manifests
 

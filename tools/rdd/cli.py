@@ -33,7 +33,10 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("action", choices=("index",))
     for name in ("spec", "plan"):
         sub = commands.add_parser(name)
-        sub.add_argument("action", choices=("init", "validate", "freeze"))
+        sub.add_argument("action", choices=("init", "validate", "freeze", "refine", "snapshot") if name == "spec" else ("init", "validate", "freeze"))
+        if name == "spec":
+            sub.add_argument("file", nargs="?", type=Path)
+            sub.add_argument("--session-id")
     commands.add_parser("prepare", help="Materialize only frozen shells, anchors and implementation matrix")
     readiness = commands.add_parser("readiness", help="Execute exact-candidate preimplementation qualification")
     readiness.add_argument("stage", choices=("specification", "plan", "preparation"))
@@ -130,6 +133,16 @@ def dispatch(c: Controller, a: argparse.Namespace):
         return c.status()
     if cmd == "requirements":
         return c.requirements_index()
+    if cmd == "spec" and a.action == "refine":
+        if a.file is None or a.session_id is not None:
+            raise RddError("Use spec refine FILE; the record declares its actual session")
+        return c.spec_refine(a.file)
+    if cmd == "spec" and a.action == "snapshot":
+        if not a.session_id or a.file is not None:
+            raise RddError("Use spec snapshot --session-id ID")
+        return c.spec_snapshot(a.session_id)
+    if cmd == "spec" and (a.file is not None or a.session_id is not None):
+        raise RddError("Only spec refine and snapshot accept these arguments")
     if cmd in {"spec", "plan"}:
         return getattr(c, f"{cmd}_{a.action}")()
     if cmd == "readiness":
@@ -275,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     controller = None
     try:
         source_write = args.command in {"start", "prepare", "resume", "phase"} or (
-            args.command in {"spec", "plan"} and args.action in {"init", "freeze"}) or (
+            args.command in {"spec", "plan"} and args.action in {"init", "freeze", "refine", "snapshot"}) or (
             args.command == "contracts" and args.action == "generate") or (
             args.command == "anchors" and args.action == "reconcile") or (
             args.command == "task" and args.action in {"claim", "integrate", "complete", "reopen"}) or (

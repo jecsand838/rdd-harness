@@ -82,13 +82,7 @@ never selects `--last`. The [CLI reference](https://learn.chatgpt.com/docs/cli/r
 documents this native command. `./rdd resume` recovers controller state; it does
 not select a native session. Keep the actual session identity for recovery.
 
-The 0.162.1 qualification exercised a native launch and exact-session resumption
-in a disposable harness worktree. Both turns ran local Python, retained the same
-`CODEX_THREAD_ID`, and recorded the inherited approval settings; the session
-evidence contained the supplied coordinator instructions. No Goal was activated
-and no application workflow ran. This establishes launch/resume compatibility,
-not end-to-end acceptance or native reviewer isolation. These measured limits
-are recorded in `.rdd/sources/runtime.json`.
+The [runtime source record](../../.rdd/sources/runtime.json) retains measured native launch/resume observations and their limits. Those observations do not establish Goal execution, native reviewer isolation or application acceptance.
 
 The file is a distribution convenience. The goal text itself is under 4,000
 characters and is pasted as the native objective. The workflow skill contains
@@ -182,22 +176,6 @@ All adapters use only the Python standard library. They accept an injected
 testing. `RddAdapterError.code` distinguishes capability, malformed-evidence,
 timeout, revision-mismatch and safety failures.
 
-```python
-from tools.rdd.adapters import CodexAdapter, GitAdapter, GitHubAdapter
-from tools.rdd.common import validate
-
-git = GitAdapter(repo)
-branch = git.create_phase_branch(run_id, phase_number, base_branch)
-worktree = git.ensure_worktree(worker_path, branch, base_branch)
-
-worker = CodexAdapter(repo)
-result = worker.exec(
-    prompt, output_schema_path, fresh_runtime_attempt,
-    role="rdd_complex_implementor", timeout=1800,
-    validator=validate,
-)
-```
-
 The controller normally wraps these operations with a run transaction and task
 lease. Invoke its public commands during a workflow. Worktree reuse is allowed
 only for the exact repository and branch with a clean working tree and the
@@ -237,26 +215,13 @@ the aggregate check **`verify`**. Configure GitHub branch rules to require this
 check for `main`, the prepared baseline, and each exact sealed phase branch before
 it becomes a successor's base. Do not protect active or future phase branches
 with a wildcard rule that prevents their publication or repair. See the
-[demo runbook](blog-demo.md#5-publish-and-verify-the-dedicated-prepared-baseline)
+[preparation handoff](workflow-guide.md#stage-two-preparation)
 and [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 If `gh pr checks --required` cannot establish the server-required checks, inspect
 the repository rules and CLI response; do not waive the controller check.
 
-The normal solo-developer policy accepts an independent local review artifact
-validated by the controller at the exact candidate head. The adapter's normalized
-review input is:
-
-```json
-{
-  "passed": true,
-  "head_sha": "the-complete-current-git-object-id",
-  "reviewer": "rdd_reviewer",
-  "findings": []
-}
-```
-
-That dictionary is not itself proof of review; the controller verifies the
-underlying artifact and reviewer evidence before passing it. GitHub requests for
+The controller validates [independent review evidence](evidence-guide.md#independent-phase-review)
+at the exact candidate head. GitHub requests for
 changes veto a local pass. `require_github_approval=True` additionally requires an
 approval attached to the exact head. This supports teams without making a solo
 repository owner self-approve a PR. See [`gh pr view`](https://cli.github.com/manual/gh_pr_view)
@@ -264,10 +229,8 @@ and [`gh pr checks`](https://cli.github.com/manual/gh_pr_checks).
 
 ## CI and reference-platform evidence
 
-`.github/workflows/rdd.yml` verifies frozen application phase and release PRs
-on their declared hosted environments. Ordinary unfrozen harness-maintenance
-PRs run no tests. There are no harness selftests, portability jobs, standalone
-generator test jobs, push triggers or native-harness dispatches.
+`.github/workflows/rdd.yml` verifies frozen application phase and release PRs on their declared hosted environments.
+Ordinary unfrozen harness-maintenance PRs use the [focused refinement suite](#harness-verification).
 
 The workflow uses read-only repository permissions, pinned action commits, no
 application secrets, and a `pull_request` trigger. There is no `pull_request_target` execution of
@@ -282,7 +245,7 @@ BRANCH`. The frozen verifier policy comes from that separate base checkout, so
 editing the candidate CLI does not change the validator being executed. The
 trusted phase base must already contain the harness and prepared plan. Ordinary
 unfrozen harness-maintenance PRs into `main` use a separate `harness_maintenance`
-route with no test execution. It permits intentional harness edits without
+route that requires the [focused suite](#harness-verification) on the candidate. It permits intentional harness edits without
 claiming frozen application verification. Neither checkout may contain any freeze artifact;
 partial freezes and phase/release branches cannot take this route. A verifier
 failure never falls back to maintenance.
@@ -322,12 +285,16 @@ branch protections or review of changes to the verifier and workflow itself.
 
 Application build prerequisites and platform-specific command inventory must be
 qualified and pinned during specification, with task producers/timing resolved during preparation. Before those artifacts
-exist, ordinary harness-maintenance PRs execute no tests. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
+exist, ordinary harness-maintenance PRs run only the focused refinement suite. A materialized baseline remains `preparing` until its exact-source readiness/CI evidence and both independent review perspectives pass `gate preparation`. A prepared baseline checks
 its contracts and pending task projections without claiming implementation. Phase
 CI runs cumulative ordinary checks applicable to its platform. A complete source
 revision verified through a phase/release PR also runs every project check
 applicable to that platform. A missing native dependency needed by those checks
 is an environment blocker.
+
+Before a frozen application plan exists, the stateless `./rdd ci` verifier reports `harness_only` with `application_complete=false`. Manual checks and reference-host benchmarks remain pending external evidence, required at the local phase/project gates.
+
+On nonphase branches, the stateless verifier accepts only markers matching a complete phase prefix and selects cumulative checks through that boundary, including project checks at the final boundary. It reports `observed_through_phase`, using `source_cumulative` scope when phases have been completed in the source projection, or `release_source` for explicit release verification. `phase` remains `null`, and both `task_history_verified` and `application_complete` remain `false`. A separate trusted base prevents reduced coverage; there is no post-merge verification run. Marker inference selects checks without proving task history, phase seals, reviews, or project acceptance.
 
 When the trusted baseline contains a frozen plan, `ci_tools.py` reads its declared
 hosted tool resources, rejects conflicting pins and selects Python and Buf explicitly.
@@ -395,31 +362,25 @@ performance requirement to fit convenient hosted hardware.
 
 ### Action revisions
 
-| Action | Version | Pinned commit |
-|---|---|---|
-| checkout | 7.0.1 | `3d3c42e5aac5ba805825da76410c181273ba90b1` |
-| setup-python | 7.0.0 | `5fda3b95a4ea91299a34e894583c3862153e4b97` |
-| upload-artifact | 7.0.2 | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
-| buf-action | 1.5.0 | `8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3` |
+Executable action pins live in [rdd.yml](../../.github/workflows/rdd.yml) and [preparation.yml](../../.github/workflows/preparation.yml); the [runtime source record](../../.rdd/sources/runtime.json) retains measured identities. Review upstream release notes when changing a pin instead of maintaining a second version table here.
 
-The pins were resolved from official release commit pages on 2026-10-07:
-[checkout](https://github.com/actions/checkout/commit/3d3c42e5aac5ba805825da76410c181273ba90b1),
-[setup-python](https://github.com/actions/setup-python/commit/5fda3b95a4ea91299a34e894583c3862153e4b97),
-[upload-artifact](https://github.com/actions/upload-artifact/commit/cf430e030ddbb5b0abf93d22962f4752f3646cd9),
-[buf-action](https://github.com/bufbuild/buf-action/commit/8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3).
-Review release notes when updating these pins.
-The version/source manifest is `.rdd/sources/runtime.json`. Source inspection, actual application contract proofs and hosted results have different evidence scopes; retain the tested revision and observations for each.
+Source inspection, application contract proofs and hosted results have different evidence scopes; retain the tested revision and observations for each.
 
-## Manual workflow verification
+## Harness verification
 
-Harness behavior is exercised manually during application generation. The
-Python harness regression and standalone generator suites have been deleted.
-The existing Rust generator unit tests remain available with `./rdd selftest`;
-this manual command is never invoked by CI/CD or application contract checks.
+The focused conversational refinement regressions use disposable repositories and
+the real controller, storage and CLI. Run them with
+`python3 -m unittest discover -s tests/harness -p test_refinement.py -v` on Unix
+(use `python` on Windows or in CI after Python setup). The maintenance lane requires this suite. Its success does not establish
+conversational understanding or application acceptance. Exercise the specification
+conversation in a real local Codex session as well. Historical broad Python
+harness and standalone generator suites remain deleted. The existing Rust
+generator unit tests remain available with `./rdd selftest`; this manual command
+is never invoked by CI/CD or application contract checks.
 Application contract generation still validates descriptors, compiles
 host/target bindings and verifies positive/negative provider-consumer proofs.
 All frozen application tests, benchmarks, reviews and gates remain mandatory.
 
-Runs pin the exact workflow graph and canonical profile/native configuration digest. The controller checks both before continuing mutations, including checks, reviews, recovery and publication, before recording state or evidence. A mismatch is a policy compatibility failure, not a new historical blocker to write automatically. `status` and `export-run` preserve original role names and evidence. Continue historical work with its recorded harness revision, or start an explicit fresh baseline; no role aliases, pin backfills or approval migrations are applied.
+Runs pin the exact workflow graph, refinement policy and canonical profile/native configuration digest. The controller checks these before continuing mutations, including checks, reviews, recovery and publication, before recording state or evidence. A mismatch is a policy compatibility failure, not a new historical blocker to write automatically. `status` and `export-run` preserve original role names and evidence. Continue historical work with its recorded harness revision, or start an explicit fresh baseline; no role aliases, pin backfills or approval migrations are applied.
 
 Keep raw test logs and workflow evaluation results in ignored evidence directories or CI artifacts tied to the tested revision. Historical delivery snapshots live in Git history; a checked-in transcript cannot establish current acceptance. Seeded forward traces evaluate routing, handoff quality, defect detection and verified correction, following [evaluation guidance](https://developers.openai.com/api/docs/guides/evaluation-best-practices). Record elapsed time and available token usage without inventing unavailable observations.

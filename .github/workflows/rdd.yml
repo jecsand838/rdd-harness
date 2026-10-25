@@ -140,7 +140,7 @@ jobs:
               with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
                   summary.write(f"CI scope: `{mode}`; application_complete=false.\n")
                   if maintenance:
-                      summary.write("Harness testing is manual.\n")
+                      summary.write("Focused refinement regressions are required; application checks are not selected.\n")
           RDD_SELECT_VERIFIER
 
       - name: Check out approved prepared release policy
@@ -162,7 +162,29 @@ jobs:
           python "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT/tools/rdd/ci_tools.py" matrix
           --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --github-output "$GITHUB_OUTPUT"
 
+  refinement:
+    name: Focused refinement regressions
+    needs: selection
+    if: needs.selection.outputs.mode == 'harness_maintenance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out candidate revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RDD_HEAD_SHA }}
+          persist-credentials: false
+
+      - name: Set up controller Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11.9'
+
+      - name: Run focused refinement suite
+        run: python -m unittest discover -s tests/harness -p test_refinement.py -v
+
   controller:
+    name: Frozen application verification
     needs: selection
     if: needs.selection.outputs.controller == 'true'
     runs-on: ${{ matrix.os }}
@@ -279,14 +301,14 @@ jobs:
   verify:
     # Phase and release PRs retain the trusted frozen application controller.
     name: verify
-    needs: [selection, controller]
+    needs: [selection, controller, refinement]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       RDD_NEEDS: ${{ toJSON(needs) }}
     steps:
-      - name: Require selection and every selected frozen application check
+      - name: Require selection and every selected check
         shell: bash
         run: |
           python - <<'RDD_VERIFY_JOBS'
@@ -303,8 +325,13 @@ jobs:
           actual = needs.get('controller', {}).get('result')
           if actual != expected:
               raise SystemExit(f'controller: expected {expected}, observed {actual}')
-          if outputs.get('mode') == 'harness_maintenance':
-              message = 'Harness testing is manual; application_complete=false.\n'
+          maintenance = outputs.get('mode') == 'harness_maintenance'
+          expected = 'success' if maintenance else 'skipped'
+          actual = needs.get('refinement', {}).get('result')
+          if actual != expected:
+              raise SystemExit(f'refinement: expected {expected}, observed {actual}')
+          if maintenance:
+              message = 'Focused refinement regressions passed; application_complete=false.\n'
               print(message, end='')
               if os.environ.get('GITHUB_STEP_SUMMARY'):
                   with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:

@@ -9,6 +9,7 @@ import time
 
 from .common import RddError, digest, event, file_hash, git, head, inventory, read_json, safe_path, source_digest, validate_artifact
 from .profiles import WORKFLOW_AUTHOR_ROLES
+from .refinement import POLICY as REFINEMENT_POLICY, SNAPSHOT_PATH, closure, node_projection, validate_budget
 from .artifacts import DOMAIN_INVENTORY_PATH, domain_inventory_validate, requirements
 
 _SPEC = [
@@ -33,7 +34,11 @@ NODES = {node: {"id": node, "title": title, "depends_on": deps, "stage": stage}
 DERIVED = {"S8", "P6", "P7", "P8", *(node for node, _, _ in _IMPL)}
 
 
-def _prior_artifact(root: Path, claim: dict, path: str) -> bool:
+def _prior_artifact(root: Path, claim: dict, path: str, prior_attempts: list[dict]) -> bool:
+    if claim["sources"].get(path, "MISSING") == "MISSING":
+        for attempt in reversed(prior_attempts):
+            if attempt.get("status") == "complete" and path in attempt.get("outputs", {}):
+                return attempt["outputs"][path] == "MISSING"
     value = claim["sources"].get(path)
     if not re.fullmatch(r"[0-9a-f]{64}", str(value)):
         return False
@@ -106,6 +111,8 @@ for _node, _definition in NODES.items():
         write_prefixes=(["docs/specs/", "docs/decisions/"] if _node.startswith("S")
                         else [".rdd/plan/notes/"] if _node.startswith("P") else []),
         write_paths=[])
+    if _node.startswith("S"):
+        _definition["refinement_policy"] = REFINEMENT_POLICY
     if _node in {"S5", "S6"}:
         _definition["write_prefixes"] += [".rdd/sources/"]
         _definition["write_paths"] += ["buf.yaml", "buf.lock", "rust-toolchain.toml", "tools/proto-codegen/Cargo.lock"]
@@ -125,6 +132,8 @@ class WorkflowNodes:
             raise RddError("Node claims require a bounded unique write inventory")
         for path in writes:
             safe_path(self.root, path)
+            if path == SNAPSHOT_PATH and node != "S6":
+                raise RddError("Only S6 may materialize the refinement snapshot", "specification")
             if path == DOMAIN_INVENTORY_PATH and node != "S1":
                 raise RddError("Only S1 may author or correct the canonical domain inventory", "specification")
             if path.endswith("/") or not (path.startswith(tuple(definition["write_prefixes"]))
@@ -139,7 +148,10 @@ class WorkflowNodes:
 
     def _node_input(self, state: dict, node: str, records: dict) -> dict:
         dependencies = {dep: records.get(dep, {}).get("output_digest") for dep in NODES[node]["depends_on"]}
-        return {"requirements_digest": state["requirements_digest"], "dependencies": dependencies,
+        refinement = node_projection(self.root, state, node)
+        validate_budget(self.config, refinement, packet=True)
+        return {"refinement": refinement,
+                "requirements_digest": state["requirements_digest"], "dependencies": dependencies,
                 "requirements_source": file_hash(self.root / self.config["requirements"]),
                 "spec_digest": state.get("spec_digest") if node.startswith("P") else None}
 
@@ -152,6 +164,8 @@ class WorkflowNodes:
             if record["status"] == "complete":
                 if (inventory(self.root, list(record["outputs"])) != record["outputs"]
                         or any(records.get(dep, {}).get("status") != "complete" for dep in definition["depends_on"])
+                        or (node == "S6" and read_json(self.root / SNAPSHOT_PATH)["closure_digest"]
+                            != closure(self.root, state)["closure_digest"])
                         or record["input_digest"] != digest(self._node_input(state, node, records))):
                     record["status"] = "stale"
         derived = {"S8": state.get("spec_acceptance"), "P6": state.get("plan_acceptance"),
@@ -228,6 +242,8 @@ class WorkflowNodes:
         prior = records[node]
         if prior["status"] == "claimed":
             raise RddError("Release the existing node claim before retrying")
+        if node == "S6" and set(prior.get("outputs", {})) - set(writes):
+            raise RddError("S6 retries must retain the prior output inventory")
         if any(records[d]["status"] != "complete" for d in NODES[node]["depends_on"]):
             raise RddError("Workflow node dependencies are incomplete")
         observations = [entry for entry in state.get("live_reviews", [])
@@ -241,10 +257,18 @@ class WorkflowNodes:
             if other.get("status") == "claimed" and set(other["claim"]["writes"]) & set(writes):
                 raise RddError("Workflow claims must have disjoint write ownership")
         inputs = self._node_input(state, node, records)
+        if any(s["observed"] != s["sha256"] for s in inputs["refinement"]["sources"]):
+            raise RddError("Refinement prerequisite changed; resolve it before claiming work", "specification")
+        if any(s["path"] in writes and not s["excerpt"] for s in inputs["refinement"]["sources"]):
+            raise RddError("A mutable author output needs an exact excerpt source, not a whole-file prerequisite", "specification")
+        sources = inventory(self.root)
+        for source in inputs["refinement"]["sources"]:
+            if source["path"] not in sources:
+                raise RddError(f"Refinement source is absent from the claim inventory: {source['path']}", "specification")
         claim = {"session_id": session_id, "role": role, "requested_runtime": self.profile_settings(role),
                  "writes": writes, "attempt": len(prior["attempts"]) + 1,
                  "inputs": inputs, "input_digest": digest(inputs), "source_commit": head(self.root),
-                 "source_digest": source_digest(self.root), "sources": inventory(self.root),
+                 "source_digest": digest(sources), "sources": sources,
                  "concurrent_writes": sorted({p for r in records.values() if r.get("status") == "claimed" for p in r["claim"]["writes"]}),
                  "finding": finding, "review_cursor": len(state.get("live_reviews", [])),
                  "expires": time.time() + self.config["limits"]["lease_seconds"]}
@@ -255,7 +279,7 @@ class WorkflowNodes:
         authors = state.setdefault("authors", {}).setdefault(stage, [])
         if session_id not in authors:
             authors.append(session_id)
-        event(state, "workflow_node_claimed", node=node, attempt=claim["attempt"], session=session_id)
+        event(state, "workflow_node_claimed", node=node, attempt=claim["attempt"], session=session_id, input_digest=claim["input_digest"])
         self.save(state)
         return {"node": node, "claim": claim, "correction_destination": definition["correction_destination"]}
 
@@ -295,7 +319,7 @@ class WorkflowNodes:
         for path in record["outputs"]:
             output = safe_path(self.root, path)
             if not output.exists():
-                if not _prior_artifact(self.root, claim, path):
+                if not _prior_artifact(self.root, claim, path, row["attempts"][:-1]):
                     raise RddError("Node missing output was not a previously present claimed artifact: " + path)
                 # Canonical generation can retire the harness seed or obsolete
                 # bindings. Preserve its absence in the same hashed inventory.
@@ -349,6 +373,12 @@ class WorkflowNodes:
         self.guard_run_policy(state)
         if state.get("workflow_graph_digest") != digest(NODES):
             raise RddError("Checkpoint workflow graph differs from protected policy")
+        references = [(e.get("node"), e.get("attempt"), e.get("session"))
+                      for e in state.get("events", []) if e.get("action") == "workflow_node_claimed"]
+        expected = [(node, a.get("claim", {}).get("attempt"), a.get("claim", {}).get("session_id"))
+                    for node, row in state.get("workflow_nodes", {}).items() for a in row.get("attempts", [])]
+        if len(references) != len(expected) or any(references.count(ref) != 1 for ref in expected):
+            raise RddError("Checkpoint workflow claim references are missing or duplicated")
         for node, row in state.get("workflow_nodes", {}).items():
             if node not in NODES or node in DERIVED or row.get("status") not in {"pending", "claimed", "complete", "stale"}:
                 raise RddError("Checkpoint contains an invalid authoring node")
@@ -383,7 +413,14 @@ class WorkflowNodes:
                     if value != "MISSING" and not re.fullmatch(r"[0-9a-f]{64}", str(value)):
                         raise RddError("Checkpoint node source inventory is invalid")
                 inputs = claim["inputs"]
-                if (not isinstance(inputs, dict) or set(inputs) != {"requirements_digest", "requirements_source", "dependencies", "spec_digest"}
+                matching_events = [i for i, e in enumerate(state.get("events", []))
+                                   if e.get("action") == "workflow_node_claimed" and e.get("node") == node
+                                   and e.get("attempt") == number and e.get("session") == claim["session_id"]]
+                if len(matching_events) != 1 or state["events"][matching_events[0]].get("input_digest") != claim["input_digest"]:
+                    raise RddError("Checkpoint node claim lacks its unique historical event")
+                historical_refinement = node_projection(self.root, state, node, matching_events[0], claim["sources"])
+                if (not isinstance(inputs, dict) or set(inputs) != {"refinement", "requirements_digest", "requirements_source", "dependencies", "spec_digest"}
+                        or inputs["refinement"] != historical_refinement
                         or inputs["requirements_digest"] != state["requirements_digest"]
                         or not re.fullmatch(r"[0-9a-f]{64}", str(inputs["requirements_source"]))
                         or inputs["requirements_source"] != claim["sources"].get(self.config["requirements"])
@@ -393,7 +430,9 @@ class WorkflowNodes:
                     raise RddError("Checkpoint node input identity is invalid")
                 for dependency, identity in inputs["dependencies"].items():
                     prior = state.get("workflow_nodes", {}).get(dependency, {}).get("attempts", [])
-                    if not any(a.get("status") == "complete" and a.get("outputs") and digest(a["outputs"]) == identity for a in prior):
+                    if not any(a.get("status") == "complete" and a.get("outputs") and digest(a["outputs"]) == identity for a in prior) or not any(
+                            e.get("action") == "workflow_node_completed" and e.get("node") == dependency
+                            and digest(e.get("outputs")) == identity for e in state["events"][:matching_events[0]]):
                         raise RddError("Checkpoint node prerequisite handoff is missing")
                     if not any(entry["review"]["stage"] == NODES[node]["stage"]
                                and entry.get("node_outputs", {}).get(dependency) == identity
@@ -409,7 +448,7 @@ class WorkflowNodes:
                     if (not isinstance(outputs, dict) or set(outputs) != set(claim["writes"])
                             or not any(re.fullmatch(r"[0-9a-f]{64}", str(h)) for h in outputs.values())
                             or any(not re.fullmatch(r"[0-9a-f]{64}", str(h))
-                                   and not (h == "MISSING" and _prior_artifact(self.root, claim, path))
+                                   and not (h == "MISSING" and _prior_artifact(self.root, claim, path, attempts[:number - 1]))
                                    for path, h in outputs.items())
                             or not isinstance(attempt.get("evidence_ids"), list)
                             or any(eid not in state.get("checks", {}) for eid in attempt["evidence_ids"])):

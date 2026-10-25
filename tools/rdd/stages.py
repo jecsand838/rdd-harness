@@ -212,6 +212,8 @@ class StageWorkflow:
 
     def current_readiness(self, stage: str, candidate: dict) -> dict:
         state = self.state()
+        if stage == "specification":
+            self.require_refinement(state)
         report = state.get("readiness", {}).get(stage)
         if not report or report["candidate"] != candidate or report["status"] != "passed":
             raise RddError(f"Exact-current-candidate {stage} readiness is required", "review")
