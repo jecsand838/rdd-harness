@@ -1,11 +1,11 @@
 ---
 document_id: TODO-REQ
 title: Todo Application Requirements
-version: 0.3.0
+version: 0.4.0
 status: draft
-date: 2026-10-11
+date: 2026-10-25
 canonical_path: requirements/requirements.md
-requirement_revision: 3
+requirement_revision: 4
 requirement_priority: must
 ---
 
@@ -15,7 +15,7 @@ requirement_priority: must
 
 This document defines release one of a personal desktop Todo application built with Rust, Tauri 2, and an embedded Turso database. The application helps one person capture work, identify outstanding tasks, record completion, and retain control of their data while working offline.
 
-**Status:** Draft 0.3.0, developer-amended example baseline. Every identified requirement has revision 3 and priority Must under the macOS scope in Section 6. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
+**Status:** Draft 0.4.0, developer-amended example baseline. Every identified requirement has revision 4 and priority Must under the macOS scope in Section 6. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
 
 Rust, Tauri 2, and embedded Turso are the requested technology constraints. The desktop platform matrix, Rust UI scope, feature boundaries, field limits, and performance budgets are explicit choices for this example. They can be amended before the requirements baseline is accepted.
 
@@ -421,7 +421,7 @@ This section is normative through NFR-PLAT-001 and NFR-PERF-001 through NFR-PERF
 |---|---|---|
 | macOS | macOS 26.x, arm64 (Apple silicon) | Apple silicon Mac with 32 GB RAM or greater and local SSD storage; a macOS VM must have at least 32 GB RAM allocated to the guest |
 
-A physical Mac or a macOS VM on Apple silicon meeting this matrix is eligible for acceptance. Windows, Linux (including Ubuntu), macOS releases outside 26.x, Intel Macs, and environments below the RAM minimum are outside this baseline; their absence is not an application acceptance blocker. Native qualification, packaged functional tests, accessibility checks, and benchmarks are required on the selected acceptance environment. Installer format is selected in specification. Each benchmark uses the release package, an active 1280 by 720 logical-pixel window, AC power and normal performance mode on the physical host, at least 20 GiB free local storage, and no concurrent build or benchmark workload. Application data and backup destinations are on the same local SSD, including the backing storage for a VM. No network filesystem is supported for live database storage.
+A physical Mac or a macOS VM on Apple silicon meeting this matrix is eligible for acceptance. Windows, Linux (including Ubuntu), macOS releases outside 26.x, Intel Macs, and environments below the RAM minimum are outside this baseline; their absence is not an application acceptance blocker. Native qualification, packaged functional tests, accessibility checks, and benchmarks are required on the selected acceptance environment. Installer format is selected in specification. Each benchmark uses the release package, an active 1280 by 720 logical-pixel window, AC power and normal performance mode on the physical host, at least 15 GiB free local storage, and no concurrent build or benchmark workload. Application data and backup destinations are on the same local SSD, including the backing storage for a VM. No network filesystem is supported for live database storage.
 
 ### Representative dataset D1
 
@@ -484,5 +484,6 @@ These references explain the selected technology constraints and verification gu
 | Version | Date | Change |
 |---|---|---|
 | 0.1.0 | 2026-10-07 | First proposed requirements baseline for the local Rust and Tauri Todo application with embedded Turso. |
-| 0.2.0 | 2026-10-08 | Developer-authorized revision 2: restrict support and verification to the current macOS 26.7 / M3 Max / 128 GiB Mac; replace cross-platform backup verification with a fresh-profile round trip on that Mac. All 53 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this platform scope. |
-| 0.3.0 | 2026-10-11 | Developer-authorized revision 3: broaden support and acceptance to macOS 26.x on Apple silicon with at least 32 GB RAM, including qualifying macOS VMs. Specification records the selected acceptance environment for reproducibility. All 53 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this broader platform scope. |
+| 0.2.0 | 2026-10-08 | Developer-authorized revision 2: restrict support and verification to the current macOS 26.7 / M3 Max / 128 GiB Mac; replace cross-platform backup verification with a fresh-profile round trip on that Mac. All 52 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this platform scope. |
+| 0.3.0 | 2026-10-11 | Developer-authorized revision 3: broaden support and acceptance to macOS 26.x on Apple silicon with at least 32 GB RAM, including qualifying macOS VMs. Specification records the selected acceptance environment for reproducibility. All 52 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this broader platform scope. |
+| 0.4.0 | 2026-10-25 | Developer-authorized revision 4: lower the Section 6 benchmark free-local-storage minimum from 20 GiB to 15 GiB. All other platform conditions, performance budgets, sampling, and verification obligations remain unchanged. |
