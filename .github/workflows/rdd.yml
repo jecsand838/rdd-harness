@@ -184,6 +184,7 @@ jobs:
         run: python -m unittest discover -s tests/harness -p test_refinement.py -v
 
   controller:
+    name: Frozen application verification
     needs: selection
     if: needs.selection.outputs.controller == 'true'
     runs-on: ${{ matrix.os }}
