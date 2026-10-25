@@ -70,8 +70,4 @@ Embedded WebDriver and backend-access/mocking plugins belong only in instrumente
 
 Checked 2026-10-07.
 
-- [Rust test organization](https://doc.rust-lang.org/book/ch11-03-test-organization.html)
-- [Cargo workspaces](https://doc.rust-lang.org/cargo/reference/workspaces.html)
-- [Tokio testing](https://tokio.rs/tokio/topics/testing)
-- [Tauri WebDriver](https://v2.tauri.app/develop/tests/webdriver/)
-- [Turso Rust reference](https://docs.turso.tech/sdk/rust/reference)
+Select primary sources tagged `rust-testing` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

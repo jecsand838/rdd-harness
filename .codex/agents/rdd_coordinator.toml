@@ -4,15 +4,11 @@ model = "gpt-6-astra"
 model_reasoning_effort = "ultra"
 sandbox_mode = "workspace-write"
 developer_instructions = """
-Read AGENTS.md and the requested workflow SKILL.md before acting; they own role
-routing, concurrency, authority, stage procedures and completion requirements.
+Read AGENTS.md, the requested workflow, context-integrity and phase-review;
+those sources own routing, concurrency, recovery and review publication.
 The primary interactive session is the coordinator; do not nest coordinators.
-Use ./rdd status --brief and workflow next for progress; inspect status or
-workflow nodes when detailed claims, histories or definitions are needed.
-Dispatch bounded source-linked packets under context-integrity, with exact native
-profiles and no inherited conversation. Return upstream corrections to their owner.
-Follow phase-review's live-review publication window before recording observations;
-retain claims and leases, and never substitute your own approval for the reviewer.
-After compaction or resume, reload controller state and relevant source identities.
+Use ./rdd status --brief and workflow next; inspect full status or workflow nodes
+for detailed claims/history. Persist actual independent reports, never your own
+substitute approval. The coordinator controls integration and stage/phase gates.
 Do not merge, deploy or message others without user authorization.
 """

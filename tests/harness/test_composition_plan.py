@@ -15,11 +15,21 @@ from tools.rdd.readiness import validate_boundary_plan, validate_producers, vali
 def build_composition_fixture(root):
     """Real v3 artifacts shared by specification and preparation regressions."""
     fixture = build_fixture(root)
-    inventory = dict(schema_version=1, requirements_digest=fixture.controller.state()["requirements_digest"],
-        domains=[dict(id="D-ITEMS", module="items", requirements=["FR-001"], behaviors=["B-STATE"], invariants=["I-ORDER"])],
-        supporting_modules=[dict(id="S-APP", module="app", kind="orchestration", requirements=["FR-001"], behaviors=["B-INIT"])],
-        interactions=[dict(id="I-WIRE", consumer="app", provider="items", kind="composition", requirements=["FR-001"], behaviors=[])])
-    fixture.begin_s6(inventory=inventory)
+    inventory = fixture.domain_inventory()
+    inventory["supporting_modules"] = [dict(id="S-APP", module="app", kind="orchestration", requirements=["FR-001"],
+        behaviors=[dict(id="B-INIT", requirements=["FR-001"], behavior="support")])]
+    inventory["interactions"] = [dict(id="I-WIRE", consumer="app", provider="items", kind="composition",
+        requirements=["FR-001"], behaviors=[])]
+    scenarios = fixture.scenarios()
+    for sid, kind, expected in (("G-INIT", "boundary", "Construction succeeds; registered dispatch reaches the generated provider"),
+                               ("G-INIT-FAIL", "failure", "Construction failure returns initialization error; dispatch stays unavailable")):
+        scenarios.append({**scenarios[0], "id": sid, "kind": kind, "description": "Initialize provider registration",
+            "expected": expected, "solution_elements": ["S-APP", "B-INIT"], "preconditions": "No registered provider",
+            "fixture": "Controlled constructor success or failure", "stimulus": "Initialize then dispatch a generated-interface query",
+            "verification_method": "Assert registration visibility and initialization result independently"})
+    for scenario in scenarios:
+        scenario["check_ids"] = ["C-PROVIDER", "C-CONSUMER"]
+    fixture.begin_s6(inventory=inventory, scenarios=scenarios)
     fixture.text("docs/specs/solution.md", (root / "docs/specs/solution.md").read_text() +
         "\nInitialization constructs and registers the generated-interface provider before ordered reads. "
         "Construction failure leaves dispatch unavailable and returns an initialization error.\n")
@@ -37,15 +47,6 @@ def build_composition_fixture(root):
                 if group in {role, "dependency_direction", "compatibility", "semantics"} else []
                 for group in module[stage + "_checks"]}
     spec["modules"].append(consumer)
-    spec["solution_elements"].extend({**spec["solution_elements"][1], "id": eid, "module": "app", "scenarios": ["G-INIT", "G-INIT-FAIL"]}
-                                      for eid in ("S-APP", "B-INIT"))
-    for sid, kind, expected in (("G-INIT", "boundary", "Construction succeeds; registered dispatch reaches the generated provider"),
-                               ("G-INIT-FAIL", "failure", "Construction failure returns initialization error; dispatch stays unavailable")):
-        spec["scenarios"].append({**spec["scenarios"][0], "id": sid, "kind": kind, "description": "Initialize provider registration",
-            "expected": expected, "solution_elements": ["S-APP", "B-INIT"], "preconditions": "No registered provider",
-            "fixture": "Controlled constructor success or failure", "stimulus": "Initialize then dispatch a generated-interface query",
-            "verification_method": "Assert registration visibility and initialization result independently"})
-    spec["requirement_map"][0]["scenarios"].extend(["G-INIT", "G-INIT-FAIL"])
     spec["boundary_bindings"] = [dict(interaction="I-WIRE", operations=[], types=[], exports=["items::build"])]
     for rid, path in (("R-PROVIDER", "modules/items.rs"), ("R-CONSUMER", "modules/app.rs"), ("R-TEST", "tests/wiring.py")):
         spec["resources"].append({**spec["resources"][0], "id": rid, "path": path,
@@ -62,8 +63,6 @@ def build_composition_fixture(root):
             "scenario_ids": [scenario["id"] for scenario in spec["scenarios"]],
             "results_path": ".rdd/evidence/results/" + cid + ".json"})
     spec["project_check_ids"] = ["C-PROVIDER", "C-CONSUMER"]
-    for scenario in spec["scenarios"]:
-        scenario["check_ids"] = spec["project_check_ids"]
     plan = plan_for(spec)
     template = plan["tasks"][0]
     plan["tasks"] = []
@@ -210,7 +209,8 @@ class CompositionPlanTests(CompositionFixture):
 
     def test_shared_provider_does_not_cover_second_consumer_or_selected_export(self):
         self.validate()
-        self.inventory["supporting_modules"].append(dict(id="S-OTHER", module="other", kind="orchestration", requirements=["FR-001"], behaviors=["B-OTHER"]))
+        self.inventory["supporting_modules"].append(dict(id="S-OTHER", module="other", kind="orchestration", requirements=["FR-001"],
+            behaviors=[dict(id="B-OTHER", requirements=["FR-001"], behavior="support")]))
         self.inventory["interactions"].append(dict(id="I-OTHER", consumer="other", provider="items", kind="composition", requirements=["FR-001"], behaviors=[]))
         self.spec["modules"].append({**self.spec["modules"][1], "id": "other", "owns_paths": ["modules/other.rs"]})
         self.spec["boundary_bindings"].append(dict(interaction="I-OTHER", operations=[], types=[], exports=["items::build"]))

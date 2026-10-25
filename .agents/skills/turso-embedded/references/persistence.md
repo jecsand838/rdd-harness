@@ -61,9 +61,4 @@ For upgrades, preserve recoverable prior data before a format transition and rej
 
 Checked 2026-10-07.
 
-- [Rust quickstart](https://docs.turso.tech/sdk/rust/quickstart)
-- [Rust API reference](https://docs.turso.tech/sdk/rust/reference)
-- [SQLite compatibility](https://docs.turso.tech/sql-reference/compatibility)
-- [Transactions](https://docs.turso.tech/sql-reference/statements/transactions)
-- [Multiprocess constraints](https://docs.turso.tech/sql-reference/multiprocess-access)
-- [Cloud durability scope](https://docs.turso.tech/cloud/durability)
+Select primary sources tagged `turso-embedded` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

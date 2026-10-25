@@ -43,7 +43,7 @@ Generated outputs are reproduced from frozen canonical contracts. Markers for ed
 - An architectural contradiction is a specification blocker.
 - An invalid frozen task graph is a planning blocker.
 - A missing tool, account capability, credential, or required platform is an environment or authorization blocker.
-- Exhausted execution budget is a resumable budget blocker.
+- Exhausted execution budget leaves the workflow incomplete; `resume` cannot reset it. See [controller recovery](workflow-guide.md#repairs-and-interruptions).
 - An unresolved acceptance finding is a review blocker.
 - An invalidated sealed guarantee is a closure failure requiring a new amendment.
 

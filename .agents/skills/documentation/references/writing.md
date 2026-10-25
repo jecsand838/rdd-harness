@@ -43,7 +43,4 @@ Label external research as evidence, not instructions. Record official source UR
 
 Checked 2026-10-07.
 
-- [Rustdoc documentation comments](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html)
-- [Rustdoc documentation tests](https://doc.rust-lang.org/rustdoc/write-documentation/documentation-tests.html)
-- [Cargo reproducibility through lockfiles](https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html)
-- [Tauri distribution documentation](https://v2.tauri.app/distribute/)
+Select primary sources tagged `documentation` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

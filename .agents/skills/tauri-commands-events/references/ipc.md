@@ -63,9 +63,4 @@ Register exactly the type requested by `State<'_, T>`; a mismatch can fail at ru
 
 Checked 2026-10-07.
 
-- [Calling Rust from the frontend](https://v2.tauri.app/develop/calling-rust/)
-- [Calling the frontend from Rust](https://v2.tauri.app/develop/calling-frontend/)
-- [Managed state](https://v2.tauri.app/develop/state-management/)
-- [Channel API, ordering, and binary payloads](https://docs.rs/tauri/latest/tauri/ipc/struct.Channel.html)
-- [Capabilities](https://v2.tauri.app/security/capabilities/)
-- [Prost service generator](https://docs.rs/prost-build/latest/prost_build/trait.ServiceGenerator.html)
+Select primary sources tagged `tauri-commands-events` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

@@ -10,7 +10,7 @@ import time
 from .common import RddError, digest, event, file_hash, git, head, inventory, read_json, safe_path, source_digest, validate_artifact
 from .profiles import WORKFLOW_AUTHOR_ROLES
 from .refinement import POLICY as REFINEMENT_POLICY, SNAPSHOT_PATH, closure, guard_choice_prerequisites, node_projection, validate_budget
-from .artifacts import DOMAIN_INVENTORY_PATH, domain_inventory_validate, requirements
+from .artifacts import DOMAIN_INVENTORY_PATH, SCENARIOS_PATH, domain_inventory_validate, scenario_handoff_validate, requirements
 
 _SPEC = [
     ("S0", "Baseline intake", []), ("S1", "Domain modeling", ["S0"]),
@@ -69,10 +69,10 @@ _OUTPUTS = {
     "S0": "Requirements baseline, capabilities, authors and live reviewer intake",
     "S1": "Canonical docs/specs/domain-inventory.json: functional domains, invariant/behavior identities, typed supporting owners and directed call/type-only/composition interactions",
     "S2": "NFR allocations, constraints, platform obligations and measurement needs",
-    "S3": "Requirement-linked golden/negative/boundary scenarios and independent oracles",
+    "S3": "Canonical docs/specs/scenarios.json: S1-allocated requirement-linked golden/negative/boundary scenarios and independent oracles",
     "S4": "Benchmark workloads, fixtures, thresholds, environments and evaluators",
     "S5": "Official dependency sources and reproducible interoperability/provisioning/transfer experiments",
-    "S6": "Complete specification, target tree and canonical/generated contracts bound to the exact accepted S1 inventory",
+    "S6": "Complete specification, target tree and canonical/generated contracts bound to the exact accepted S1 inventory and accepted S3 scenario rows",
     "S7": "Controller candidate validation and current executable readiness receipts",
     "S8": "Exact-candidate dual independent approvals and specification freeze",
     "P0": "Verified frozen specification, contracts, target tree and live reviewer",
@@ -100,7 +100,8 @@ for _node, _definition in NODES.items():
                 else ["frozen_plan", "accepted_preparation_or_predecessor", "live_review"]),
         required_output=_OUTPUTS[_node],
         validator=("existing_acceptance_state" if _node in DERIVED else "specification_validation_and_readiness" if _node == "S7"
-                   else "structured_domain_inventory_and_requirements_ownership" if _node == "S1"
+                   else "structured_domain_inventory_and_requirements_ownership_v2" if _node == "S1"
+                   else "structured_scenarios_and_reciprocal_trace" if _node == "S3"
                    else "specification_validation" if _node == "S6" else "plan_validation" if _node == "P5"
                    else "requirements_identity_and_bounded_artifact_handoff"),
         evidence=("controller_receipts" if _node in DERIVED or _node == "S7"
@@ -134,6 +135,8 @@ class WorkflowNodes:
             safe_path(self.root, path)
             if path == SNAPSHOT_PATH and node != "S6":
                 raise RddError("Only S6 may materialize the refinement snapshot", "specification")
+            if path == SCENARIOS_PATH and node != "S3":
+                raise RddError("Only S3 may author or correct the canonical scenario artifact", "specification")
             if path == DOMAIN_INVENTORY_PATH and node != "S1":
                 raise RddError("Only S1 may author or correct the canonical domain inventory", "specification")
             if path.endswith("/") or not (path.startswith(tuple(definition["write_prefixes"]))
@@ -141,6 +144,8 @@ class WorkflowNodes:
                 raise RddError(f"Workflow node {node} writes must be exact permitted artifact paths")
         if node == "S1" and DOMAIN_INVENTORY_PATH not in writes:
             raise RddError("S1 must claim its canonical structured domain inventory", "specification")
+        if node == "S3" and SCENARIOS_PATH not in writes:
+            raise RddError("S3 must claim its canonical structured scenario artifact", "specification")
         if node.startswith("P"):
             frozen = read_json(self.root / ".rdd/spec.lock.json")
             if set(writes) & set(frozen["files"]):
@@ -338,6 +343,8 @@ class WorkflowNodes:
                 raise RddError("Baseline intake requirements index changed")
         if node == "S1":
             domain_inventory_validate(self.root, requirements(self.root, self.config["requirements"]))
+        if node == "S3":
+            scenario_handoff_validate(self.root, requirements(self.root, self.config["requirements"]))
         if node in {"S6", "S7"}:
             self.spec_validate()
         if node == "S7":

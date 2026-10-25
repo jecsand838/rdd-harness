@@ -2,7 +2,7 @@
   "type": "object",
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "requirements_digest": {
       "type": "string",
@@ -23,11 +23,11 @@
             "$ref": "#/$defs/references"
           },
           "behaviors": {
-            "$ref": "#/$defs/optional_identities",
+            "$ref": "#/$defs/rows",
             "minItems": 1
           },
           "invariants": {
-            "$ref": "#/$defs/optional_identities"
+            "$ref": "#/$defs/rows"
           }
         },
         "required": [
@@ -67,7 +67,7 @@
             "$ref": "#/$defs/references"
           },
           "behaviors": {
-            "$ref": "#/$defs/optional_identities"
+            "$ref": "#/$defs/rows"
           }
         },
         "required": [
@@ -133,7 +133,7 @@
   ],
   "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:rdd:schema:domain-inventory:v1",
+  "$id": "urn:rdd:schema:domain-inventory:v2",
   "title": "RDD accepted S1 domain inventory",
   "$defs": {
     "reference": {
@@ -159,6 +159,35 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/identity"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identity"
+          },
+          "requirements": {
+            "$ref": "#/$defs/references"
+          },
+          "behavior": {
+            "enum": [
+              "positive",
+              "negative",
+              "support"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "requirements",
+          "behavior"
+        ],
+        "additionalProperties": false
       },
       "minItems": 0,
       "uniqueItems": true

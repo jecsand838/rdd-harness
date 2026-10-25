@@ -3,25 +3,20 @@
 The small runtime fixture seeds the frozen-stage prerequisite; it does not claim
 end-to-end specification/preparation qualification or live GitHub observations.
 """
-from pathlib import Path
 import copy
-import tempfile
 import unittest
 from unittest.mock import patch
 
-from test_refinement import build_fixture
+from test_refinement import HarnessTestCase
 from tools.rdd import artifacts
 from tools.rdd.common import RddError, head, source_digest
 from tools.rdd.engine import Controller
 
 
-class RuntimeTests(unittest.TestCase):
+class RuntimeTests(HarnessTestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix="rdd-runtime-")
-        self.addCleanup(temporary.cleanup)
-        self.f = build_fixture(Path(temporary.name))
-        self.c, self.root = self.f.controller, self.f.root
-        self.addCleanup(self.c.close)
+        super().setUp()
+        self.f, self.c = self.fixture, self.controller
 
     def observe(self, tasks=(), nodes=(), identity=None, resolutions=()):
         state = self.c.state()

@@ -56,10 +56,4 @@ Test instrumentation and ordinary release artifacts are separate outputs. An emb
 
 Checked 2026-10-07.
 
-- [Tauri 2](https://v2.tauri.app/)
-- [Frontend configuration](https://v2.tauri.app/start/frontend/)
-- [Platform prerequisites](https://v2.tauri.app/start/prerequisites/)
-- [Capabilities and custom command restrictions](https://v2.tauri.app/security/capabilities/)
-- [Content security policy](https://v2.tauri.app/security/csp/)
-- [Single instance](https://v2.tauri.app/plugin/single-instance/)
-- [Distribution](https://v2.tauri.app/distribute/)
+Select primary sources tagged `tauri-application` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

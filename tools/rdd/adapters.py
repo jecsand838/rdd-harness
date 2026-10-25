@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
-from .common import RddError
+from .common import RddError, strict_json as _strict_json
 from .profiles import load_profiles
 
 
@@ -188,19 +188,6 @@ def _json_output(result: CommandResult, operation: str, *, allow_failure: bool =
         return _strict_json(result.stdout)
     except (ValueError, TypeError) as exc:
         raise RddAdapterError("invalid-json", f"{operation} did not return valid JSON.") from exc
-
-
-def _strict_json(text: str) -> Any:
-    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
-        answer = {}
-        for key, value in rows:
-            if key in answer:
-                raise ValueError(f"Duplicate JSON key: {key}")
-            answer[key] = value
-        return answer
-    def nonfinite(value: str) -> Any:
-        raise ValueError(f"Nonfinite JSON number: {value}")
-    return json.loads(text, object_pairs_hook=pairs, parse_constant=nonfinite)
 
 
 def _ref(value: str) -> str:

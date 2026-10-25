@@ -41,28 +41,22 @@
       "type": "object",
       "properties": {
         "severity": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonempty_text"
         },
         "detected_stage": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonempty_text"
         },
         "origin_stage": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonempty_text"
         },
         "source_commit": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonempty_text"
         },
         "source_digest": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonempty_text"
         },
         "spec_digest": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonempty_text"
         },
         "plan_digest": {
           "type": [
@@ -74,25 +68,13 @@
           "type": "object",
           "properties": {
             "requirements": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "uniqueItems": true
+              "$ref": "#/$defs/unique_strings"
             },
             "elements": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "uniqueItems": true
+              "$ref": "#/$defs/unique_strings"
             },
             "tasks": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "uniqueItems": true
+              "$ref": "#/$defs/unique_strings"
             }
           },
           "required": [
@@ -103,15 +85,10 @@
           "additionalProperties": false
         },
         "evidence": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "uniqueItems": true
+          "$ref": "#/$defs/unique_strings"
         },
         "diagnostic": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonempty_text"
         }
       },
       "required": [
@@ -137,5 +114,18 @@
     "created_at",
     "resolved"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "nonempty_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unique_strings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  }
 }

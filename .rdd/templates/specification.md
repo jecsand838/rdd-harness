@@ -16,15 +16,7 @@ Define the solution representation of domain terms, legal/illegal states, owners
 
 ## Module boundaries
 
-Reference the exact accepted `docs/specs/domain-inventory.json` handoff under `domain-boundaries`. Preserve each domain and interaction identity; return corrections to S1. For every module identify:
-
-- Distinct functional subdomain owner, purpose and allocated requirements, or explicit supporting owner kind.
-- Owned state and invariants.
-- Provided Protobuf services/types, permitted consumed operations/types, and every directed call/type-only/composition binding under `domain-boundaries`.
-- Permitted and forbidden dependencies.
-- Distinct implementation paths, approved public exports and construction/wiring entry points; justification if a separate crate is needed.
-- Canonical source/generated identities, including shared support ownership.
-- Disposable specification qualification and separate real implementation conformance checks.
+Reference accepted S1 ownership and S3 scenario handoffs under [domain-boundaries](../../.agents/skills/domain-boundaries/SKILL.md#required-artifact). That policy owns module allocation, allowed exports/dependencies and qualification/adoption distinctions; record selected decisions here without repeating it. Return changed semantics to their original owner.
 
 ## Functional inventory and target tree
 
@@ -52,7 +44,7 @@ Map every NFR to a concrete design and verification protocol. Include datasets, 
 
 ## Scenarios and traceability
 
-Link golden, negative, boundary, concurrency, interruption, regression, and NFR scenarios. Define measurable oracles. Ensure all requirements and behaviors are mapped in both directions. Every FR and positive operation needs golden coverage; every golden scenario must reference an FR.
+Include the exact accepted S3 catalog in `documents` and preserve every scenario row in `.rdd/spec.json`. Use the [scenario template](scenario.md) for authoring and the original S3 owner for corrections.
 
 ## Check execution readiness
 

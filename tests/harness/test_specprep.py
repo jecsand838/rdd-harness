@@ -3,11 +3,9 @@ import copy
 import json
 import subprocess
 import sys
-from pathlib import Path
-import tempfile
 import unittest
 
-from test_refinement import REPOSITORY, build_fixture
+from test_refinement import REPOSITORY, HarnessTestCase
 from tools.rdd import artifacts
 from tools.rdd.common import RddError, write_json
 from tools.rdd.nodes import NODES
@@ -32,14 +30,7 @@ def plan_for(spec):
                           for e in spec["solution_elements"]], resource_producers=[], resource_uses=[], boundary_proofs=[], type_import_proofs=[])
 
 
-class SpecificationPreparationTests(unittest.TestCase):
-    def setUp(self):
-        self.directory = tempfile.TemporaryDirectory()
-        self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
-        self.fixture = build_fixture(self.root)
-        self.addCleanup(self.fixture.controller.close)
-
+class SpecificationPreparationTests(HarnessTestCase):
     def cli_status(self, *arguments):
         result = subprocess.run([sys.executable, str(REPOSITORY / "tools/rdd/cli.py"),
             "--root", str(self.root), "status", *arguments], capture_output=True, text=True)
@@ -92,8 +83,10 @@ class SpecificationPreparationTests(unittest.TestCase):
                 self.assertEqual(full, expected, "Default display must remain compatible")
                 brief_code, brief = self.cli_status("--brief")
                 self.assertEqual((full_code, brief_code), (2, 2) if scenario in {"blocked", "historical"} else (0, 0))
-                self.assertEqual({k: v for k, v in brief.items() if k not in {"workflow_nodes", "details"}},
-                                 {k: v for k, v in full.items() if k != "workflow_nodes"})
+                self.assertEqual({k: v for k, v in brief.items() if k not in {"workflow_nodes", "last_events", "details"}},
+                                 {k: v for k, v in full.items() if k not in {"workflow_nodes", "last_events"}})
+                self.assertEqual(brief["last_events"], [{k: v for k, v in e.items() if k != "outputs"}
+                                                       for e in full["last_events"]])
                 self.assertEqual({k: v for k, v in brief["workflow_nodes"].items() if k != "nodes"},
                                  {k: v for k, v in full["workflow_nodes"].items() if k != "nodes"})
                 self.assertNotIn("attempts", brief["workflow_nodes"]["nodes"][0])
@@ -105,7 +98,8 @@ class SpecificationPreparationTests(unittest.TestCase):
                     self.assertEqual(row["attempt_count"], len(original.get("attempts", [])))
                     self.assertFalse({"attempts", "outputs", "validator", "responsible_roles"} & row.keys())
                     if "claim" in original:
-                        self.assertEqual(row["claim"], {k: v for k, v in original["claim"].items() if k != "inputs"})
+                        self.assertEqual(row["claim"], {k: v for k, v in original["claim"].items()
+                            if k in {"role", "session_id", "attempt", "expires", "writes", "finding"}})
                 self.assertEqual(c.state(allow_blocked=True), before)
 
     def specification(self):
@@ -132,6 +126,7 @@ class SpecificationPreparationTests(unittest.TestCase):
         spec["solution_elements"].append(dict(id="E-NFR", kind="enabling", module=None, behavior="support",
             requirements=["NFR-001"], scenarios=["G-NFR"], specifications=["docs/specs/solution.md"]))
         spec["checks"][-1]["scenario_ids"].append("G-NFR")
+        write_json(self.root / artifacts.SCENARIOS_PATH, spec["scenarios"])
         with self.assertRaisesRegex(RddError, "golden.*functional requirement"):
             artifacts.spec_validate(self.root, spec, reqs, self.fixture.controller.config)
 

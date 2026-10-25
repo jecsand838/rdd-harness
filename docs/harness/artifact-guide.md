@@ -96,13 +96,9 @@ The S6 owner prelists `docs/specs/refinement.json` in `documents` and its write 
 
 ## S1 domain inventory
 
-`docs/specs/domain-inventory.json` uses `.rdd/schemas/domain-inventory.schema.json`. S1 must claim and record it; later nodes cannot rewrite it. Its `requirements_digest` binds the input baseline.
+S1 alone authors `docs/specs/domain-inventory.json` under the version-2 schema. Its input digest, ownership, behavior/invariant allocations and polarity follow [domain-boundaries](../../.agents/skills/domain-boundaries/SKILL.md#required-artifact). Interaction behavior references remain IDs. S6 preserves the accepted handoff; old inventories are not migrated into active runs.
 
-- `domains`: Stable solution subdomain `id`, distinct owner `module`, allocated `requirements`, `behaviors` and `invariants`. Behavior and invariant IDs become solution elements at S6.
-- `supporting_modules`: Stable enabling `id`, owner `module`, explicit `kind`, allocated `requirements` and `behaviors`. These describe adapters, infrastructure, presentation, orchestration, shared types or build support without inventing a business subdomain.
-- `interactions`: Stable `id`, exact consumer/provider module IDs, `kind` (`call`, `type_only` or `composition`), `requirements` and relevant `behaviors`.
-
-S6 preserves all entries and their allocations. It binds calls/types to generated symbols and composition to approved exports, with exact declared dependencies and reciprocal generated inventories. Type-only imports have frozen source/generated identities and compile as real Rust types. Inventory changes return to S1, invalidate downstream handoffs and require renewed review. Schema validation establishes consistency; independent semantic review establishes whether discovery omitted a real domain or interaction. The canonical design policy is `.agents/skills/domain-boundaries/SKILL.md`.
+S3 alone authors `docs/specs/scenarios.json`: a complete array using the `scenarios` property of `spec.schema.json`, including assertion fields and planned check IDs. S3 validates identities, per-edge requirement overlap, allocation coverage and reciprocal FR/golden coverage before recording. S6 includes the file in `documents`, preserves its accepted hash and exact rows, and supplies the declared executable checks. Structural validation cannot prove assertion meaning; [semantic review](../../.agents/skills/phase-review/SKILL.md#specification-and-preparation-reviews) remains required. Corrections go to the original owner, preserving budgets and history.
 
 ## Plan manifest
 

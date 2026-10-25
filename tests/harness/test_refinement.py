@@ -115,21 +115,35 @@ class HarnessFixture:
             "input_digest": claim["input_digest"], "outputs": claim["writes"],
             "evidence_ids": evidence or []}, "node.json"))
 
-    def begin_s6(self, extra_writes=(), inventory=None):
+    def domain_inventory(self):
+        return {"schema_version": 2, "requirements_digest": self.controller.state()["requirements_digest"],
+            "domains": [{"id": "D-ITEMS", "module": "items", "requirements": ["FR-001"],
+                "behaviors": [{"id": "B-STATE", "requirements": ["FR-001"], "behavior": "support"}],
+                "invariants": [{"id": "I-ORDER", "requirements": ["FR-001"], "behavior": "positive"}]}],
+            "supporting_modules": [], "interactions": []}
+
+    def scenarios(self):
+        return [{"id": "G01", "requirements": ["FR-001"], "kind": "golden",
+            "description": "Read inserted items in order", "expected": STATEMENT,
+            "check_ids": ["C-APP"], "solution_elements": ["D-ITEMS", "B-STATE", "I-ORDER"],
+            "preconditions": "An empty collection", "fixture": "Three distinct items",
+            "stimulus": "Insert each item, then read the collection",
+            "verification_method": "Assert the returned sequence equals the inserted sequence"}]
+
+    def begin_s6(self, extra_writes=(), inventory=None, scenarios=None):
         """Reach the real S6 owner claim without bypassing node or reviewer guards."""
         c = self.controller
         c.spec_init()
         self.commit()
         self.observe()
         for node in ("S0", "S1", "S2", "S3", "S4", "S5"):
-            path = "docs/specs/domain-inventory.json" if node == "S1" else f"docs/specs/{node}.md"
+            path = (artifacts.DOMAIN_INVENTORY_PATH if node == "S1" else artifacts.SCENARIOS_PATH
+                    if node == "S3" else f"docs/specs/{node}.md")
             self.claim(node, [path])
             if node == "S1":
-                write_json(self.root / path, inventory if inventory is not None else {"schema_version": 1,
-                    "requirements_digest": c.state()["requirements_digest"],
-                    "domains": [{"id": "D-ITEMS", "module": "items", "requirements": ["FR-001"],
-                                 "behaviors": ["B-STATE"], "invariants": ["I-ORDER"]}],
-                    "supporting_modules": [], "interactions": []})
+                write_json(self.root / path, inventory if inventory is not None else self.domain_inventory())
+            elif node == "S3":
+                write_json(self.root / path, scenarios if scenarios is not None else self.scenarios())
             else:
                 self.text(path, f"# {node} fixture evidence\n\nBounded artifact for real workflow tests.\n")
             self.record(node)
@@ -156,8 +170,9 @@ class HarnessFixture:
         spec = c.spec()
         authors = c.state()["authors"]["specification"]
         source = "docs/specs/solution.md"
+        scenarios = read_json(self.root / artifacts.SCENARIOS_PATH)
         spec.update(author_sessions=authors, change_summary="Synthetic collection specification for controller regression tests.",
-            documents=[source, "docs/specs/domain-inventory.json", SNAPSHOT],
+            documents=[source, artifacts.DOMAIN_INVENTORY_PATH, artifacts.SCENARIOS_PATH, SNAPSHOT],
             contract_files=["contracts/items.proto"], generated_files=[binding, metadata_path], project_check_ids=["C-APP"],
             shared_generated_files=[{"path": metadata_path, "purpose": "Fixture descriptor metadata"}],
             domain_inventory={"path": "docs/specs/domain-inventory.json",
@@ -173,19 +188,15 @@ class HarnessFixture:
                 "contract_package": "fixture.items", "provided_types": ["fixture.items.State"],
                 "consumed_types": [], "public_exports": [{"symbol": "items::State", "path": "modules/items.rs",
                     "kind": "type", "binding": "fixture.items.State", "specifications": [source]}]}],
-            solution_elements=[{"id": eid, "kind": kind, "requirements": ["FR-001"], "scenarios": ["G01"],
-                                "specifications": [source], "module": "items", "behavior": behavior}
-                               for eid, kind, behavior in (("D-ITEMS", "subdomain", "positive"),
-                                   ("B-STATE", "enabling", "support"), ("I-ORDER", "invariant", "positive"))],
+            solution_elements=[dict(row, kind="enabling" if row["kind"] == "behavior" else row["kind"],
+                scenarios=[scenario["id"] for scenario in scenarios
+                           if row["id"] in scenario["solution_elements"]], specifications=[source])
+                for row in artifacts.inventory_elements(read_json(self.root / artifacts.DOMAIN_INVENTORY_PATH)).values()],
             target_tree=[{"path": "modules/items.rs", "kind": "file", "owner": "D-ITEMS",
                           "purpose": "Retained collection invariant owner", "disposition": "add"}],
-            scenarios=[{"id": "G01", "requirements": ["FR-001"], "kind": "golden",
-                "description": "Read inserted items in order", "expected": STATEMENT,
-                "check_ids": ["C-APP"], "solution_elements": ["D-ITEMS", "B-STATE", "I-ORDER"],
-                "preconditions": "An empty collection", "fixture": "Three distinct items",
-                "stimulus": "Insert each item, then read the collection",
-                "verification_method": "Assert the returned sequence equals the inserted sequence"}],
-            requirement_map=[{"requirement": "FR-001", "specifications": [source], "scenarios": ["G01"]}],
+            scenarios=scenarios,
+            requirement_map=[{"requirement": "FR-001", "specifications": [source],
+                "scenarios": [row["id"] for row in scenarios if "FR-001" in row["requirements"]]}],
             environments=[{"id": "E-HOST", "platform": platform_name(), "host_profile": None}],
             resources=[{"id": "R-REQ", "kind": "repository", "path": "requirements/requirements.md",
                 "version": None, "probe_check_ids": [], "environments": ["E-HOST"],
@@ -193,7 +204,7 @@ class HarnessFixture:
         contract = spec["checks"][0]
         contract.update(environments=["E-HOST"], requires=["R-REQ"])
         spec["checks"].append({**contract, "id": "C-APP", "kind": "test",
-            "argv": ["{python}", "tests/collection.py"], "scenario_ids": ["G01"],
+            "argv": ["{python}", "tests/collection.py"], "scenario_ids": [row["id"] for row in scenarios],
             "results_path": ".rdd/evidence/results/collection.json"})
         write_json(self.root / ".rdd/spec.json", spec)
 
@@ -251,15 +262,16 @@ class HarnessFixture:
         return c.stage_review_record(self.input_file(report, "final-review.json"))
 
 
-class RefinementTests(unittest.TestCase):
+class HarnessTestCase(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="rdd-refinement-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        self.fixture = build_fixture(self.root)
-        self.controller = self.fixture.controller
+        temporary = tempfile.TemporaryDirectory(prefix="rdd-harness-test-")
+        self.addCleanup(temporary.cleanup)
+        self.fixture = build_fixture(Path(temporary.name))
+        self.root, self.controller = self.fixture.root, self.fixture.controller
         self.addCleanup(self.controller.close)
 
+
+class RefinementTests(HarnessTestCase):
     def reject_historical_publication(self, decision="D-LIMIT"):
         """A still-open historical claim cannot publish newly changed inputs."""
         path = self.root / ".rdd/runtime/checkpoint.json"
@@ -365,15 +377,15 @@ class RefinementTests(unittest.TestCase):
         claim_before = copy.deepcopy(self.controller.state()["workflow_nodes"]["S6"]["claim"])
         f.publish()
         self.assertEqual(self.controller.state()["workflow_nodes"]["S6"]["claim"], claim_before)
-        original = (self.root / "docs/specs/S3.md").read_text()
-        for revision, text in enumerate(("# Corrected S3\n\nConcrete scenario detail.\n", original), 1):
+        original = read_json(self.root / artifacts.SCENARIOS_PATH)
+        for revision, rows in enumerate(([dict(original[0], fixture="Three independently selected distinct items")], original), 1):
             finding = "F-S3-" + str(revision)
             f.observe([{"id": finding, "severity": "blocking", "requirements": ["FR-001"],
-                "tasks": [], "nodes": ["S3"], "path": "docs/specs/S3.md", "message": "Correct scenario detail.",
+                "tasks": [], "nodes": ["S3"], "path": artifacts.SCENARIOS_PATH, "message": "Correct scenario detail.",
                 "evidence": "A concrete scenario detail needs independent correction."}])
             self.controller.workflow_claim("S3", "author-S3", "rdd_verification_designer",
-                                           ["docs/specs/S3.md"], finding)
-            f.text("docs/specs/S3.md", text)
+                                           [artifacts.SCENARIOS_PATH], finding)
+            write_json(self.root / artifacts.SCENARIOS_PATH, rows)
             f.observe(resolutions=[{"finding_id": finding,
                 "evidence": "Reviewer independently verified the exact scenario correction."}])
             f.record("S3")
@@ -771,10 +783,10 @@ class RefinementTests(unittest.TestCase):
     def test_old_policy_is_inspectable_but_cannot_mutate_or_relabel_approvals(self):
         state = self.controller.state()
         previous = copy.deepcopy(NODES)
-        previous["S1"]["required_output"] = previous["S1"]["required_output"].replace("/composition", "")
+        previous["S3"]["validator"] = "requirements_identity_and_bounded_artifact_handoff"
         self.assertNotEqual(digest(previous), digest(NODES))
         state["workflow_graph_digest"] = digest(previous)
-        self.controller.store.put(state)  # Deliberate pre-composition historical-policy fixture.
+        self.controller.store.put(state)  # Deliberate pre-scenario-validation historical-policy fixture.
         self.assertTrue(self.controller.status()["workflow_nodes"]["historical"])
         checkpoint = self.root / ".rdd/runtime/historical.json"
         self.controller.export_run(checkpoint)

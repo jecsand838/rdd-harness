@@ -46,7 +46,4 @@ A unit-test timeout cannot establish a p95 budget. Paused clocks cannot establis
 
 Checked 2026-10-07.
 
-- [Rust test organization](https://doc.rust-lang.org/book/ch11-03-test-organization.html)
-- [Tokio test controls](https://tokio.rs/tokio/topics/testing)
-- [Tauri packaged automation approaches](https://v2.tauri.app/develop/tests/webdriver/)
-- [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+Select primary sources tagged `create-test-suite` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

@@ -8,26 +8,16 @@
       "const": 1
     },
     "id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "check_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "phase": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "$ref": "#/$defs/nullable_text"
     },
     "task_id": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "$ref": "#/$defs/nullable_text"
     },
     "source_commit": {
       "type": "string",
@@ -43,10 +33,7 @@
       "pattern": "^[0-9a-f]{64}$"
     },
     "plan_digest": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "$ref": "#/$defs/nullable_text"
     },
     "command": {
       "type": "array",
@@ -67,14 +54,10 @@
       ]
     },
     "started_at": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "finished_at": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "returncode": {
       "type": "integer"
@@ -115,9 +98,7 @@
       "type": "object",
       "properties": {
         "actor": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 80
+          "$ref": "#/$defs/reference"
         },
         "run_url": {
           "type": "string",
@@ -167,5 +148,18 @@
     "provenance",
     "metrics"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "nullable_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
 }

@@ -8,9 +8,7 @@
       "const": 1
     },
     "phase": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "source_commit": {
       "type": "string",
@@ -22,19 +20,13 @@
       "pattern": "^[0-9a-f]{64}$"
     },
     "model": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "reviewer": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "session_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "decision": {
       "type": "string",
@@ -51,9 +43,7 @@
     "checks_reviewed": {
       "type": "array",
       "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 80
+        "$ref": "#/$defs/reference"
       },
       "minItems": 1,
       "uniqueItems": true
@@ -64,9 +54,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference"
           },
           "severity": {
             "type": "string",
@@ -79,24 +67,10 @@
             ]
           },
           "requirements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "path": {
             "type": "string",
@@ -151,5 +125,20 @@
     "kind",
     "review_cursor"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    }
+  }
 }
