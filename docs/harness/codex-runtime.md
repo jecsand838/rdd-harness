@@ -33,21 +33,13 @@ Profile settings are requested configuration, not effective permission or backen
 
 `CodexAdapter.native_argv` applies canonical coordinator settings and encoded TOML configuration, passing the prompt as one argument after `--`. It leaves approval policy to the runtime unless explicitly overridden. It creates no second workflow loop or session ledger.
 
-After specification and preparation acceptance, run `./rdd goal`, open `./rdd workflow implementation`, and submit `/goal ` followed by the printed objective. The objective is under 4,000 characters; detailed procedure stays in the workflow skill. A launcher exit or Goal stop does not establish controller acceptance.
+Follow the [implementation launch and Goal activation steps](workflow-guide.md#stage-three-implementation). The objective is under 4,000 characters; detailed procedure stays in the workflow skill. A launcher exit or Goal stop does not establish controller acceptance.
 
-Resume the exact native session with `codex resume SESSION_UUID --cd REPOSITORY`, inspect its Goal, then use `/goal resume` when appropriate. Explicit resume requires a canonical UUID, reapplies coordinator settings and never selects `--last`. `./rdd resume` recovers controller state; it does not select a native session. Measured launch/resume observations in the source record do not prove Goal execution, isolated reviewer permissions or application acceptance. See the [CLI resume reference](https://learn.chatgpt.com/docs/cli/reference#codex-resume) and [Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex).
+Record the native session UUID and resume that exact session with `codex resume SESSION_UUID --cd REPOSITORY`; inspect its Goal before `/goal resume`. Verify the actual coordinator settings and permissions before continuing. The qualified `CodexAdapter.native_argv(..., session_id=...)` path validates a canonical UUID and explicitly supplies coordinator settings; those observations do not establish equivalent settings for the bare command. `./rdd resume` separately reconciles controller state. Measured launch/resume does not prove Goal execution, isolated reviewer permissions or application acceptance. See the [CLI resume reference](https://learn.chatgpt.com/docs/cli/reference#codex-resume) and [Goals guide](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex).
 
 ### Workflow permissions
 
-Each interactive launcher accepts a per-session `--permission full-access`:
-
-```sh
-./rdd workflow specification --mode regenerate --permission full-access
-./rdd workflow preparation --permission full-access
-./rdd workflow implementation --permission full-access
-```
-
-The option selects `--sandbox danger-full-access --ask-for-approval never`; it does not change the canonical model/effort or profile identity. `requested_runtime` records the requested override. Omission retains normal launch behavior; no previous override is remembered. Controller ownership, frozen inputs and acceptance rules still apply.
+Each [workflow launcher](workflow-guide.md) accepts optional per-session `--permission full-access`, selecting `--sandbox danger-full-access --ask-for-approval never`. It does not change canonical model/effort or profile identity. `requested_runtime` records the override; omission retains normal launch behavior and no previous override is remembered. Controller ownership, frozen inputs and acceptance rules still apply.
 
 Inspect launch arguments without starting a run by omitting `--mode`:
 
@@ -71,7 +63,7 @@ Use fresh bounded context when the target/baseline changes. Raw logs can contain
 
 ### Python adapter interface
 
-Adapters use the standard library and accept an injected `runner(argv, cwd=..., timeout=..., **kwargs)` returning `CommandResult`. `RddAdapterError.code` distinguishes capability, malformed evidence, timeout, revision and safety failures. Workflows use public controller commands to retain locking and lease checks.
+Maintainers: [adapters.py](../../tools/rdd/adapters.py) defines the injected runner, command results and error codes. Workflows use public controller commands to retain locking and lease checks.
 
 Reuse worktrees only for the exact repository/branch with clean state and expected base ancestry. Preserve dirty work/user files for deliberate recovery. The adapters implement no automatic reset, clean, force branch replacement or force push.
 

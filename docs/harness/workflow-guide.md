@@ -1,54 +1,70 @@
 # The three RDD workflows
 
-The harness turns `requirements/requirements.md` into a frozen solution, a prepared plan, and accepted implementation evidence. The Todo application is not supplied by the boilerplate. Use the [README](../../README.md) for installation, [runtime guide](codex-runtime.md) for native agents and CI, [artifact guide](artifact-guide.md) for schemas/projections, and [evidence guide](evidence-guide.md) for receipts, RED and review.
+Follow these journeys in order to turn `requirements/requirements.md` into an accepted application. Complete [README setup](../../README.md#get-started) once. The [runtime guide](codex-runtime.md) owns native sessions and CI, the [artifact guide](artifact-guide.md) owns schemas/projections, and the [evidence guide](evidence-guide.md) owns receipts, RED, and review.
 
 ## Authority and state
 
-Follow [AGENTS.md](../../AGENTS.md). Requirements govern the solution/contracts, which govern the plan, which governs implementation. Comments project tasks; they do not own task state. `./rdd status` reports runtime truth; `./rdd --help` describes commands. On Windows use `python tools/rdd/cli.py` with the same arguments. Initialize a fresh checkout before reading status.
+Follow [AGENTS.md](../../AGENTS.md): requirements govern specifications/contracts, frozen specifications govern the plan, and the frozen plan governs implementation. A freeze records exact approved file identities. Comments project tasks. `./rdd status` reports runtime truth; `./rdd --help` describes commands. Never edit state, locks, receipts, or unfinished markers to force progress.
 
-`./rdd workflow nodes` exposes the fixed S0–S8, P0–P8 and I0–I5 graph; `workflow next` selects eligible authoring nodes. Claim bounded writes with `workflow claim` and submit hashed outputs through `workflow record`. Acceptance nodes derive from existing freezes, gates and seals. Use the [canonical roster](codex-runtime.md#runtime-contract): S1 domain analyst, S2–S4 verification designer, S5 qualification engineer, S6 architect, P1–P5 planner; the coordinator cannot substitute for a specialist. Keep one independent reviewer alongside at most two authors.
-
-Read [phase-review](../../.agents/skills/phase-review/SKILL.md) for live observation and final perspectives. Specification review compares with requirements; preparation with frozen specs/contracts; implementation with the frozen plan/contracts. Send coherent handoffs, integrations and significant check results. Findings retain exact revisions and independent resolution. Stage acceptance requires distinct semantic and execution sessions approving the same candidate with zero unresolved findings.
-
-For specification/preparation corrections use **claim with finding → edit → reviewer resolves applicable findings → record → reviewer observes handoff**. An explicit corrective claim may address a global finding within its declared writes; it does not resolve the finding or authorize unrelated work. Rejected records retain their claims and outputs for retry. P0–P4 produce distinct immutable notes; P5 alone assembles `.rdd/plan/plan.json`. Return upstream corrections to their owners instead of modifying completed handoffs through a successor.
+Specification and preparation require independent semantic and execution reviews of the same candidate; implementation has continuous review and phase acceptance. The [workflow skills](../../.agents/skills/README.md) own agent responsibilities.
 
 ## Stage one: specification
 
-Start once on a clean dedicated baseline; `main` is merge-only. Preserve the branch recorded by `start` throughout specification and preparation:
+**Purpose and prerequisites:** Resolve the product's behavior, domain ownership, contracts, verification oracles, and execution design before implementation. Start from the clean baseline established in README setup, with authorized requirements and available qualification environments.
 
 ```sh
-git fetch origin
-git switch -c codex/todo-baseline origin/main
-./rdd init
-./rdd doctor
-./rdd start --mode regenerate
-./rdd requirements index
-./rdd spec init
+./rdd workflow specification --mode regenerate
 ```
 
-Use [specification-workflow](../../.agents/skills/specification-workflow/SKILL.md), or launch `./rdd workflow specification` for its stage prompt. [Workflow permissions](codex-runtime.md#workflow-permissions) describes the optional per-session permission setting. The controller refuses authoring on `main`, detached HEAD or the wrong branch without switching or discarding files.
+This launcher starts the run; the agent consumes that run rather than starting another. It refuses `main`, detached HEAD, or the wrong branch without changing your files. Optional [workflow permissions](codex-runtime.md#workflow-permissions) apply per session.
 
-Specification owns the complete target tree, domain inventory, scenarios, oracles, NFR protocols and executable qualification design. [domain-boundaries](../../.agents/skills/domain-boundaries/SKILL.md) owns S1/S6 reconciliation; [protobuf-contracts](../../.agents/skills/protobuf-contracts/SKILL.md) owns generation and qualification. Qualify protected tooling/CI policy before freeze. Application test code is planned later; its scenario/check meaning is frozen now. Qualification may use disposable providers and consumers, but does not claim application behavior.
+**Your involvement:** Answer consequential product and feasibility questions through [specification refinement](../../.agents/skills/rdd-spec-grill/SKILL.md); inspect the decisions and remaining blockers. An authorized draft input does not require an extra approval round solely for its label.
 
-Load [rdd-spec-grill](../../.agents/skills/rdd-spec-grill/SKILL.md) for consequential choices. Record material direction with `spec refine`; resolve an accepted choice's originating question before claiming or recording affected work. Genuinely unanswered questions may still require investigation. Publish decisions through their artifact owners and follow the [snapshot procedure](artifact-guide.md#refinement-records). Commit the complete candidate before readiness/review:
+**Accepted outcome and recovery:** `specified` with committed frozen outputs and current independent approval. Missing semantics, incompatible contracts, or unavailable required evidence leaves the stage incomplete. Use [recovery](#repairs-and-interruptions) to continue the existing session; repeating `--mode regenerate` after freeze can create a fresh run.
+
+<details>
+<summary>Agent procedure</summary>
+
+Agents use `workflow nodes` and `workflow next`, claim bounded writes with `workflow claim`, and submit hashed handoffs with `workflow record`. Acceptance nodes derive from freezes, gates, and seals. Use the [canonical specialist roster](codex-runtime.md#runtime-contract); keep a read-only reviewer alongside at most two authors and return upstream corrections to their owners.
+
+[Live review](../../.agents/skills/phase-review/SKILL.md) compares specification with requirements, preparation with frozen specs/contracts, and implementation with the frozen plan/contracts. Observe coherent handoffs, integrations, and significant checks; retain revision-bound findings and independently verified resolutions. Specification and preparation require distinct semantic and execution sessions approving the same candidate with zero unresolved findings. Report filenames below are examples of actual reports, never supplied approvals.
+
+For specification/preparation corrections: **claim with finding → edit → independent resolution → record → reviewer observes handoff**. Corrective claims permit only their declared writes; rejected records retain claims/outputs for retry. A claim does not resolve its finding.
+
+Follow [specification-workflow](../../.agents/skills/specification-workflow/SKILL.md). Initialize only missing requirement-index/draft artifacts. S1 owns the structured inventory; S2–S4 verification design; S5 qualification; S6 the reconciled architecture, complete target tree, and exact contracts. [domain-boundaries](../../.agents/skills/domain-boundaries/SKILL.md) and [protobuf-contracts](../../.agents/skills/protobuf-contracts/SKILL.md) define ownership and qualification. Disposable providers/consumers qualify interfaces; they do not prove application behavior.
+
+Record material direction with `spec refine`, resolve accepted choices' originating questions before affected claims/handoffs, and publish through artifact owners using the [snapshot procedure](artifact-guide.md#refinement-records). Freeze scenario/check meaning and qualify tooling/CI policy before downstream tasks are planned.
+
+Commit the complete candidate. Claim S7, run `./rdd spec validate` and `./rdd readiness specification`, then record S7 with its actual hashed outputs and readiness evidence. Only after that handoff obtain both final perspectives and complete S8:
 
 ```sh
-./rdd spec validate
-./rdd readiness specification
 ./rdd review record .rdd/runtime/spec-semantic-review.json
 ./rdd review record .rdd/runtime/spec-execution-review.json
 ./rdd spec freeze
 ```
 
-These filenames designate actual reports, not supplied approvals. Commit the frozen outputs before preparation. Missing platform evidence, unresolved semantics and incompatible contracts remain blockers; a draft label alone does not create another approval gate after the user has authorized the input.
+After corrections, rerun affected checks and obtain both perspectives approving the same current candidate. Commit frozen outputs before preparation. Missing proof or exhausted budgets leaves the workflow incomplete.
+
+</details>
 
 ## Stage two: preparation
 
-Use [preparation-workflow](../../.agents/skills/preparation-workflow/SKILL.md). `./rdd plan init` creates a draft; P0–P4 record research, reuse, dependency and phase decisions in separate notes, and P5 writes the fully groomed plan. Every actionable frozen file needs task ownership. Retained/generated files and directories have their own dispositions. Module-local checks need task/phase coverage independently of real consumer/provider interaction proofs.
+**Purpose and prerequisites:** Turn the committed frozen solution/contracts into a fully groomed, executable backlog. Retain the recorded baseline branch and frozen authority.
 
-Use [plan-verticals](../../.agents/skills/plan-verticals/SKILL.md) and [plan-phases](../../.agents/skills/plan-phases/SKILL.md) for producer closure and strict category ordering. Complete every task packet, exact write site, baseline/producer input and acceptance obligation before freeze. The [artifact guide](artifact-guide.md#plan-manifest) defines the fields; the [evidence guide](evidence-guide.md#workflow-readiness-and-independent-review) defines readiness and final reviews. A prefreeze planning validation error leaves the draft correctable; frozen design defects require the blocker path.
+```sh
+./rdd workflow preparation
+```
 
-Commit the plan, qualify the candidate and record both perspectives:
+**Your involvement:** Supply required platform/account access and inspect blockers and the proposed phase outcomes. The agent must qualify actual runners, hosts, and evidence transfer rather than infer them from schemas.
+
+**Accepted outcome and recovery:** `prepared` after materialization, commit/push, explicitly dispatched CI, imported evidence, readiness, both final reviews, and `gate preparation`. `preparing` means materialized, not accepted. Use [recovery](#repairs-and-interruptions) for interruption. Correct draft plan errors in place; a frozen design defect follows the [blocker/amendment route](#amendment-and-regeneration).
+
+<details>
+<summary>Agent procedure</summary>
+
+Follow [preparation-workflow](../../.agents/skills/preparation-workflow/SKILL.md). Initialize the draft with `plan init` if missing. P0–P4 produce distinct immutable notes; P5 alone assembles the plan. Cover every actionable frozen file, exact write site, producer/input timing, behavior, and acceptance obligation using the [plan fields](artifact-guide.md#plan-manifest). Retained/generated files and directories keep explicit dispositions. Module-local checks need coverage independently of real provider/consumer proofs.
+
+[plan-verticals](../../.agents/skills/plan-verticals/SKILL.md) establishes producer closure; [plan-phases](../../.agents/skills/plan-phases/SKILL.md) enforces dependency-closed phases and category order. Commit the complete plan, qualify it, and obtain both perspectives:
 
 ```sh
 ./rdd plan validate
@@ -60,21 +76,35 @@ Commit the plan, qualify the candidate and record both perspectives:
 ./rdd anchors verify
 ```
 
-`prepare` enters `preparing`. Inspect the actual packets, shells and derived matrix, commit and push the exact baseline, then explicitly dispatch preparation CI; baseline pushes do not run CI:
+Inspect all actual packets, shells, sidecars, and the derived matrix under the [marker rules](artifact-guide.md#comments-shells-and-generated-files). No product implementation belongs in materialization. Commit and push that exact baseline, explicitly dispatch preparation CI, and import actual hosted/native receipts and raw logs using [CI policy](codex-runtime.md#ci-and-reference-platform-evidence). Baseline pushes alone do not run CI. Then run:
 
 ```sh
-gh workflow run preparation.yml --ref BASELINE_BRANCH -f candidate=FULL_SHA
 ./rdd readiness preparation
 ./rdd review record .rdd/runtime/preparation-semantic-review.json
 ./rdd review record .rdd/runtime/preparation-execution-review.json
 ./rdd gate preparation
 ```
 
-The dispatch requires the recorded `codex/*-baseline` branch at that full SHA and the independently selected `RDD_PREPARATION_HARNESS_SHA`; import actual hosted/native prerequisite evidence before the final reviews. See [CI policy](codex-runtime.md#ci-and-reference-platform-evidence) and [branch rules](codex-runtime.md#stacked-pr-policy). Only a passing gate grants `prepared`. Materialization follows the [canonical marker rules](artifact-guide.md#comments-shells-and-generated-files), with safe sidecars for noncommentable/deleted targets and no product implementation.
+Both final reviewers inspect the committed materialization and actual evidence. Only a passing gate grants `prepared`.
+
+</details>
 
 ## Stage three: implementation
 
-Use [implementation-workflow](../../.agents/skills/implementation-workflow/SKILL.md). Retrieve `./rdd goal` and activate the client's [native Goal](codex-runtime.md#native-goal-execution). The controller remains the completion authority. Begin P01 at the accepted preparation commit; later phases begin at the preceding sealed head.
+**Purpose and prerequisites:** Implement the accepted plan without changing frozen contracts or acceptance meaning. Begin P01 at the accepted preparation commit; each later phase starts at the preceding sealed head.
+
+```sh
+./rdd workflow implementation
+```
+
+**Your involvement:** Submit `/goal ` followed by the objective printed by `./rdd goal` in the native session. Launching or sending an ordinary message does not activate Goal mode. Provide required manual/reference-host observations and resolve concrete access or product blockers.
+
+**Accepted outcome and recovery:** Each phase has current checks/review and one verified sealed PR; the whole application requires [project completion](#project-completion). A launcher exit, exit code zero, or stopped Goal is not acceptance. For interruption preserve the session UUID and use [recovery](#repairs-and-interruptions).
+
+<details>
+<summary>Agent procedure</summary>
+
+Follow [implementation-workflow](../../.agents/skills/implementation-workflow/SKILL.md) in the client's [native Goal](codex-runtime.md#native-goal-execution). Repeat this loop for each controller-selected phase, using actual IDs/sessions rather than these examples:
 
 ```sh
 ./rdd phase begin P01
@@ -85,11 +115,9 @@ Use [implementation-workflow](../../.agents/skills/implementation-workflow/SKILL
 ./rdd task complete T001 --evidence EVIDENCE_ID
 ```
 
-IDs above illustrate syntax; use actual ready tasks and runtime sessions. Preserve disjoint leases and integrate sequentially. A worker's complete marker inventory is checked against its trusted leased baseline; the integrated checkout is checked against current state. Unrelated marker changes remain invalid.
+Workers retain disjoint leases and all packets; integrate sequentially. Run **tests → deletion → modification → addition → documentation** in order. Test tasks need [behavioral RED](evidence-guide.md#behavioral-red), preserving independent oracles; permitted bootstrap scaffolding contains no product behavior. Missing tools, compilation failures, and skipped tests are not RED. Production tasks use `check --expect pass`. Commit controller-generated all-site cleanup before another claim/integration; reconcile interrupted cleanup without removing unfinished packets. No empty commit is needed when cleanup makes no diff.
 
-All **tests → deletion → modification → addition → documentation** tasks run in order. [Behavioral RED](evidence-guide.md#behavioral-red) defines real assertions and permitted nonbehavioral bootstrap scaffolding. Missing tools or compiler failures never establish RED. Production tasks use `check --expect pass` and controller completion. Commit all-site marker cleanup before subsequent claims/integrations; if cleanup makes no diff, no empty commit is needed.
-
-At phase completion, commit the candidate, run cumulative checks, obtain current independent review and execute:
+At phase completion commit the candidate, run cumulative checks and required native/manual/reference evidence, then obtain exact-source independent review:
 
 ```sh
 ./rdd review record .rdd/runtime/phase-review.json
@@ -99,30 +127,34 @@ At phase completion, commit the candidate, run cumulative checks, obtain current
 ./rdd phase seal P01
 ```
 
-All project check IDs must be allocated to phase checks, so the final cumulative gate runs them before sealing. Publication maintains one PR per phase; later PRs target their sealed predecessor. Source changes invalidate affected evidence. Preserve accepted bases/heads; never force-push or restack closed phases.
+All project checks must be allocated to phases and run by the final cumulative gate. Later PRs target their sealed predecessor. Source changes invalidate affected evidence; preserve accepted heads/bases and never force-push or restack closed phases.
 
-### Repairs and interruptions
+</details>
 
-`./rdd task reopen T002 --reason TEXT` permits a correction within the open phase's existing scope. Reopen related test tasks when needed. The repair sweep preserves category/dependency order, leases and write ownership. Existing task-scoped finding IDs authorize intermediate correction work and completion; independent resolution is still required before acceptance. A new finding requires renewed enrollment. Global implementation findings remain blockers.
+## Project completion
 
-Reopening preflights packet restoration before recording the transition. If an authorized edit consumed an inline selector, the controller uses its repair placement rule without changing frozen work ownership. Commit reconciled packets before continuing. `task complete` records completion before cleanup; `anchors reconcile` repairs interrupted cleanup. Never remove unfinished packets manually.
+After all phases, run `./rdd gate project`. Acceptance requires `status=passed` and `application_complete=true`: complete frozen inputs, all canonical tasks evidenced, no outstanding primary/secondary packets or sidecars, every golden scenario explicitly executed and passing, required cumulative/platform/benchmark evidence, zero unresolved findings, sealed phases, and a currently verified PR stack. Aggregate GREEN cannot cover omitted, filtered, or skipped golden tests; historical seal reviews cannot clear later findings.
 
-For worker interruption, preserve its worktree, use `task release T002 --reason TEXT`, then `./rdd resume` and `./rdd status`. Recover from the recorded baseline/phase branch; inspect dirty files before switching. Do not reset or relocate recorded identities. Use `export-run` before moving a checkout; [evidence retention](evidence-guide.md#artifacts-and-retention) distinguishes exported state from separately preserved source/worktrees.
+The gate writes `.rdd/evidence/project-validation.json`, `.rdd/evidence/project-validation.md`, and `.rdd/evidence/completed-run.json`. Archive these reports/checkpoint and follow the generated application's packaging instructions. Harness selftests cannot establish application acceptance.
 
-Storage errors exit with an environment diagnostic. Preserve the database, WAL/journals, evidence, checkpoint and worktrees; do not retry uncertain writes or delete journals. SQLite operations close their own connections, reads inspect disposable DB/WAL snapshots under the process guard, and an unconfirmed close prevents further storage access in that process. Database integrity alone does not prove every update survived.
+## Repairs and interruptions
 
-Record blockers through `./rdd block --kind KIND --reason TEXT`. Specification/planning escapes need origin/detection stage, affected IDs, candidate identities and evidence immediately; a reproducing regression is required to accept the preventive-control repair. Distinguish external outages/permissions from defective execution design. Sealed defects preserve closure history and require amendment; missing evidence is never an automatic skip.
+Record the native session UUID. [Native resume](codex-runtime.md#native-goal-execution) reopens that exact session; inspect its existing Goal before `/goal resume`. Repeating a workflow command opens another session. `./rdd resume` separately reconciles controller state; `resume --from CHECKPOINT` restores an export. Recover on the recorded baseline/phase branch, inspect dirty files before switching, and never reset or relocate accepted identities.
 
-After all phases, `./rdd gate project` requires the complete frozen baseline, task/marker reconciliation, explicit passing golden results, required cumulative/platform/benchmark evidence, current unresolved-finding check, sealed phases and verified PR stack. It writes the reports/checkpoint defined in the README. Historical seal reviews remain historical; a new finding cannot be hidden behind their old cursors.
+For a worker interruption, preserve the worktree. Use `./rdd task release T002 --reason TEXT` only while the task is claimed and unintegrated; integrated work must complete or be repaired in place, without undoing its commits. Then inspect `resume` and `status`. Use `export-run` before moving a checkout; [retention guidance](evidence-guide.md#artifacts-and-retention) distinguishes exported state from separately preserved source/worktrees.
+
+Within an open phase, `./rdd task reopen T002 --reason TEXT` corrects existing scope, including related tests, while preserving category/dependency order and write ownership. Recorded task-scoped finding IDs authorize intermediate corrections/completion; new findings need renewed enrollment and independent resolution remains required before acceptance. Global findings remain blockers. Reopening preflights packet restoration; commit reconciled packets before continuing. `anchors reconcile` repairs interrupted cleanup and consumed selectors without changing frozen ownership.
+
+For storage errors preserve the database, WAL/journals, evidence, checkpoints, source, and worktrees. Stop uncertain writes; do not delete journals or assume integrity proves every update survived. Record blockers with `./rdd block --kind KIND --reason TEXT`. Specification/planning escapes require origin/detection stage, affected IDs, candidate identities, and evidence immediately; stop affected execution and require a preventive-control repair with a reproducing regression. Distinguish outages/permissions from defective execution design. Missing evidence is never an automatic skip.
 
 ## Release after project acceptance
 
-Keep accepted branches and PR bases intact. Create `codex/rdd-release/RUN_ID` at the project-accepted commit for a separate release PR into `main`. The operator pins `RDD_RELEASE_POLICY_SHA` and `RDD_RELEASE_SOURCE_SHA`; [release CI](codex-runtime.md#ci-and-reference-platform-evidence) validates exact policy/source independently. Merge/release requires separate authority. After merging, verify ancestry, identical tracked contents and clean status; preserve accepted-phase and main-merge identities separately.
+Keep accepted branches and PR bases intact. Create `codex/rdd-release/RUN_ID` at the project-accepted commit for a separate release PR into `main`, with the operator's exact policy/source pins required by [release CI](codex-runtime.md#ci-and-reference-platform-evidence). Merge/release requires separate authority. After merging, verify ancestry, identical tracked contents, and clean status; preserve accepted-phase and main-merge identities separately.
 
 ## Amendment and regeneration
 
-Use [amend-requirements](../../.agents/skills/amend-requirements/SKILL.md) and `start --mode amend` for changed requirements or invalid accepted design/implementation claims. Preserve valid artifacts and compute downstream impact. `regenerate` creates a fresh solution, with application replacement still explicit planned work. Neither mode permits deleting user data or rewriting sealed evidence.
+Use [amend-requirements](../../.agents/skills/amend-requirements/SKILL.md) and `start --mode amend` for changed requirements or invalid accepted design/implementation claims. A frozen defect is a critical harness regression, including a sealed defect's closure failure; preserve its accepted obligations/history and follow the blocker procedure above. Compute downstream impact and retain valid artifacts. `regenerate` creates a fresh solution; application replacement remains explicit planned work. Neither mode permits deleting user data or rewriting sealed evidence.
 
 ## Workflow quality and research basis
 
-Specification/plan authoring uses schema v3; runtime/checkpoints use v2, and refinement uses v1. Runs bind graph, refinement and profile policy. Changed policies require the recorded harness for continuation or a fresh reviewed baseline; never migrate approvals, alias historical roles or backfill pins. Old specifications/plans remain inspect/export inputs. Start a fresh Codex session after profile changes. [Runtime source records](../../.rdd/sources/runtime.json) and [engineering sources](../../.rdd/sources/engineering.json) retain research provenance; harness tests do not establish Todo acceptance.
+Use the [artifact/schema guidance](artifact-guide.md) for current formats. Runs bind graph, refinement, and profile policy. Changed policy requires the recorded harness for continuation or a fresh reviewed baseline; never migrate approvals, alias historical roles, or backfill pins. Old artifacts remain inspect/export inputs. Start a fresh Codex session after profile changes. [Runtime](../../.rdd/sources/runtime.json) and [engineering](../../.rdd/sources/engineering.json) records retain research provenance.
