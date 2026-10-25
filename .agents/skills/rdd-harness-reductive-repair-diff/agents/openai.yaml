@@ -1,0 +1,4 @@
+interface:
+  display_name: "RDD Harness Reductive Repair Diff"
+  short_description: "Propose a complete net-reductive repair patch"
+  default_prompt: "Use $rdd-harness-reductive-repair-diff to produce a grounded repair plan and complete unified patch with a negative aggregate text-line delta."

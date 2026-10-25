@@ -1,0 +1,4 @@
+interface:
+  display_name: "RDD Harness Research"
+  short_description: "Research grounded RDD harness maintenance"
+  default_prompt: "Use $rdd-harness-research to research this RDD harness question against its Blueprint and current primary sources."
