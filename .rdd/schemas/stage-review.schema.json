@@ -4,19 +4,13 @@
   "type": "object",
   "properties": {
     "reviewer": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "model": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "session_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "decision": {
       "type": "string",
@@ -36,9 +30,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference"
           },
           "severity": {
             "type": "string",
@@ -51,24 +43,10 @@
             ]
           },
           "requirements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "path": {
             "type": "string",
@@ -117,46 +95,28 @@
       ]
     },
     "evidence_ids": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 200
-      },
-      "uniqueItems": true
+      "$ref": "#/$defs/candidate_references"
     },
     "candidate": {
       "type": "object",
       "properties": {
         "stage": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "$ref": "#/$defs/candidate_text"
         },
         "run_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "$ref": "#/$defs/candidate_text"
         },
         "source_commit": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "$ref": "#/$defs/candidate_text"
         },
         "source_digest": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "$ref": "#/$defs/candidate_text"
         },
         "spec_digest": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "$ref": "#/$defs/candidate_text"
         },
         "digest": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+          "$ref": "#/$defs/candidate_text"
         },
         "plan_digest": {
           "type": [
@@ -180,49 +140,19 @@
       "type": "object",
       "properties": {
         "requirements": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "uniqueItems": true
+          "$ref": "#/$defs/candidate_references"
         },
         "elements": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "uniqueItems": true
+          "$ref": "#/$defs/candidate_references"
         },
         "scenarios": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "uniqueItems": true
+          "$ref": "#/$defs/candidate_references"
         },
         "checks": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "uniqueItems": true
+          "$ref": "#/$defs/candidate_references"
         },
         "tasks": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "uniqueItems": true
+          "$ref": "#/$defs/candidate_references"
         }
       },
       "required": [
@@ -258,5 +188,32 @@
     "kind",
     "review_cursor"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "candidate_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "candidate_references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/candidate_text"
+      },
+      "uniqueItems": true
+    }
+  }
 }

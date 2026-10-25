@@ -45,7 +45,7 @@ class CompositionSpecificationTests(CompositionFixture):
             self.inventory = inventory
         for kind, behavior in (("operation", "positive"), ("enabling", "positive")):
             self.elements["B-INIT"].update(kind=kind, behavior=behavior)
-            with self.subTest(kind=kind), self.assertRaisesRegex(RddError, "lifecycle"):
+            with self.subTest(kind=kind), self.assertRaisesRegex(RddError, "lifecycle|allocation or polarity"):
                 artifacts.domain_solution_validate(self.root, self.spec, self.modules, self.elements)
 
     def test_composition_exports_are_nonempty_owned_rust_wiring_of_real_interfaces(self):

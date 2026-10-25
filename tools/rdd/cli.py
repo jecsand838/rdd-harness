@@ -29,7 +29,7 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--mode", choices=("amend", "regenerate"), required=True)
     s.add_argument("--run-id")
     status = commands.add_parser("status", help="Read authoritative run state and exact source identity")
-    status.add_argument("--brief", action="store_true", help="Summarize workflow nodes without claim inputs or attempt history")
+    status.add_argument("--brief", action="store_true", help="Summarize node progress, active claims and events without artifact inventories")
     r = commands.add_parser("requirements")
     r.add_argument("action", choices=("index",))
     for name in ("spec", "plan"):
@@ -272,7 +272,9 @@ def workflow_display(value, *, brief=False):
                 {**{k: v for k, v in row.items() if k in {"id", "stage", "status", "phase", "claim", "authority"}},
                  "attempt_count": len(row.get("attempts", []))} for row in item["nodes"]]}
         if brief and key == "claim" and isinstance(item, dict):
-            item = {k: v for k, v in item.items() if k != "inputs"}
+            item = {k: v for k, v in item.items() if k in {"role", "session_id", "attempt", "expires", "writes", "finding"}}
+        if brief and key == "last_events":
+            item = [{k: v for k, v in entry.items() if k != "outputs"} for entry in item]
         if key == "claim" and isinstance(item, dict) and isinstance(item.get("sources"), dict):
             item = {**{k: v for k, v in item.items() if k != "sources"},
                     "source_file_count": len(item["sources"])}

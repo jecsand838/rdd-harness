@@ -99,10 +99,4 @@ Derive traits because their semantics fit. Avoid `Default` for invariant-breakin
 
 Checked 2026-10-07; recheck against the pinned toolchain.
 
-- [Rust By Example](https://doc.rust-lang.org/rust-by-example/index.html)
-- [Associated functions and methods](https://doc.rust-lang.org/rust-by-example/fn/methods.html)
-- [Newtype idiom](https://doc.rust-lang.org/rust-by-example/generics/new_types.html)
-- [Traits](https://doc.rust-lang.org/rust-by-example/trait.html)
-- [Generic bounds](https://doc.rust-lang.org/rust-by-example/generics/bounds.html)
-- [Error handling](https://doc.rust-lang.org/rust-by-example/error.html)
-- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html)
+Select primary sources tagged `rust-domain-types` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

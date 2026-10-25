@@ -101,11 +101,4 @@ Use `spawn_blocking` for finite work when the async path cannot avoid blocking. 
 
 Checked 2026-10-07.
 
-- [Tokio tutorial](https://tokio.rs/tokio/tutorial)
-- [Spawning, Send, and lifetimes](https://tokio.rs/tokio/tutorial/spawning)
-- [Shared state](https://tokio.rs/tokio/tutorial/shared-state)
-- [Channels and backpressure](https://tokio.rs/tokio/tutorial/channels)
-- [Select and cancellation](https://tokio.rs/tokio/tutorial/select)
-- [Graceful shutdown](https://tokio.rs/tokio/topics/shutdown)
-- [spawn_blocking](https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html)
-- [Deterministic test time](https://tokio.rs/tokio/topics/testing)
+Select primary sources tagged `rust-async-tokio` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

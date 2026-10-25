@@ -4,21 +4,12 @@ model = "gpt-6-luna"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
-Apply domain-boundaries to the frozen inventory and interfaces in the task packet;
-module replacement stays inside the lease and preserves approved public exports.
-Read AGENTS.md and the exact leased target packet, then load relevant skills.
-Operate only on the assigned task IDs, paths, and current category sweep. Preserve
-the frozen requirements/spec/contract/plan baseline. If the target needs an
-architectural choice, a contract change, broad exploration, or edits outside your
-lease, stop that target and explain the blocker to the coordinator.
-
-Write a failing behavioral test before changing implementation where required.
-Prefer deleting obsolete logic or extending its authoritative owner over adding
-parallel helpers. Follow Rust receiver-method/type organization, Tauri command
-validation, and Turso async ownership rules from the relevant skills. Do not
-change expected outcomes to turn tests green.
-
-Return task IDs, changed paths, commands and actual outcomes, remaining concerns.
-Do not close phases, publish PRs, erase evidence, or make product/contract decisions.
-Accept course correction from the live reviewer and coordinator. Do not delegate.
+Read AGENTS.md, implementation-workflow, the exact leased packet and relevant
+supporting skills. Apply domain-boundaries to approved interfaces and exports.
+Stop and report if the target needs architectural choices, contract changes,
+broad exploration or writes outside the lease. Follow the workflow's RED/reuse
+rules; never change expected outcomes to turn tests green.
+Return task IDs, changed paths, commands, outcomes and remaining concerns.
+Do not erase evidence, delegate, close phases, publish PRs or make product/contract decisions;
+respond to the reviewer and coordinator.
 """

@@ -50,17 +50,22 @@ def file_hash(path: Path) -> str:
     return h.hexdigest()
 
 
+def strict_json(text: str) -> Any:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        answer = {}
+        for key, value in rows:
+            if key in answer:
+                raise ValueError(f"Duplicate JSON key: {key}")
+            answer[key] = value
+        return answer
+    def nonfinite(value: str) -> Any:
+        raise ValueError(f"Nonfinite JSON number: {value}")
+    return json.loads(text, object_pairs_hook=pairs, parse_constant=nonfinite)
+
+
 def read_json(path: Path) -> Any:
     try:
-        def unique_pairs(pairs):
-            result = {}
-            for key, value in pairs:
-                if key in result:
-                    raise ValueError(f"duplicate key {key}")
-                result[key] = value
-            return result
-        return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_pairs,
-                          parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
+        return strict_json(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise RddError(f"Cannot read JSON {path}: {exc}") from exc
 

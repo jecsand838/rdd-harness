@@ -54,7 +54,4 @@ For a future requirements amendment that introduces an HTTP API, specification m
 
 Checked 2026-10-07.
 
-- [Tauri command interface](https://v2.tauri.app/develop/calling-rust/)
-- [Protobuf field presence](https://protobuf.dev/programming-guides/field_presence/)
-- [Protobuf evolution practices](https://protobuf.dev/best-practices/dos-donts/)
-- [Rust receiver methods](https://doc.rust-lang.org/rust-by-example/fn/methods.html)
+Select primary sources tagged `create-api` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

@@ -83,7 +83,4 @@ Keep native error recovery understandable without exposing traces or SQL. Prefer
 
 Checked 2026-10-07.
 
-- [Tauri Rust frontend configuration](https://v2.tauri.app/start/frontend/)
-- [Tauri IPC](https://v2.tauri.app/develop/calling-rust/)
-- [Tauri event and channel delivery](https://v2.tauri.app/develop/calling-frontend/)
-- [WCAG 2.2 normative criteria](https://www.w3.org/TR/WCAG22/)
+Select primary sources tagged `create-ui-page` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

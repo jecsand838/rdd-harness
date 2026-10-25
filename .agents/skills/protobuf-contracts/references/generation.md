@@ -61,10 +61,4 @@ This repository's production-app contracts are authored by the specification wor
 
 Checked 2026-10-07.
 
-- [Buf generation](https://buf.build/docs/generate/)
-- [Buf build and descriptor flag](https://buf.build/docs/reference/cli/buf/build/)
-- [Prost Config::compile_fds](https://docs.rs/prost-build/0.14.4/prost_build/struct.Config.html#method.compile_fds)
-- [Prost service generator](https://docs.rs/prost-build/0.14.4/prost_build/trait.ServiceGenerator.html)
-- [Resolved method types](https://docs.rs/prost-build/0.14.4/prost_build/struct.Method.html)
-- [Prost package-to-module mapping](https://docs.rs/prost-build/0.14.4/prost_build/struct.Module.html)
-- [Community Prost plugin source](https://github.com/neoeinstein/protoc-gen-prost)
+Select primary sources tagged `protobuf-contracts` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

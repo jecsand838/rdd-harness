@@ -70,6 +70,4 @@ Prevent diagnostics from becoming a data dependency. If the sink fails, preserve
 
 Checked 2026-10-07.
 
-- [Tokio tracing overview](https://tokio.rs/tokio/topics/tracing)
-- [tracing instrument and field selection](https://docs.rs/tracing/latest/tracing/attr.instrument.html)
-- [Span enter and async warning](https://docs.rs/tracing/latest/tracing/span/struct.Span.html#method.enter)
+Select primary sources tagged `observability` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

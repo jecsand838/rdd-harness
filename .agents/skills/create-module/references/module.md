@@ -57,7 +57,4 @@ If the only answer is hypothetical future reuse, keep the implementation concret
 
 Checked 2026-10-07.
 
-- [Rust modules](https://doc.rust-lang.org/rust-by-example/mod.html)
-- [Cargo workspaces](https://doc.rust-lang.org/cargo/reference/workspaces.html)
-- [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/about.html)
-- [Prost generated service interfaces](https://docs.rs/prost-build/latest/prost_build/trait.ServiceGenerator.html)
+Select primary sources tagged `create-module` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).

@@ -2,19 +2,13 @@
   "type": "object",
   "properties": {
     "model": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "reviewer": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "session_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80
+      "$ref": "#/$defs/reference"
     },
     "summary": {
       "type": "string",
@@ -36,9 +30,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference"
           },
           "severity": {
             "type": "string",
@@ -51,24 +43,10 @@
             ]
           },
           "requirements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "path": {
             "type": "string",
@@ -76,14 +54,10 @@
             "maxLength": 512
           },
           "message": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4000
+            "$ref": "#/$defs/explanation"
           },
           "evidence": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4000
+            "$ref": "#/$defs/explanation"
           },
           "nodes": {
             "type": "array",
@@ -121,27 +95,16 @@
       ]
     },
     "phase": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "$ref": "#/$defs/nullable_text"
     },
     "requirements_digest": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 4000
+      "$ref": "#/$defs/explanation"
     },
     "spec_digest": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "$ref": "#/$defs/nullable_text"
     },
     "plan_digest": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "$ref": "#/$defs/nullable_text"
     },
     "resolutions": {
       "type": "array",
@@ -149,14 +112,10 @@
         "type": "object",
         "properties": {
           "finding_id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4000
+            "$ref": "#/$defs/explanation"
           },
           "evidence": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4000
+            "$ref": "#/$defs/explanation"
           }
         },
         "required": [
@@ -184,5 +143,31 @@
     "plan_digest",
     "resolutions"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "nullable_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
 }

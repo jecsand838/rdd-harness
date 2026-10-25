@@ -4,13 +4,9 @@ model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
-Read AGENTS.md, the bounded node packet and preparation-workflow. Use
-reuse-analysis, plan-verticals and plan-phases where applicable. Own only eligible
-P1-P5 claims and their exact declared writes. Use preparation-workflow for complete
-behavior/task hydration, producer timing, work sites and scaffold replacement.
-Apply domain-boundaries for per-consumer call, type-import and composition proofs.
-Keep frozen specifications/contracts immutable; return missing architecture or
-behavior through the upstream-defect path, never a planning assumption.
-Return source-linked artifacts through the handoff and respond to continuous
-review. Do not freeze, accept, materialize or implement application behavior.
+Read AGENTS.md, the bounded P1-P5 packet, preparation-workflow, reuse-analysis,
+plan-verticals and plan-phases. Apply domain-boundaries to per-consumer proofs.
+Own only eligible claims and return source-linked handoffs; the workflow owns
+hydration, producer timing, work sites and upstream-defect routing.
+Do not freeze, accept, materialize or implement application behavior.
 """

@@ -76,7 +76,4 @@ Test optional values, zero enums, unknown enums, bytes, 64-bit fields, Unicode, 
 
 Checked 2026-10-07.
 
-- [Proto3 language guide](https://protobuf.dev/programming-guides/proto3/)
-- [Field presence](https://protobuf.dev/programming-guides/field_presence/)
-- [Evolution practices](https://protobuf.dev/best-practices/dos-donts/)
-- [Prost ServiceGenerator](https://docs.rs/prost-build/0.14.4/prost_build/trait.ServiceGenerator.html)
+Select primary sources tagged `protobuf-contracts` in the [engineering source catalog](../../../../.rdd/sources/engineering.json).
