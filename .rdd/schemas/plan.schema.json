@@ -21,56 +21,24 @@
             "pattern": "^P[0-9]{2,3}$"
           },
           "goal": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4000
+            "$ref": "#/$defs/explanation"
           },
           "tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/ids"
           },
           "checks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/ids"
           },
           "requirements_closed": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           },
           "deliverables": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 512
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/paths"
           },
           "independent_evidence": {
             "type": "array",
             "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 4000
+              "$ref": "#/$defs/explanation"
             },
             "minItems": 1,
             "uniqueItems": false
@@ -119,61 +87,24 @@
             ]
           },
           "requirements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/ids"
           },
           "specifications": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 512
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/paths"
           },
           "depends_on": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           },
           "writes": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 512
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/paths"
           },
           "checks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           },
           "acceptance": {
             "type": "array",
             "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 4000
+              "$ref": "#/$defs/explanation"
             },
             "minItems": 1,
             "uniqueItems": false
@@ -194,9 +125,7 @@
                 "type": "object",
                 "properties": {
                   "capability_missing": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 4000
+                    "$ref": "#/$defs/explanation"
                   },
                   "candidates": {
                     "type": "array",
@@ -204,14 +133,10 @@
                       "type": "object",
                       "properties": {
                         "path": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 512
+                          "$ref": "#/$defs/reference"
                         },
                         "reason": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 4000
+                          "$ref": "#/$defs/explanation"
                         }
                       },
                       "required": [
@@ -224,14 +149,10 @@
                     "uniqueItems": false
                   },
                   "why_not_extend": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 4000
+                    "$ref": "#/$defs/explanation"
                   },
                   "duplication_check": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 4000
+                    "$ref": "#/$defs/explanation"
                   }
                 },
                 "required": [
@@ -245,54 +166,19 @@
             ]
           },
           "solution_elements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/ids"
           },
           "scenarios": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/ids"
           },
           "requires": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           },
           "produces": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           },
           "bootstrap_resources": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           },
           "sites": {
             "type": "array",
@@ -304,9 +190,7 @@
                   "pattern": "^A[0-9]{2,4}$"
                 },
                 "path": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
+                  "$ref": "#/$defs/reference"
                 },
                 "mode": {
                   "type": "string",
@@ -327,10 +211,7 @@
                       ]
                     },
                     "context": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                      "$ref": "#/$defs/nullable_string"
                     }
                   },
                   "required": [
@@ -343,9 +224,7 @@
                   "type": "boolean"
                 },
                 "instructions": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 4000
+                  "$ref": "#/$defs/explanation"
                 }
               },
               "required": [
@@ -361,9 +240,7 @@
             "minItems": 1
           },
           "objective": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4000
+            "$ref": "#/$defs/explanation"
           }
         },
         "required": [
@@ -402,19 +279,10 @@
             "pattern": "^V[0-9]{2,4}$"
           },
           "goal": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 4000
+            "$ref": "#/$defs/explanation"
           },
           "tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/ids"
           }
         },
         "required": [
@@ -428,14 +296,7 @@
       "uniqueItems": false
     },
     "target_paths": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 512
-      },
-      "minItems": 1,
-      "uniqueItems": true
+      "$ref": "#/$defs/paths"
     },
     "shells": {
       "type": "array",
@@ -443,9 +304,7 @@
         "type": "object",
         "properties": {
           "path": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 512
+            "$ref": "#/$defs/reference"
           },
           "content": {
             "type": "string",
@@ -463,14 +322,7 @@
       "uniqueItems": false
     },
     "author_sessions": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 80
-      },
-      "minItems": 1,
-      "uniqueItems": true
+      "$ref": "#/$defs/ids"
     },
     "element_coverage": {
       "type": "array",
@@ -478,35 +330,16 @@
         "type": "object",
         "properties": {
           "element": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           },
           "checks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/ids"
           },
           "baseline_evidence": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "$ref": "#/$defs/nullable_string"
           }
         },
         "required": [
@@ -525,9 +358,7 @@
         "type": "object",
         "properties": {
           "resource": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "kind": {
             "type": "string",
@@ -538,20 +369,10 @@
             ]
           },
           "task": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "$ref": "#/$defs/nullable_string"
           },
           "checks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_ids"
           }
         },
         "required": [
@@ -570,9 +391,7 @@
         "type": "object",
         "properties": {
           "resource": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "consumer_kind": {
             "type": "string",
@@ -585,10 +404,7 @@
             ]
           },
           "consumer": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "$ref": "#/$defs/nullable_string"
           }
         },
         "required": [
@@ -609,13 +425,7 @@
             "pattern": "^P[0-9]{2,3}$"
           },
           "checks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/proof_ids"
           },
           "provider_tasks": {
             "type": "array",
@@ -623,54 +433,33 @@
               "type": "string",
               "minLength": 1
             },
-            "minItems": 1,
+            "minItems": 0,
             "uniqueItems": true
           },
           "consumer_tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/proof_ids"
           },
           "adapter_tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/proof_ids"
           },
           "verification_tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/proof_ids"
           },
           "operation": {
             "type": "string",
             "minLength": 1
           },
           "interaction": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "consumer": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "provider": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
+          },
+          "export": {
+            "$ref": "#/$defs/reference"
           }
         },
         "required": [
@@ -681,11 +470,38 @@
           "checks",
           "provider_tasks",
           "consumer_tasks",
-          "adapter_tasks",
-          "verification_tasks",
-          "operation"
+          "verification_tasks"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "operation",
+              "adapter_tasks"
+            ],
+            "properties": {
+              "export": {
+                "maxLength": 0
+              },
+              "provider_tasks": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "required": [
+              "export"
+            ],
+            "properties": {
+              "operation": {
+                "maxLength": 0
+              },
+              "adapter_tasks": {
+                "maxItems": 0
+              }
+            }
+          }
+        ]
       },
       "minItems": 0
     },
@@ -699,46 +515,22 @@
             "pattern": "^P[0-9]{2,3}$"
           },
           "checks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/proof_ids"
           },
           "consumer_tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/proof_ids"
           },
           "verification_tasks": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/proof_ids"
           },
           "interaction": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "consumer": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "provider": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
+            "$ref": "#/$defs/reference_id"
           },
           "type": {
             "type": "string",
@@ -775,5 +567,57 @@
     "boundary_proofs",
     "type_import_proofs"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "ids": {
+      "$ref": "#/$defs/optional_ids",
+      "minItems": 1
+    },
+    "optional_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference_id"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "proof_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "reference_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "nullable_string": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    }
+  }
 }

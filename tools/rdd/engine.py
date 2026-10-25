@@ -56,14 +56,15 @@ def task_boundary_context(root: Path, spec: dict, plan: dict, task: dict) -> dic
     inventory = artifacts.load_domain_inventory(root, spec)
     selected = {element["module"] for element in spec["solution_elements"]
                 if element["id"] in task["solution_elements"] and element["module"] is not None}
-    for proof in plan["boundary_proofs"] + plan["type_import_proofs"]:
-        if any(task["id"] in proof.get(role, []) for role in
-               ("provider_tasks", "consumer_tasks", "adapter_tasks", "verification_tasks")):
-            selected.update((proof["consumer"], proof["provider"]))
+    proofs = [proof for proof in plan["boundary_proofs"] + plan["type_import_proofs"]
+              if any(task["id"] in proof.get(role, []) for role in
+                     ("provider_tasks", "consumer_tasks", "adapter_tasks", "verification_tasks"))]
+    for proof in proofs:
+        selected.update((proof["consumer"], proof["provider"]))
     interactions = {row["id"]: row for row in inventory["interactions"]
                     if row["consumer"] in selected or row["provider"] in selected}
     interfaces = selected | {row[key] for row in interactions.values() for key in ("consumer", "provider")}
-    return {"inventory": spec["domain_inventory"], "specification": ".rdd/spec.json",
+    return {"inventory": spec["domain_inventory"], "specification": ".rdd/spec.json", "proofs": proofs,
             "owners": [row for row in inventory["domains"] + inventory["supporting_modules"]
                        if row["module"] in interfaces],
             "modules": [{key: module[key] for key in ("id", "owns_paths", "contract_package", "public_exports",
@@ -1528,7 +1529,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
             if self.state()["status"] not in {"prepared", "implementation", "complete"}:
                 raise RddError("Implementation workflow requires completed preparation")
         prompt = (f"Use ${stage}-workflow. Read AGENTS.md first. Work in this repository using ./rdd. "
-                  "Requirements are authoritative. Follow domain-boundaries for the accepted S1 inventory, distinct functional module owners and every internal call/type-only binding. Include relevant inventory and frozen interface identities in dispatch packets. Complete the workflow's real artifacts and verification; do not declare success from prose. ")
+                  "Requirements are authoritative. Follow domain-boundaries for the accepted S1 inventory, distinct functional module owners and every internal call/type-only/composition binding. Include relevant inventory and frozen interface identities in dispatch packets. Complete the workflow's real artifacts and verification; do not declare success from prose. ")
         if stage == "specification":
             prompt += (f"The requested run mode is {mode or 'regenerate if no prior frozen baseline; otherwise ask the user to choose amend or regenerate'}. "
                        "Ask and resolve architectural or directional questions here. Do not implement the Todo application in this workflow.")

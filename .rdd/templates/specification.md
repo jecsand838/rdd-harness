@@ -20,7 +20,7 @@ Reference the exact accepted `docs/specs/domain-inventory.json` handoff under `d
 
 - Distinct functional subdomain owner, purpose and allocated requirements, or explicit supporting owner kind.
 - Owned state and invariants.
-- Provided Protobuf services/types, permitted consumed operations/types, and every directed call/type-only binding.
+- Provided Protobuf services/types, permitted consumed operations/types, and every directed call/type-only/composition binding under `domain-boundaries`.
 - Permitted and forbidden dependencies.
 - Distinct implementation paths, approved public exports and construction/wiring entry points; justification if a separate crate is needed.
 - Canonical source/generated identities, including shared support ownership.

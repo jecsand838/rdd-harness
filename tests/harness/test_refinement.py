@@ -115,7 +115,7 @@ class HarnessFixture:
             "input_digest": claim["input_digest"], "outputs": claim["writes"],
             "evidence_ids": evidence or []}, "node.json"))
 
-    def begin_s6(self, extra_writes=()):
+    def begin_s6(self, extra_writes=(), inventory=None):
         """Reach the real S6 owner claim without bypassing node or reviewer guards."""
         c = self.controller
         c.spec_init()
@@ -125,7 +125,7 @@ class HarnessFixture:
             path = "docs/specs/domain-inventory.json" if node == "S1" else f"docs/specs/{node}.md"
             self.claim(node, [path])
             if node == "S1":
-                write_json(self.root / path, {"schema_version": 1,
+                write_json(self.root / path, inventory if inventory is not None else {"schema_version": 1,
                     "requirements_digest": c.state()["requirements_digest"],
                     "domains": [{"id": "D-ITEMS", "module": "items", "requirements": ["FR-001"],
                                  "behaviors": ["B-STATE"], "invariants": ["I-ORDER"]}],
@@ -770,12 +770,15 @@ class RefinementTests(unittest.TestCase):
 
     def test_old_policy_is_inspectable_but_cannot_mutate_or_relabel_approvals(self):
         state = self.controller.state()
-        state["workflow_graph_digest"] = "0" * 64
-        self.controller.store.put(state)  # Deliberate historical-policy fixture.
+        previous = copy.deepcopy(NODES)
+        previous["S1"]["required_output"] = previous["S1"]["required_output"].replace("/composition", "")
+        self.assertNotEqual(digest(previous), digest(NODES))
+        state["workflow_graph_digest"] = digest(previous)
+        self.controller.store.put(state)  # Deliberate pre-composition historical-policy fixture.
         self.assertTrue(self.controller.status()["workflow_nodes"]["historical"])
         checkpoint = self.root / ".rdd/runtime/historical.json"
         self.controller.export_run(checkpoint)
-        self.assertEqual(read_json(checkpoint)["state"]["workflow_graph_digest"], "0" * 64)
+        self.assertEqual(read_json(checkpoint)["state"]["workflow_graph_digest"], digest(previous))
         with self.assertRaisesRegex(RddError, "earlier workflow"):
             self.fixture.question()
 

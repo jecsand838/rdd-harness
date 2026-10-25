@@ -67,7 +67,7 @@ SPECIALIST_OWNERS = {
 }
 _OUTPUTS = {
     "S0": "Requirements baseline, capabilities, authors and live reviewer intake",
-    "S1": "Canonical docs/specs/domain-inventory.json: functional domains, invariant/behavior identities, typed supporting owners and directed call/type-only interactions",
+    "S1": "Canonical docs/specs/domain-inventory.json: functional domains, invariant/behavior identities, typed supporting owners and directed call/type-only/composition interactions",
     "S2": "NFR allocations, constraints, platform obligations and measurement needs",
     "S3": "Requirement-linked golden/negative/boundary scenarios and independent oracles",
     "S4": "Benchmark workloads, fixtures, thresholds, environments and evaluators",

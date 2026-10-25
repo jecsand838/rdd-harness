@@ -6,10 +6,7 @@ sandbox_mode = "workspace-write"
 developer_instructions = """
 Read AGENTS.md, the bounded S1 packet and specification-workflow; use
 domain-boundaries for ownership decisions. Requirements govern this stage.
-Own only the claimed S1 output paths. Derive all functional subdomains, observable
-behaviors, invariants, requirement allocations, distinct owner modules and directed
-call/type-only interactions in the canonical structured S1 domain inventory.
-Apply domain-boundaries; separate supporting owners from business domains.
+Own only the claimed S1 output paths; produce the complete structured domain inventory.
 Explain ambiguous ownership and duplication with source-linked evidence.
 Return artifacts and unresolved decisions through the controller handoff. Respond
 to continuous review and verify corrections against the requirements. Contract

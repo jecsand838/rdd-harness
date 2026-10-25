@@ -162,7 +162,7 @@ def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> 
     elements = unique(spec["solution_elements"], "solution element")
     operations = {eid: set(element.get("contract_operations", [])) for eid, element in elements.items()}
     bindings = {}
-    expected_calls, expected_types = set(), set()
+    expected_calls, expected_types, expected_exports = set(), set(), set()
     for binding in spec["boundary_bindings"]:
         iid = binding["interaction"]
         if iid not in interactions or iid in bindings:
@@ -172,8 +172,10 @@ def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> 
         identity = (iid, interaction["consumer"], interaction["provider"])
         if interaction["kind"] == "call":
             expected_calls.update((*identity, operation) for operation in binding["operations"])
-        else:
+        elif interaction["kind"] == "type_only":
             expected_types.update((*identity, symbol) for symbol in binding["types"])
+        else:
+            expected_exports.update((*identity, symbol) for symbol in binding["exports"])
     if set(bindings) != set(interactions):
         raise RddError("Every domain interaction needs an exact frozen boundary binding", "specification")
     all_operations = {operation for values in operations.values() for operation in values}
@@ -183,7 +185,7 @@ def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> 
     module_checks = {mid: {cid for group in module["implementation_checks"].values() for cid in group}
                      for mid, module in modules.items()}
     scheduled = {mid: set() for mid in modules}
-    actual_calls, actual_types = set(), set()
+    actual_calls, actual_types, actual_exports = set(), set(), set()
 
     def owned_source(mid, path):
         return Path(path).suffix == ".rs" and any(
@@ -217,17 +219,33 @@ def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> 
             raise RddError(f"{label} real boundary checks must run in their first due phase", "planning")
         scheduled[provider].update(selected & module_checks[provider])
         scheduled[consumer].update(selected & module_checks[consumer])
-        roles = ("provider_tasks", "consumer_tasks", "adapter_tasks", "verification_tasks") if field == "operation" else (
-            "consumer_tasks", "verification_tasks")
+        roles = (("provider_tasks", "consumer_tasks", "adapter_tasks", "verification_tasks") if field == "operation" else
+                 ("provider_tasks", "consumer_tasks", "verification_tasks") if field == "export" else
+                 ("consumer_tasks", "verification_tasks"))
+        provider_inputs = source_inputs(selected & set(provider_groups["provider"]))
         if field == "operation":
             owned_operations = {operation for element in elements.values() if element["module"] == provider
                                 for operation in element.get("contract_operations", [])}
             if symbol not in owned_operations or symbol not in modules[consumer]["consumed_operations"]:
                 raise RddError(f"{label} contradicts frozen callable provider/consumer ownership", "planning")
-        elif symbol not in modules[provider]["provided_types"] or symbol not in modules[consumer]["consumed_types"]:
+        elif field == "type" and (symbol not in modules[provider]["provided_types"] or symbol not in modules[consumer]["consumed_types"]):
             raise RddError(f"{label} contradicts frozen type provider/consumer ownership", "planning")
+        if field == "export":
+            export = next((row for row in modules[provider]["public_exports"] if row["symbol"] == symbol), {})
+            path = export.get("path", "")
+            if (export.get("kind") not in {"construction", "wiring"} or export.get("binding") is not None
+                    or not owned_source(provider, path) or path not in provider_inputs):
+                raise RddError(f"{label} needs its frozen owned Rust export source consumed by provider checks", "planning")
+            if proof["provider_tasks"]:
+                if not any(path in tasks.get(tid, {}).get("writes", []) for tid in proof["provider_tasks"]):
+                    raise RddError(f"{label} provider tasks omit its exact export source", "planning")
+            elif not any(r["path"] == path and r["kind"] == "repository" and r["availability"] == "baseline"
+                         for r in resources.values()) or not safe_path(root or Path.cwd(), path).is_file():
+                raise RddError(f"{label} empty provider tasks need existing baseline repository export source", "planning")
         for role in roles:
             if not proof[role]:
+                if field == "export" and role == "provider_tasks":
+                    continue
                 raise RddError(f"{label} needs explicit {role}", "planning")
             subset(proof[role], tasks, f"{label} {role}")
             for tid in proof[role]:
@@ -246,9 +264,14 @@ def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> 
             if role == "verification_tasks":
                 if any(not set(tasks[tid]["checks"]) & selected for tid in proof[role]):
                     raise RddError(f"{label} verification task lacks its real boundary checks", "planning")
+                if field == "export" and any(not set(tasks[tid]["writes"]) & source_inputs(set(tasks[tid]["checks"]) & selected)
+                                              for tid in proof[role]):
+                    raise RddError(f"{label} verification task has no owned input consumed by its boundary checks", "planning")
                 continue
             provider_ids = selected & set(provider_groups["provider"])
             consumer_ids = selected & (set(provider_groups["consumer"]) | set(consumer_groups["consumer"]))
+            if field == "export":
+                consumer_ids = selected & set(consumer_groups["consumer"])
             role_ids = provider_ids if role == "provider_tasks" else consumer_ids
             if role == "adapter_tasks":
                 role_ids |= provider_ids
@@ -267,13 +290,18 @@ def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> 
             raise RddError(f"{label} proofs must run in its actual provider/consumer/adapter delivery phase", "planning")
 
     for proof in plan["boundary_proofs"]:
-        validate_proof(proof, "operation", expected_calls, actual_calls)
+        if "export" in proof:
+            validate_proof(proof, "export", expected_exports, actual_exports)
+        else:
+            validate_proof(proof, "operation", expected_calls, actual_calls)
     for proof in plan["type_import_proofs"]:
         validate_proof(proof, "type", expected_types, actual_types)
     if actual_calls != expected_calls:
         raise RddError(f"Every callable consumer/provider/operation interaction needs real boundary proofs; missing={sorted(expected_calls - actual_calls)}", "planning")
     if actual_types != expected_types:
         raise RddError(f"Every type import consumer/provider/type interaction needs real source proofs; missing={sorted(expected_types - actual_types)}", "planning")
+    if actual_exports != expected_exports:
+        raise RddError(f"Every composition consumer/provider/export interaction needs real source proofs; missing={sorted(expected_exports - actual_exports)}", "planning")
     for mid, expected in module_checks.items():
         # A local invariant owner needs real source/test evidence even without
         # an interaction. Reuse the phase/task inventories, never invent a call.
