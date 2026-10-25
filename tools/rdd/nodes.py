@@ -261,10 +261,14 @@ class WorkflowNodes:
             raise RddError("Refinement prerequisite changed; resolve it before claiming work", "specification")
         if any(s["path"] in writes and not s["excerpt"] for s in inputs["refinement"]["sources"]):
             raise RddError("A mutable author output needs an exact excerpt source, not a whole-file prerequisite", "specification")
+        sources = inventory(self.root)
+        for source in inputs["refinement"]["sources"]:
+            if source["path"] not in sources:
+                raise RddError(f"Refinement source is absent from the claim inventory: {source['path']}", "specification")
         claim = {"session_id": session_id, "role": role, "requested_runtime": self.profile_settings(role),
                  "writes": writes, "attempt": len(prior["attempts"]) + 1,
                  "inputs": inputs, "input_digest": digest(inputs), "source_commit": head(self.root),
-                 "source_digest": source_digest(self.root), "sources": inventory(self.root),
+                 "source_digest": digest(sources), "sources": sources,
                  "concurrent_writes": sorted({p for r in records.values() if r.get("status") == "claimed" for p in r["claim"]["writes"]}),
                  "finding": finding, "review_cursor": len(state.get("live_reviews", [])),
                  "expires": time.time() + self.config["limits"]["lease_seconds"]}

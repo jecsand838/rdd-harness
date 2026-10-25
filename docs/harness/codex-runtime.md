@@ -176,22 +176,6 @@ All adapters use only the Python standard library. They accept an injected
 testing. `RddAdapterError.code` distinguishes capability, malformed-evidence,
 timeout, revision-mismatch and safety failures.
 
-```python
-from tools.rdd.adapters import CodexAdapter, GitAdapter, GitHubAdapter
-from tools.rdd.common import validate
-
-git = GitAdapter(repo)
-branch = git.create_phase_branch(run_id, phase_number, base_branch)
-worktree = git.ensure_worktree(worker_path, branch, base_branch)
-
-worker = CodexAdapter(repo)
-result = worker.exec(
-    prompt, output_schema_path, fresh_runtime_attempt,
-    role="rdd_complex_implementor", timeout=1800,
-    validator=validate,
-)
-```
-
 The controller normally wraps these operations with a run transaction and task
 lease. Invoke its public commands during a workflow. Worktree reuse is allowed
 only for the exact repository and branch with a clean working tree and the

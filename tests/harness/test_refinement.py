@@ -260,9 +260,6 @@ class RefinementTests(unittest.TestCase):
         self.controller = self.fixture.controller
         self.addCleanup(self.controller.close)
 
-    def git(self, *arguments):
-        return self.fixture.git(*arguments)
-
     def reject_historical_publication(self, decision="D-LIMIT"):
         """A still-open historical claim cannot publish newly changed inputs."""
         path = self.root / ".rdd/runtime/checkpoint.json"
@@ -506,22 +503,6 @@ class RefinementTests(unittest.TestCase):
             f.publish(decision="D-C")
         self.reject_historical_publication("D-C")
 
-    def test_same_file_excerpt_input_survives_publication_but_changes_stale_it(self):
-        f = self.fixture
-        # Existing canonical authority is also an upcoming S6 output.
-        governing = "The existing collection is local to this user."
-        f.text("docs/specs/solution.md", "# Prior authority\n\n" + governing + "\n")
-        reference = {"path": "docs/specs/solution.md", "text": governing,
-                     "sha256": hashlib.sha256(governing.encode()).hexdigest()}
-        f.decision(sources=[reference])
-        f.begin_s6()
-        f.text("docs/specs/solution.md", "# Ordered collection\n\n" + governing + "\n\n" + STATEMENT + "\n")
-        f.publish()
-        f.complete_s6()
-        self.assertTrue(self.controller.status()["refinement"]["ready"])
-        f.text("docs/specs/solution.md", "# Ordered collection\n\nThe collection is shared remotely.\n\n" + STATEMENT + "\n")
-        self.assertIn("D-LIMIT", self.controller.status()["refinement"]["stale"])
-
     def test_source_freshness_propagates_through_multiple_prerequisites(self):
         f = self.fixture
         f.text("docs/specs/authority.md", "# Governing source\n\nThe collection stays local.\n")
@@ -645,6 +626,54 @@ class RefinementTests(unittest.TestCase):
         snapshot = read_json(self.root / SNAPSHOT)
         self.assertEqual(snapshot["decisions"], [])
 
+    def test_claim_requires_replayable_refinement_sources(self):
+        for mode in ("full", "excerpt", "inherited", "delegated", "question", "prerequisite",
+                     "late-ignore", "untracked", "force-tracked"):
+            with self.subTest(mode=mode):
+                root = self.root / mode
+                f = build_fixture(root)
+                c = f.controller
+                self.addCleanup(c.close)
+                path = "docs/specs/probe.md" if mode in {"late-ignore", "untracked"} else "docs/specs/probe.log"
+                f.text(path, STATEMENT + "\n")
+                source = {"path": path, "sha256": file_hash(root / path)}
+                if mode in {"excerpt", "inherited", "delegated"}:
+                    source.update(text=STATEMENT, sha256=hashlib.sha256(STATEMENT.encode()).hexdigest())
+                if mode == "force-tracked":
+                    f.git("add", "-f", "--", path)
+                if mode == "question":
+                    f.question(nodes=["S0"], sources=[source])
+                elif mode == "inherited":
+                    f.decision(nodes=["S0"], provenance={"kind": "inherited", **source})
+                elif mode == "delegated":
+                    f.decision(nodes=["S0"], provenance={"kind": "delegated", "authority": source,
+                        "scope": "Choose private storage preserving ordering.",
+                        "rationale": "Private representation preserves all accepted behavior."})
+                elif mode == "prerequisite":
+                    f.decision("D-SOURCE", nodes=["S2"], sources=[source])
+                    f.decision(nodes=["S0"], prerequisites=[{"id": "D-SOURCE", "revision": 1}])
+                else:
+                    f.decision(nodes=["S0"], sources=[source])
+                if mode == "late-ignore":
+                    f.text(".git/info/exclude", "/" + path + "\n")
+                f.observe()
+                if mode not in {"untracked", "force-tracked"}:
+                    before = c.state()
+                    with self.assertRaisesRegex(RddError, "claim inventory.*docs/specs/probe"):
+                        f.claim("S0", ["docs/specs/intake.md"])
+                    self.assertEqual(c.state(), before, "Rejected claims must preserve capture without attempts or events")
+                else:
+                    claim = f.claim("S0", ["docs/specs/intake.md"])
+                    self.assertEqual(claim["sources"][path], file_hash(root / path))
+                    self.assertEqual(claim["source_digest"], digest(claim["sources"]))
+                    f.text(".git/info/exclude", "/" + path + "\n")
+                    f.commit()
+                    checkpoint = root / ".rdd/runtime/checkpoint.json"
+                    c.export_run(checkpoint)
+                    c.resume(checkpoint)
+                    self.assertEqual(c.state()["workflow_nodes"]["S0"]["claim"], claim,
+                                     "Historical replay must retain its inventory after ignore rules change")
+
     def test_existing_domain_and_contract_validators_still_reject_violations(self):
         f = self.fixture
         f.begin_s6()
@@ -682,6 +711,7 @@ class RefinementTests(unittest.TestCase):
         # A later authorized publication revision retains the earlier observed file identity.
         f.publish(publication_revision=2)
         f.complete_s6()
+        self.assertTrue(self.controller.status()["refinement"]["ready"])
         f.commit()
         checkpoint_path = self.root / ".rdd/runtime/checkpoint.json"
         self.controller.export_run(checkpoint_path)
@@ -735,6 +765,8 @@ class RefinementTests(unittest.TestCase):
                 state["events"].insert(terminal + 1, publication_event)
             with self.subTest(mode=mode), self.assertRaises(RddError):
                 self.controller.validate_checkpoint_state(state, bad)
+        f.text("docs/specs/solution.md", "The collection is shared remotely.\n\n" + STATEMENT + "\n\n" + second + "\n")
+        self.assertIn("D-LIMIT", self.controller.status()["refinement"]["stale"])
 
     def test_old_policy_is_inspectable_but_cannot_mutate_or_relabel_approvals(self):
         state = self.controller.state()

@@ -138,21 +138,11 @@ A task may extend a file used by a later phase. Sealing a phase preserves its ac
 
 ## Evidence, review, and digests
 
-The controller records source commit and source digest, spec and plan digests, exact command, platform, timestamps, return code, expectation/outcome, log path/digest, origin/provenance, and benchmark metrics. A hash establishes content identity; it does not prove the logged observation was truthful.
+Use the [evidence guide](evidence-guide.md) for check receipts, imports, exact-candidate readiness/reviews, golden execution results and retention. The [workflow guide](workflow-guide.md) defines live findings, bounded claims and gate transitions. Use the [live-review schema](../../.rdd/schemas/live-review.schema.json) for progress reports. Final approval references the current live-review cursor; progress reports and submitted `passed` flags cannot substitute for controller evidence.
 
-Local evidence is produced by `./rdd check`. External platform or manual evidence is submitted with `./rdd check import FILE` using the evidence schema and explicit provenance. Preserve the actual CI/run identity, observer/environment, and raw logs required by the schema/controller. Do not manufacture absent results or reclassify a skipped check as success.
+The source inventory includes Git-tracked and nonignored untracked files, excluding transactional runtime, evidence and the generated active-run locator. Governing refinement sources must be present in that inventory before affected work can be claimed. Capture may retain accepted direction while its source awaits inclusion; a rejected claim records no attempt. Deliberately include the source in Git or revise the reference to an included source, then retry. Do not force-add secrets or runtime receipts. Existing historical claims use their recorded inventories rather than today's ignore rules.
 
-Stage reviews identify `specification`, `plan` or `preparation` and the `semantic` or `execution` perspective. Use the active schema for exact fields. Register authors with `./rdd author record --stage STAGE --session-id ID`; the manifest inventory must match. Each perspective has a distinct actual reviewer session, separate from the authors. Both reviews bind the exact candidate, reference actual readiness evidence, retain finding history and independently verified resolutions, and have zero unresolved findings. A session/model assertion is provenance, not cryptographic authentication.
-
-Live review is a separate report kind accepted by `review record`, valid while authoring is incomplete. Assign the independent reviewer at intake and preserve exact-revision findings, correction destinations and reviewer-verified resolutions in the event history. Final approval references the current review cursor. Inspect the active live-review schema rather than converting a progress report into a final approval. Workflow node records similarly contain actual assignments, bounded writes, input/output hashes and evidence; a submitted `passed` flag has no authority. Acceptance node status derives from the existing gates, and implementation node status derives from existing tasks/phases.
-
-Implementation phase reviews retain their exact phase/source identity and actual check evidence. `review record` rejects stale candidates and invalid independence. Check results must explicitly enumerate golden scenario execution; passing an aggregate command is insufficient when required scenarios are missing, filtered or skipped.
-
-`prepare` creates materialization artifacts and enters `preparing`. Commit/push the candidate and obtain its actual readiness/CI receipts and final two-perspective review before `gate preparation` grants `prepared`. The gate receipt is ignored runtime/evidence state bound to the committed source, not a tracked output that changes its own subject.
-
-The source digest excludes transactional runtime, evidence, and the generated active-run locator so that creating a receipt does not invalidate its own candidate. Executable code, build configuration, and policy source remain in the reviewed inventory. Follow the controller's inventory rather than inventing ignore rules. Keep tested source committed before acceptance gates.
-
-Ignored runtime/evidence files are still critical work products. Preserve them when moving the working repository between machines or archive a completed run as described in the README. Git alone does not transfer ignored receipts. Historical baseline copies retain design history; they are not a substitute for full check logs.
+Preserve ignored evidence as described in [artifacts and retention](evidence-guide.md#artifacts-and-retention). Historical baseline copies retain design history; they do not replace full check logs. Keep tested source committed before acceptance gates.
 
 ## What belongs outside manifests
 

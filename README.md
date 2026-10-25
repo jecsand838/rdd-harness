@@ -127,18 +127,7 @@ Harness tests and stateless CI do not establish application acceptance; `applica
 
 ## Important files and guides
 
-| Path | What belongs here |
-| --- | --- |
-| [requirements/requirements.md](requirements/requirements.md) | Canonical product obligations |
-| `docs/specs/`, `docs/decisions/`, `.rdd/spec.json` | Solution and decisions produced by specification |
-| `contracts/`, `gen/` | Canonical Protobuf contracts and qualified generated outputs |
-| `.rdd/plan/`, `.rdd/prepared.json` | Frozen tasks, verticals, phases, matrix, markers, and preparation receipt |
-| `modules/`, `apps/`, `tests/`, `benchmarks/` | Future Rust Todo application and its verification |
-| `.rdd/run.json`, `.rdd/runtime/`, `.rdd/evidence/` | Ignored local run locator, transactional state, and verification results |
-| `.rdd/baselines/` | Historical baseline artifact copies |
-| [.agents/skills/](.agents/skills/README.md), [.codex/agents/](.codex/agents/) | Workflow/supporting skills and Codex roles |
-| [tools/rdd/](tools/rdd/), [tools/proto-codegen/](tools/proto-codegen/) | Python controller and Rust contract generator |
-| [.rdd/config.json](.rdd/config.json), [AGENTS.md](AGENTS.md) | Controller policy and repository authority rules |
+Use the [repository responsibility map](docs/harness/artifact-guide.md#repository-responsibility-map) for artifact locations and ownership. [AGENTS.md](AGENTS.md) defines repository authority, [.rdd/config.json](.rdd/config.json) configures the controller, and [tools/proto-codegen/](tools/proto-codegen/) contains the Rust contract generator.
 
 For deeper work, use the existing guides:
 
