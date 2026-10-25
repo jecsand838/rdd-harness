@@ -10,7 +10,7 @@ Correct findings identify the restoration requirement, exact test/diff location,
 
 ## Repair while open
 
-Reopen the applicable test and implementation tasks using controller commands. Use two distinguishable valid datasets, assert full replacement, and exercise malformed input and interruption under the specified fault model. Preserve fixed scenario meaning; a new assertion clarifies that meaning rather than changing the requirement. Run the repaired phase gate and obtain a fresh review bound to the new HEAD.
+Reopen the applicable test and implementation tasks using controller commands. Use two distinguishable valid datasets, assert full replacement, and exercise malformed input and interruption under the specified fault model. Preserve fixed scenario meaning; a new assertion clarifies that meaning rather than changing the requirement. Rerun affected checks, obtain and record independent review bound to the new HEAD, then rerun the phase gate.
 
 If the frozen specification never defined replacement versus merge, that is a specification blocker. The reviewer cannot choose one during implementation merely to finish the phase.
 

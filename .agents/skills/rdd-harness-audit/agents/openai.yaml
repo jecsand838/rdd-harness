@@ -1,0 +1,4 @@
+interface:
+  display_name: "RDD Harness Audit"
+  short_description: "Audit RDD workflow controls and handoffs"
+  default_prompt: "Use $rdd-harness-audit to inspect all three RDD workflows and report evidenced defects separately from improvements."

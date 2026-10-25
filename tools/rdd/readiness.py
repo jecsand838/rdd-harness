@@ -275,8 +275,21 @@ def validate_boundary_plan(spec: dict, plan: dict, root: Path | None = None) -> 
     if actual_types != expected_types:
         raise RddError(f"Every type import consumer/provider/type interaction needs real source proofs; missing={sorted(expected_types - actual_types)}", "planning")
     for mid, expected in module_checks.items():
+        # A local invariant owner needs real source/test evidence even without
+        # an interaction. Reuse the phase/task inventories, never invent a call.
+        for cid in expected - scheduled[mid]:
+            due = next((phases[p["id"]] for p in plan["phases"] if cid in p["checks"]), None)
+            if due is None:
+                continue
+            inputs = {path for path in source_inputs([cid]) if owned_source(mid, path)}
+            available = {r["path"] for r in resources.values() if r["availability"] == "baseline"} | {
+                path for t in tasks.values() if t["category"] in {"modification", "addition"}
+                and phases[t["phase"]] <= due for path in t["writes"]}
+            if inputs & available and any(t["category"] == "tests" and cid in t["checks"]
+                                          and phases[t["phase"]] <= due for t in tasks.values()):
+                scheduled[mid].add(cid)
         if scheduled[mid] != expected:
-            raise RddError(f"Module {mid} interaction proofs omit frozen implementation checks: {sorted(expected - scheduled[mid])}", "planning")
+            raise RddError(f"Module {mid} omits frozen implementation checks: {sorted(expected - scheduled[mid])}", "planning")
 
 
 def required_probe_ids(spec: dict, plan: dict | None = None) -> list[str]:

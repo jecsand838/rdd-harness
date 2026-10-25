@@ -487,7 +487,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
             raise RddError("Preparation must run on a host with at least one applicable frozen contract compilation check", "environment")
         self.frozen()
         created = artifacts.materialize(self.root, plan, state)
-        matrix = artifacts.implementation_matrix(plan)
+        matrix = artifacts.implementation_matrix(plan, spec)
         atomic_write(self.root / ".rdd/plan/implementation-matrix.md", matrix.encode())
         body = {"schema_version": 1, "run_id": state["id"], "spec_digest": state["spec_digest"],
                 "plan_digest": state["plan_digest"], "shell_hashes": inventory(self.root, created),
@@ -729,8 +729,17 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
             if head(worker_root) != commit:
                 raise RddError("Worktree HEAD differs from submitted commit")
             projection_state = copy.deepcopy(state)
+            plan = self.plan()
+            # A parallel lease retains packets committed at its own base, even
+            # after the coordinator completes and cleans up another task.
+            for peer in plan["tasks"]:
+                if projection_state["tasks"][peer["id"]]["status"] == "done" and any(
+                        artifacts.marker_line(peer, site, plan) in
+                        git(self.root, "show", f"{base}:{artifacts.site_path(peer, site)}", check=False).splitlines()
+                        for site in artifacts.task_sites(peer)):
+                    projection_state["tasks"][peer["id"]]["status"] = "integrated"
             projection_state["tasks"][tid]["status"] = "integrated"
-            artifacts.anchors_verify(worker_root, self.plan(), projection_state)
+            artifacts.anchors_verify(worker_root, plan, projection_state)
         record["integration"] = {"before": head(self.root), "submission": commit, "commits": commits, "status": "pending"}
         event(state, "integration_started", task=tid, submission=commit)
         self.save(state)  # Intent precedes the external side effect; resume reconciles interruptions.
@@ -748,6 +757,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
         event(state, "task_integrated", task=tid, commit=record["commit"])
         self.save(state)
         self.frozen()
+        artifacts.anchors_verify(self.root, self.plan(), state)
         return {"task": tid, "status": "integrated", "commit": record["commit"],
                 "next": "Record behavioral RED for test tasks, then task complete. Completion has no review gate."}
 
@@ -838,7 +848,8 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
         if task["phase"] != pid or record["status"] != "integrated":
             raise RddError("Only an integrated task in the open phase can complete")
         self.guard_task_order(state, task)
-        self.live_review_guard(final=False, stage="implementation", task=tid)
+        self.live_review_guard(final=False, stage="implementation", task=tid,
+            repair_findings=self.task_repair_authorization(state, tid))
         if task["category"] == "tests":
             ids = [evidence_id] if evidence_id else record["evidence"]
             evidence = [state["checks"][eid] for eid in ids if eid in state["checks"]]
@@ -894,17 +905,29 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
             if record["status"] == "done" or (peer_task["phase"], peer_task["category"]) != (pid, task["category"]):
                 raise RddError("Finish or release live work before starting a repair sweep")
         self.live_review_guard(final=False, stage="implementation", task=tid, repair_findings=frozenset(ids))
+        from_status = record["status"]
         if record["status"] != "claimed":
             record.update(status="todo", evidence=[], lease_expires=None)
             record.pop("red_evidence", None)
         record["repair_findings"] = ids
         self.invalidate(state, pid)
-        event(state, "open_phase_repair", task=tid, reason=reason, finding_ids=ids, review_cursor=cursor)
+        event(state, "open_phase_repair", task=tid, reason=reason, finding_ids=ids, review_cursor=cursor, from_status=from_status)
+        if record["status"] == "todo":
+            artifacts.materialize(self.root, self.plan(), state, create_shells=False,
+                                  repair_tasks=self.repair_projection_tasks(state), preflight=True)
         self.save(state)
         if record["status"] == "todo":
             self.anchors_reconcile()
         return {"task": tid, "status": record["status"], "finding_ids": ids,
                 "scope": "Existing frozen task only; repair selection obeys the same category order."}
+
+    def repair_projection_tasks(self, state: dict) -> frozenset[str]:
+        repairs = {e["task"]: e for e in state["events"] if e["action"] == "open_phase_repair"}
+        tasks = frozenset(tid for tid, entry in repairs.items()
+                          if entry.get("from_status") == "done" and state["tasks"][tid]["status"] == "todo")
+        for tid in tasks:
+            self.task_repair_authorization(state, tid)
+        return tasks
 
     def anchors_reconcile(self) -> dict:
         self.guard_source_write()
@@ -913,7 +936,7 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
         for task in plan["tasks"]:
             if state["tasks"][task["id"]]["status"] == "done":
                 artifacts.remove_anchor(self.root, task, plan)
-        artifacts.materialize(self.root, plan, state, create_shells=False)
+        artifacts.materialize(self.root, plan, state, create_shells=False, repair_tasks=self.repair_projection_tasks(state))
         return artifacts.anchors_verify(self.root, plan, state)
 
     def anchors_verify(self) -> dict:
@@ -1163,6 +1186,9 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
         self.frozen()
         clean(self.root)
         state, plan, spec = self.state(), self.plan(), self.spec()
+        self.validate_review_stream(state)
+        if any(not row["resolution"] for row in state.get("live_findings", {}).values()):
+            raise RddError("Independent live findings remain unresolved", "review")
         if not state["phases"] or any(p["status"] != "sealed" for p in state["phases"].values()):
             raise RddError("Every phase must be sealed before project completion")
         if any(t["status"] != "done" for t in state["tasks"].values()):

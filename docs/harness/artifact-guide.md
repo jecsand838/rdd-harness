@@ -106,12 +106,12 @@ S6 preserves all entries and their allocations. It binds each interaction to gen
 
 ## Plan manifest
 
-`./rdd plan init` emits the schema structure bound to the frozen spec digest. Preparation completes:
+`./rdd plan init` emits the draft bound to the frozen spec digest. P0–P4 preserve separate immutable notes; P5 alone assembles the plan. Preparation completes:
 
 - `phases`: Each has `id`, `goal`, `tasks`, `checks`, `requirements_closed`, `deliverables`, and `independent_evidence`.
 - `tasks`: Fully hydrated objective and instructions, solution-element/scenario/spec links, dependencies, exact writes, input/output resources, acceptance/checks, phase/category/scope, reuse rationale, and primary/secondary `sites`.
 - `verticals`: Each has `id`, `goal`, and ordered `tasks`.
-- `target_paths`: Exact path inventory implementing the frozen target tree, including deletion targets that will disappear. Preparation resolves files; it does not invent new architectural owners.
+- `target_paths`: Exact path inventory implementing the frozen target tree, including deletion targets that will disappear. Every frozen file marked add/modify/delete must appear here and in task writes; retained/generated files and directories are handled separately. Preparation resolves files; it does not invent new architectural owners.
 - `element_coverage`: Implementation and verification ownership for every frozen solution element, or verified preserved-baseline evidence.
 - `boundary_proofs`: One row per callable interaction and consumer/provider/operation tuple, identifying `interaction`, `consumer`, `provider`, fully qualified `operation`, `first_phase`, `checks`, and provider, consumer, adapter and verification task IDs. Every consumer has actual owned source/task/check coverage, even when provider evidence is reused. Checks remain cumulative after the interaction's first delivery phase.
 - `type_import_proofs`: Per-interaction consumer/provider/`type` coverage, with `first_phase`, `checks`, consumer tasks and verification tasks. Imported data needs source and compilation coverage, without fabricated operation/provider tasks.
@@ -120,9 +120,11 @@ S6 preserves all entries and their allocations. It binds each interaction to gen
 
 Task IDs have the form `T001`; phases have the form `P01`; verticals use `V01`; work-site IDs use `A01`. Categories are exactly `tests`, `deletion`, `modification`, `addition`, `documentation`. Scope is `small` or `large`, informing model routing while dependency and ambiguity still guide grouping.
 
-A task's `sites` identify each work location: stable ID, target path, inline/sidecar mode, placement, primary flag and local instructions. Exactly one is primary and every declared write has a site. Placement is append, before or after an exact unique context selector; use append only where the file as a whole is the intended work location. Selectors are interpreted during initial projection and fail on ambiguous or missing context.
+A task's `sites` identify each work location: stable ID, target path, inline/sidecar mode, placement, primary flag and local instructions. Exactly one is primary and every declared write has a site. Placement is append, before or after an exact unique context selector; use append only where the file as a whole is the intended work location. Initial projection rejects ambiguous or missing context. A completed-task repair may append the unchanged packet at its declared site when its original selector was consumed; ambiguity still fails. The recorded repair event authorizes recovery after interruption, and reopening preflights all sites before saving state.
 
 `writes` is the exact change surface, not permission to edit arbitrary parents. An addition's `reuse` records the missing capability, inspected candidates, why extension is insufficient and the duplication check. Shared resources retain one producer and explicit ordering. Self-produced test bootstrap resources are available only after the test task authors them, before its RED run; an empty shell is never evidence of an implemented capability.
+
+The generated implementation matrix derives requirement/specification/element/operation/scenario/vertical/check links from these records. Module-local checks require owned source and due task/phase coverage independently of interaction proofs.
 
 The graph determines order. `independent_evidence` explains each phase's semantic closure; it is not a self-authenticating pass. The phase reviewer tests that explanation against actual dependencies and acceptance.
 

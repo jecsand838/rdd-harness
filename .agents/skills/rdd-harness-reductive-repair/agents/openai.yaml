@@ -1,0 +1,4 @@
+interface:
+  display_name: "RDD Harness Reductive Repair"
+  short_description: "Apply and verify independently reviewed repairs"
+  default_prompt: "Use $rdd-harness-reductive-repair to research, audit, propose, independently review, apply, and verify a net-reductive harness repair."

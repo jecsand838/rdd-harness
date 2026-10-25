@@ -140,7 +140,7 @@ jobs:
               with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
                   summary.write(f"CI scope: `{mode}`; application_complete=false.\n")
                   if maintenance:
-                      summary.write("Focused refinement regressions are required; application checks are not selected.\n")
+                      summary.write("Harness regression suite is required; application checks are not selected.\n")
           RDD_SELECT_VERIFIER
 
       - name: Check out approved prepared release policy
@@ -162,8 +162,8 @@ jobs:
           python "$GITHUB_WORKSPACE/$RDD_VERIFIER_ROOT/tools/rdd/ci_tools.py" matrix
           --root "$GITHUB_WORKSPACE/$RDD_POLICY_ROOT" --github-output "$GITHUB_OUTPUT"
 
-  refinement:
-    name: Focused refinement regressions
+  harness:
+    name: Harness regression suite
     needs: selection
     if: needs.selection.outputs.mode == 'harness_maintenance'
     runs-on: ubuntu-24.04
@@ -180,8 +180,8 @@ jobs:
         with:
           python-version: '3.11.9'
 
-      - name: Run focused refinement suite
-        run: python -m unittest discover -s tests/harness -p test_refinement.py -v
+      - name: Run all harness regressions
+        run: python -m unittest discover -s tests/harness -p 'test_*.py' -v
 
   controller:
     name: Frozen application verification
@@ -301,7 +301,7 @@ jobs:
   verify:
     # Phase and release PRs retain the trusted frozen application controller.
     name: verify
-    needs: [selection, controller, refinement]
+    needs: [selection, controller, harness]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -327,11 +327,11 @@ jobs:
               raise SystemExit(f'controller: expected {expected}, observed {actual}')
           maintenance = outputs.get('mode') == 'harness_maintenance'
           expected = 'success' if maintenance else 'skipped'
-          actual = needs.get('refinement', {}).get('result')
+          actual = needs.get('harness', {}).get('result')
           if actual != expected:
-              raise SystemExit(f'refinement: expected {expected}, observed {actual}')
+              raise SystemExit(f'harness: expected {expected}, observed {actual}')
           if maintenance:
-              message = 'Focused refinement regressions passed; application_complete=false.\n'
+              message = 'Harness regression suite passed; application_complete=false.\n'
               print(message, end='')
               if os.environ.get('GITHUB_STEP_SUMMARY'):
                   with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:

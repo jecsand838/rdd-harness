@@ -128,13 +128,14 @@ class ReviewStream:
                                         head(self.root), source_digest(self.root))
         if correction:
             row = state.get("live_findings", {}).get(correction)
-            if not row or row["resolution"] or not node or node not in row["finding"].get("nodes", []):
+            if (not row or row["resolution"] or row["stage"] != stage or not node
+                    or (row["finding"].get("nodes") and node not in row["finding"]["nodes"])):
                 raise RddError("Corrective claim must name an unresolved finding scoped to this node", "review")
         for fid, row in state.get("live_findings", {}).items():
             finding = row["finding"]
             if row["resolution"]:
                 continue
-            if correction and node in finding.get("nodes", []):
+            if correction and (fid == correction or node in finding.get("nodes", [])):
                 continue
             if task and finding.get("tasks") and task not in finding["tasks"]:
                 continue
@@ -160,6 +161,12 @@ class ReviewStream:
         if not repairs and "repair_findings" not in record:
             return frozenset()
         latest = repairs[-1] if repairs else {}
+        if latest.get("from_status") == "done":
+            prior = state["events"][:next(i for i, entry in enumerate(state["events"]) if entry is latest)]
+            transitions = [e["action"] for e in prior if e.get("task") == tid and e["action"] in {
+                "task_claimed", "task_integrated", "task_completed", "task_released", "open_phase_repair"}]
+            if not transitions or transitions[-1] != "task_completed":
+                raise RddError("Completed-task repair projection lacks its prior completion event", "review")
         ids, cursor = record.get("repair_findings"), latest.get("review_cursor")
         if (not isinstance(ids, list) or any(not isinstance(fid, str) for fid in ids)
                 or ids != sorted(set(ids)) or latest.get("finding_ids") != ids
