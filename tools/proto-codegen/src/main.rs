@@ -454,44 +454,6 @@ mod tests {
     use super::*;
     use prost_types::{FileDescriptorProto, MethodDescriptorProto, ServiceDescriptorProto};
 
-    #[test]
-    fn local_boundary_returns_the_schema_response_without_an_associated_error() {
-        let service = Service {
-            name: "StoreService".into(),
-            proto_name: "StoreService".into(),
-            package: "store.v1".into(),
-            comments: Default::default(),
-            options: Default::default(),
-            methods: vec![prost_build::Method {
-                name: "save".into(),
-                proto_name: "Save".into(),
-                comments: Default::default(),
-                input_type: "SaveRequest".into(),
-                output_type: "SaveResponse".into(),
-                input_proto_type: ".store.v1.SaveRequest".into(),
-                output_proto_type: ".store.v1.SaveResponse".into(),
-                options: Default::default(),
-                client_streaming: false,
-                server_streaming: false,
-            }],
-        };
-        let mut generator = LocalServices {
-            proof: Proof::None,
-            corrupted_one_method: false,
-            resolved: Rc::new(RefCell::new(BTreeMap::new())),
-        };
-        let mut output = String::new();
-        generator.generate(service, &mut output);
-        assert!(
-            output.contains("Future<Output = SaveResponse>"),
-            "schema response must own boundary outcomes"
-        );
-        assert!(
-            !output.contains("type Error"),
-            "an associated error bypasses frozen response outcomes"
-        );
-    }
-
     fn descriptor(streaming: bool) -> FileDescriptorSet {
         FileDescriptorSet {
             file: vec![FileDescriptorProto {
@@ -508,26 +470,19 @@ mod tests {
                             name: Some("outcome".into()),
                             ..Default::default()
                         }],
-                        field: vec![
-                            prost_types::FieldDescriptorProto {
-                                name: Some("success".into()),
-                                number: Some(1),
+                        field: ["success", "error"]
+                            .into_iter()
+                            .enumerate()
+                            .map(|(index, name)| prost_types::FieldDescriptorProto {
+                                name: Some(name.into()),
+                                number: Some(index as i32 + 1),
                                 oneof_index: Some(0),
                                 r#type: Some(
                                     prost_types::field_descriptor_proto::Type::String as i32,
                                 ),
                                 ..Default::default()
-                            },
-                            prost_types::FieldDescriptorProto {
-                                name: Some("error".into()),
-                                number: Some(2),
-                                oneof_index: Some(0),
-                                r#type: Some(
-                                    prost_types::field_descriptor_proto::Type::String as i32,
-                                ),
-                                ..Default::default()
-                            },
-                        ],
+                            })
+                            .collect(),
                         ..Default::default()
                     },
                 ],
@@ -581,5 +536,116 @@ mod tests {
         tree.render(&mut output, 0);
         assert!(output.contains("pub mod example {\n    pub mod v1 {"));
         assert_eq!(output.matches("example.v1.rs").count(), 1);
+    }
+
+    #[test]
+    fn composition_registers_a_private_provider_through_the_generated_interface() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root =
+            std::env::temp_dir().join(format!("rdd-composition-{}-{nonce}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        let descriptor_path = root.join("schema.bin");
+        fs::write(&descriptor_path, descriptor(false).encode_to_vec()).unwrap();
+        let generated = root.join("generated");
+        generate(&descriptor_path, &generated, Proof::None).unwrap();
+        let interface = fs::read_to_string(generated.join("src/generated/example.v1.rs")).unwrap();
+        assert!(
+            interface.contains("Future<Output = CheckResponse>"),
+            "schema response owns outcomes"
+        );
+        assert!(
+            !interface.contains("type Error"),
+            "associated errors bypass frozen outcomes"
+        );
+        fs::create_dir(generated.join("tests")).unwrap();
+        let source = generated.join("tests/composition.rs");
+        let fixture = r#"
+use rdd_contracts::example::v1::{check_response::Outcome, CheckRequest, CheckResponse, CheckService};
+mod provider {
+    use super::*;
+    struct Private { storage: String }
+    impl CheckService for Private {
+        async fn check(&self, _: CheckRequest) -> CheckResponse {
+            CheckResponse { outcome: Some(Outcome::Success(self.storage.clone())) }
+        }
+    }
+    pub fn construct(ready: bool) -> Result<impl CheckService, &'static str> {
+        if !ready { return Err("initialization failed"); }
+        Ok(Private { storage: "registered".into() })
+    }
+}
+mod adapter {
+    use super::*;
+    pub struct Registry<P>(P);
+    pub fn register<P: CheckService>(provider: P) -> Registry<P> { Registry(provider) }
+    impl<P: CheckService> Registry<P> {
+        pub async fn dispatch(&self) -> CheckResponse { self.0.check(CheckRequest {}).await }
+    }
+}
+mod composition {
+    pub fn start(ready: bool) -> Result<super::adapter::Registry<impl super::CheckService>, &'static str> {
+        Ok(super::adapter::register(super::provider::construct(ready)?))
+    }
+}
+#[test]
+fn registered_operation_and_initialization_failure() {
+    assert!(matches!(composition::start(false), Err("initialization failed")));
+    let registry = composition::start(true).unwrap();
+    let mut call = Box::pin(registry.dispatch());
+    let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+    match std::future::Future::poll(call.as_mut(), &mut context) {
+        std::task::Poll::Ready(response) => assert_eq!(response.outcome, Some(Outcome::Success("registered".into()))),
+        std::task::Poll::Pending => panic!("fixture provider must complete immediately"),
+    }
+}
+"#;
+        fs::write(&source, fixture).unwrap();
+        let cargo = |arguments: &[&str]| {
+            std::process::Command::new(env!("CARGO"))
+                .args(arguments)
+                .arg("--manifest-path")
+                .arg(generated.join("Cargo.toml"))
+                .env("CARGO_TARGET_DIR", root.join("target"))
+                .output()
+                .unwrap()
+        };
+        let lock = cargo(&["generate-lockfile", "--offline"]);
+        assert!(
+            lock.status.success(),
+            "{}",
+            String::from_utf8_lossy(&lock.stderr)
+        );
+        let positive = cargo(&["test", "--locked", "--offline", "--test", "composition"]);
+        assert!(
+            positive.status.success(),
+            "{}",
+            String::from_utf8_lossy(&positive.stderr)
+        );
+        for (bypass, diagnostic) in [
+            (
+                "fn bypass() { let _ = provider::Private { storage: String::new() }; }",
+                "E0603",
+            ),
+            (
+                "fn bypass() { let _ = provider::construct(true).unwrap().storage; }",
+                "E0609",
+            ),
+        ] {
+            fs::write(&source, format!("{fixture}\n{bypass}\n")).unwrap();
+            let negative = cargo(&[
+                "test",
+                "--locked",
+                "--offline",
+                "--test",
+                "composition",
+                "--no-run",
+            ]);
+            assert!(!negative.status.success());
+            assert!(String::from_utf8_lossy(&negative.stderr).contains(diagnostic));
+        }
+        fs::remove_dir_all(root).unwrap();
     }
 }

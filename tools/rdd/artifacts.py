@@ -144,7 +144,10 @@ def domain_inventory_validate(root: Path, reqs: dict, value: dict | None = None)
                 raise RddError(f"Callable interaction {iid} requires provider behavior identities", "specification")
             subset(interaction["behaviors"], modules[provider]["behaviors"], f"Interaction {iid} provider behaviors")
         elif interaction["behaviors"]:
-            raise RddError(f"Type-only interaction {iid} cannot introduce callable behavior", "specification")
+            raise RddError(f"Non-call interaction {iid} cannot introduce callable behavior", "specification")
+        if interaction["kind"] == "composition" and (
+                modules[consumer].get("kind") != "orchestration" or not modules[consumer]["behaviors"]):
+            raise RddError(f"Composition {iid} requires an orchestration supporting owner with lifecycle behaviors", "specification")
     topological({mid: sorted({i["provider"] for i in interactions.values() if i["consumer"] == mid}) for mid in modules})
     return value
 
@@ -209,6 +212,11 @@ def domain_solution_validate(root, spec, modules, elements):
         if element["kind"] in {"subdomain", "invariant"} and element["module"] in owners:
             if owners[element["module"]]["id"] not in domains:
                 raise RddError(f"Business invariant/domain {element['id']} cannot reside in a supporting owner", "specification")
+    for interaction in value["interactions"]:
+        if interaction["kind"] == "composition" and not any(
+                elements[eid]["kind"] == "enabling" and elements[eid]["behavior"] == "support"
+                for eid in owners[interaction["consumer"]]["behaviors"]):
+            raise RddError(f"Composition {interaction['id']} requires a represented supporting lifecycle behavior", "specification")
     return value
 
 
@@ -241,7 +249,7 @@ def boundary_bindings_validate(root, spec, modules, elements, services, operatio
         expected_dependencies[consumer].add(provider)
         binding = bindings[iid]
         if interaction["kind"] == "call":
-            if not binding["operations"] or binding["types"]:
+            if not binding["operations"] or binding["types"] or binding.get("exports"):
                 raise RddError(f"Callable interaction {iid} requires operations, without a type-only binding", "specification")
             subset(binding["operations"], operations, f"Interaction {iid} operations")
             behavior_operations = set()
@@ -257,13 +265,24 @@ def boundary_bindings_validate(root, spec, modules, elements, services, operatio
                     raise RddError(f"Interaction {iid} has a wrong operation provider for {oid}", "specification")
             expected_calls[consumer].update(binding["operations"])
             bound_operations.update(binding["operations"])
-        else:
-            if not binding["types"] or binding["operations"]:
+        elif interaction["kind"] == "type_only":
+            if not binding["types"] or binding["operations"] or binding.get("exports"):
                 raise RddError(f"Type-only interaction {iid} requires generated types, without invented operations", "specification")
             subset(binding["types"], types, f"Interaction {iid} generated types")
             if any(type_owners[symbol] != provider for symbol in binding["types"]):
                 raise RddError(f"Interaction {iid} generated type provider disagrees with its owner", "specification")
             expected_types[consumer].update(binding["types"])
+        else:
+            exports = {entry["symbol"]: entry for entry in modules[provider]["public_exports"]}
+            if not binding.get("exports") or binding["operations"] or binding["types"]:
+                raise RddError(f"Composition {iid} requires only construction/wiring exports", "specification")
+            if not (modules[provider]["provided_services"] or modules[provider]["provided_types"]):
+                raise RddError(f"Composition {iid} provider requires a real generated interface", "specification")
+            for symbol in binding["exports"]:
+                entry = exports.get(symbol)
+                if (entry is None or entry["kind"] not in {"construction", "wiring"} or entry["binding"] is not None
+                        or not entry["path"].endswith(".rs") or not entry["specifications"]):
+                    raise RddError(f"Composition {iid} has an unapproved construction/wiring export {symbol}", "specification")
     if bound_operations != set(operations):
         raise RddError(f"Generated operations lack accepted consumer interactions: {sorted(set(operations)-bound_operations)}", "specification")
     exported = set()
@@ -271,7 +290,7 @@ def boundary_bindings_validate(root, spec, modules, elements, services, operatio
     domain_packages = {}
     for mid, module in modules.items():
         if set(module["depends_on"]) != expected_dependencies[mid]:
-            raise RddError(f"Module {mid} dependency inventory differs from accepted call/type interactions", "specification")
+            raise RddError(f"Module {mid} dependency inventory differs from accepted interactions", "specification")
         if set(module["consumed_operations"]) != expected_calls[mid] or set(module["consumed_types"]) != expected_types[mid]:
             raise RddError(f"Module {mid} consumed boundary inventory differs from accepted interactions", "specification")
         provided = bool(module["provided_services"] or module["provided_types"])
@@ -383,6 +402,7 @@ def module_contracts_validate(root, spec, modules, elements, checks, docs):
         raise RddError("Public service bindings require module ownership rather than shared support")
     service_owners, type_owners, generated = {}, {}, set()
     qualification, implementation = set(), set()
+    compositions = [i for i in load_domain_inventory(root, spec)["interactions"] if i["kind"] == "composition"] if spec.get("schema_version") == 3 else []
     for module in modules.values():
         mid = module["id"]
         subset(module["provided_services"], services, f"Module {mid} provided services")
@@ -416,12 +436,15 @@ def module_contracts_validate(root, spec, modules, elements, checks, docs):
             if set(module["contract_paths"]) != boundary_sources:
                 raise RddError(f"Module {mid} contract_paths contain unrepresented boundary sources")
         generated.update(module["generated_paths"])
+        composition_provider = any(i["provider"] == mid for i in compositions)
+        composition_consumer = any(i["consumer"] == mid for i in compositions)
         for stage, group_ids in (("qualification", qualification), ("implementation", implementation)):
             for group, ids in module[f"{stage}_checks"].items():
                 if spec.get("schema_version") == 3:
-                    required = (bool(module["provided_services"]) if group == "provider" else
-                                bool(module["consumed_operations"] or module["consumed_types"]) if group == "consumer" else
-                                bool(touched) if group == "negative_signature" else bool(touched or touched_types))
+                    required = (bool(module["provided_services"] or composition_provider) if group == "provider" else
+                                bool(module["consumed_operations"] or module["consumed_types"] or composition_consumer) if group == "consumer" else
+                                bool(touched) if group == "negative_signature" else
+                                bool(touched or touched_types or composition_provider or composition_consumer))
                     if bool(ids) != required:
                         raise RddError(f"Module {mid} {stage} {group} proofs must match its actual boundary role")
                 subset(ids, checks, f"Module {mid} {stage} {group}")

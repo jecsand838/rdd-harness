@@ -14,48 +14,20 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80,
-            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            "$ref": "#/$defs/identity"
           },
           "module": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80,
-            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            "$ref": "#/$defs/identity"
           },
           "requirements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "behaviors": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80,
-              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_identities",
+            "minItems": 1
           },
           "invariants": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80,
-              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_identities"
           }
         },
         "required": [
@@ -76,16 +48,10 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80,
-            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            "$ref": "#/$defs/identity"
           },
           "module": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80,
-            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            "$ref": "#/$defs/identity"
           },
           "kind": {
             "enum": [
@@ -98,25 +64,10 @@
             ]
           },
           "requirements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "behaviors": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80,
-              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_identities"
           }
         },
         "required": [
@@ -137,49 +88,26 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80,
-            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            "$ref": "#/$defs/identity"
           },
           "consumer": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80,
-            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            "$ref": "#/$defs/identity"
           },
           "provider": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80,
-            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            "$ref": "#/$defs/identity"
           },
           "kind": {
             "enum": [
               "call",
-              "type_only"
+              "type_only",
+              "composition"
             ]
           },
           "requirements": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "minItems": 1,
-            "uniqueItems": true
+            "$ref": "#/$defs/references"
           },
           "behaviors": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80,
-              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
-            },
-            "minItems": 0,
-            "uniqueItems": true
+            "$ref": "#/$defs/optional_identities"
           }
         },
         "required": [
@@ -206,5 +134,34 @@
   "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:rdd:schema:domain-inventory:v1",
-  "title": "RDD accepted S1 domain inventory"
+  "title": "RDD accepted S1 domain inventory",
+  "$defs": {
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+    },
+    "optional_identities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/identity"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    }
+  }
 }

@@ -8,7 +8,7 @@ Record active run, current branch/commit/source digest, canonical worker role, c
 
 ## Bounded context
 
-Link only relevant requirement, specification, fully qualified operation/contract, scenario, and skill sections. Include relevant accepted S1 inventory entries, distinct module owner IDs, frozen public exports and binding identities. Name each consumer/provider/operation or type-only import and its adapter/proof obligations without copying schemas. Identify authoritative sources and exclude superseded discussion.
+Link only relevant requirement, specification, fully qualified operation/contract, scenario, and skill sections. Include relevant accepted S1 inventory entries, distinct module owner IDs, frozen public exports and binding identities. Name each consumer/provider operation, type import or composition export and its applicable proof obligations without copying schemas. Identify authoritative sources and exclude superseded discussion.
 
 ## Work and ownership
 

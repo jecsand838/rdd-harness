@@ -5,7 +5,7 @@ description: Continuously review all three RDD workflows, steer corrections, and
 
 # Phase review
 
-Use the read-only `rdd_reviewer` profile independently of candidate authors. Read the requirements, frozen solution, phase scope, task graph, contracts, raw diff, relevant tests, benchmark protocols, and controller receipts. Read [the review example](references/review-example.md) for a false-positive success claim and a correct outcome.
+Follow [AGENTS.md](../../../AGENTS.md) for authority and critical-regression routing. Use the read-only `rdd_reviewer` profile independently of candidate authors. Read the requirements, frozen solution, phase scope, task graph, contracts, raw diff, relevant tests, benchmark protocols, and controller receipts. Read [the review example](references/review-example.md) for a false-positive success claim and a correct outcome.
 
 ## Specification and preparation reviews
 
@@ -14,15 +14,13 @@ Two distinct reviewer sessions provide `semantic` and `execution` perspectives. 
 - **Semantic:** Walk every requirement and observable behavior through its subdomain, owner, contract, scenario and oracle. Require reciprocal FR/golden and behavior/scenario coverage. Inspect target-folder ownership, resolved state/error/atomicity decisions, dependency research and applicable NFR protocols. During preparation, verify complete phase-by-phase implementation/test ownership and every task's bounded instructions and acceptance. Reject unjustified work and duplicate abstractions.
 - **Execution:** Walk every task and check through its complete runner, tools/pins, input producers, timing, host facilities and evidence transport. Check RED bootstrap feasibility without implementing product behavior early. Inspect all exact write sites, placement and full primary/linked secondary packets. Confirm qualification uses the actual intended runtime rather than an undeclared cached tool or a partial oracle on another host.
 
-Read the actual outputs and raw receipts. For final `preparation` review, inspect the committed materialization and readiness/CI evidence, not only the draft plan. Preserve earlier findings and independently verify their closure. Both perspectives must approve the same candidate with zero unresolved findings. Changed inputs invalidate affected approvals; a passed schema or another worker's assurance is not a substitute. Re-review corrected candidates until the exit criteria hold, or leave the workflow incomplete with a concrete blocker.
-
-A frozen specification defect exposed in preparation, or a specification/planning defect exposed in implementation, is a critical harness regression. Record origin/detection stage and evidence immediately, stop affected execution, and require a reproducing regression before accepting the preventive-control repair. Distinguish an execution design defect from an external outage or denied permission.
+Read actual outputs and raw receipts. For final `preparation` review, inspect committed materialization and readiness/CI evidence, not only the draft plan. Preserve findings and independently verify their closure. Changed inputs require renewed review of affected evidence; missing proof leaves acceptance incomplete.
 
 ## Live review
 
 Remain active throughout authoring: compare specification progress with requirements, preparation with frozen specifications/contracts, and implementation with frozen plans/contracts. Inspect snapshots at node handoffs, contract generation, task integration and significant checks. Record live findings through the controller with exact candidate identity, affected obligations and correction destination; partial drafts are legitimate live-review subjects, never final approvals. Changed inputs require a fresh review cursor. Blocking findings stop ordinary affected work; bounded controller-enrolled corrections may progress while findings remain open. Independent resolution is required before acceptance. Observe a coherent diff or checkpoint and send focused findings to the orchestrator. State the affected requirement/scenario, file or operation, observed issue, expected result, severity, and a concrete reproduction or reasoning. Check task ordering, approved scope, interface boundaries, duplicate logic, weak assertions, and unsafe async/persistence behavior.
 
-Do not mutate implementor workspaces or silently take over their tasks. Do not demand a formal review after each task. Live feedback steers corrections without approving individual implementation tasks. Final stage/phase gates require current independent review. The continuous reviewer may provide final semantic approval if it authored no candidate artifacts; execution approval needs a distinct session.
+For publication, coordinate a brief no-source-write window with all active authors: finish the current write, retain claims and leases, then verify the reviewed snapshot still matches the current HEAD/digest and record the observation before writes resume. Read-only analysis may continue. If source changes, refresh the observation; never relabel an old report with a new digest. Do not hold the window for the entire review or change controller freshness checks.
 
 ## Phase acceptance review
 
