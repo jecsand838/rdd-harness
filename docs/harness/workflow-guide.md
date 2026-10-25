@@ -4,7 +4,7 @@ Follow these journeys in order to turn `requirements/requirements.md` into an ac
 
 ## Authority and state
 
-Follow [AGENTS.md](../../AGENTS.md): requirements govern specifications/contracts, frozen specifications govern the plan, and the frozen plan governs implementation. A freeze records exact approved file identities. Comments project tasks. `./rdd status` reports runtime truth; `./rdd --help` describes commands. Never edit state, locks, receipts, or unfinished markers to force progress.
+Follow [AGENTS.md](../../AGENTS.md): requirements govern specifications/contracts, frozen specifications govern the plan, and the frozen plan governs implementation. A freeze records exact approved file identities. Comments project tasks. Use `./rdd status --brief` for progress and `./rdd status` or `workflow nodes` for detailed claims/history. Both status views retain exit 2 when blocked; parse their JSON without treating that exit as a failed observation. `./rdd --help` describes commands. Never edit state, locks, receipts, or unfinished markers to force progress.
 
 Specification and preparation require independent semantic and execution reviews of the same candidate; implementation has continuous review and phase acceptance. The [workflow skills](../../.agents/skills/README.md) own agent responsibilities.
 

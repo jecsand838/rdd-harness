@@ -188,54 +188,19 @@
             "type": "object",
             "properties": {
               "provider": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "consumer": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "negative_signature": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "dependency_direction": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "compatibility": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               }
             },
             "required": [
@@ -251,54 +216,19 @@
             "type": "object",
             "properties": {
               "provider": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "consumer": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "dependency_direction": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "compatibility": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               },
               "semantics": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 512
-                },
-                "minItems": 0,
-                "uniqueItems": true
+                "$ref": "#/$defs/module_check_ids"
               }
             },
             "required": [
@@ -1158,5 +1088,17 @@
     "domain_inventory",
     "boundary_bindings"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "module_check_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    }
+  }
 }

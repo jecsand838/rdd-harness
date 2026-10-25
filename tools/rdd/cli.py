@@ -28,7 +28,8 @@ def parser() -> argparse.ArgumentParser:
     s = commands.add_parser("start", help="Start an amend/regenerate run; preserve historical artifacts")
     s.add_argument("--mode", choices=("amend", "regenerate"), required=True)
     s.add_argument("--run-id")
-    commands.add_parser("status", help="Read authoritative run state and exact source identity")
+    status = commands.add_parser("status", help="Read authoritative run state and exact source identity")
+    status.add_argument("--brief", action="store_true", help="Summarize workflow nodes without claim inputs or attempt history")
     r = commands.add_parser("requirements")
     r.add_argument("action", choices=("index",))
     for name in ("spec", "plan"):
@@ -258,18 +259,26 @@ def dispatch(c: Controller, a: argparse.Namespace):
     raise RddError("Unhandled command")
 
 
-def workflow_display(value):
+def workflow_display(value, *, brief=False):
     """Keep CLI handoffs bounded; full claim inventories remain in run exports."""
     if isinstance(value, list):
-        return [workflow_display(item) for item in value]
+        return [workflow_display(item, brief=brief) for item in value]
     if not isinstance(value, dict):
         return value
     result = {}
     for key, item in value.items():
+        if brief and key == "workflow_nodes":
+            item = {**item, "nodes": [
+                {**{k: v for k, v in row.items() if k in {"id", "stage", "status", "phase", "claim", "authority"}},
+                 "attempt_count": len(row.get("attempts", []))} for row in item["nodes"]]}
+        if brief and key == "claim" and isinstance(item, dict):
+            item = {k: v for k, v in item.items() if k != "inputs"}
         if key == "claim" and isinstance(item, dict) and isinstance(item.get("sources"), dict):
             item = {**{k: v for k, v in item.items() if k != "sources"},
                     "source_file_count": len(item["sources"])}
-        result[key] = workflow_display(item)
+        result[key] = workflow_display(item, brief=brief)
+    if brief and "workflow_nodes" in result:
+        result["details"] = ["./rdd status", "./rdd workflow nodes", "./rdd export-run FILE"]
     return result
 
 
@@ -332,7 +341,7 @@ def main(argv: list[str] | None = None) -> int:
             if result["native_goal"]:
                 print("After Codex opens, activate native goal mode with /goal and the output of ./rdd goal.\n")
             return subprocess.call(result["argv"], cwd=controller.root)
-        displayed = workflow_display(result) if args.command == "status" or (
+        displayed = workflow_display(result, brief=args.command == "status" and args.brief) if args.command == "status" or (
             args.command == "workflow" and args.stage in {"nodes", "claim"}) else result
         print(json.dumps(displayed, indent=2, ensure_ascii=False))
         if isinstance(result, dict):

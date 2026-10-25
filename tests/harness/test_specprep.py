@@ -1,10 +1,13 @@
 """Specification/preparation regressions; all fixtures are disposable repositories."""
 import copy
+import json
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
 
-from test_refinement import build_fixture
+from test_refinement import REPOSITORY, build_fixture
 from tools.rdd import artifacts
 from tools.rdd.common import RddError, write_json
 from tools.rdd.nodes import NODES
@@ -36,6 +39,74 @@ class SpecificationPreparationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.fixture = build_fixture(self.root)
         self.addCleanup(self.fixture.controller.close)
+
+    def cli_status(self, *arguments):
+        result = subprocess.run([sys.executable, str(REPOSITORY / "tools/rdd/cli.py"),
+            "--root", str(self.root), "status", *arguments], capture_output=True, text=True)
+        self.assertTrue(result.stdout, result.stderr)
+        return result.returncode, json.loads(result.stdout)
+
+    def test_status_without_locator_is_read_only_but_invalid_locator_still_fails(self):
+        locator = self.root / ".rdd/run.json"
+        for contents, code in ((None, 0), ("{invalid", 1), ('{"run_id": null}', 0)):
+            if contents is None:
+                locator.unlink()
+            else:
+                locator.write_text(contents)
+            before = {p: p.read_bytes() for p in (self.root / ".rdd").rglob("*") if p.is_file()}
+            with self.subTest(locator=contents):
+                actual_code, status = self.cli_status()
+                self.assertEqual(actual_code, code, status)
+                self.assertEqual(status["status"], "failed" if code else "not_started")
+                if contents is None:
+                    self.assertEqual(status["next"], "./rdd init")
+                self.assertEqual({p: p.read_bytes() for p in (self.root / ".rdd").rglob("*") if p.is_file()}, before)
+
+    def test_brief_status_preserves_runtime_truth_and_default_display(self):
+        f, c = self.fixture, self.fixture.controller
+        f.observe()
+        f.claim("S0", ["docs/specs/intake.md"])
+        for scenario in ("current", "stale", "blocked", "historical"):
+            if scenario == "stale":
+                f.text("docs/specs/intake.md", "Completed intake.\n")
+                f.record("S0")
+                f.text("docs/specs/intake.md", "Changed intake.\n")
+            elif scenario == "blocked":
+                c.block("environment", "Fixture status blocker")
+            elif scenario == "historical":
+                state = c.state(allow_blocked=True)
+                state["workflow_graph_digest"] = "0" * 64
+                state["agent_profile_digest"] = "1" * 64
+                state["workflow_nodes"]["S0"]["claim"]["role"] = "historical-author"
+                state["workflow_nodes"]["S0"]["claim"].pop("sources")
+                c.store.put(state)  # Deliberate historical-policy fixture.
+            before = c.state(allow_blocked=True)
+            expected = copy.deepcopy(c.status())
+            for row in expected["workflow_nodes"]["nodes"]:
+                claims = ([row["claim"]] if "claim" in row else []) + [a["claim"] for a in row.get("attempts", [])]
+                for claim in claims:
+                    if "sources" in claim:
+                        claim["source_file_count"] = len(claim.pop("sources"))
+            with self.subTest(scenario=scenario):
+                full_code, full = self.cli_status()
+                self.assertEqual(full, expected, "Default display must remain compatible")
+                brief_code, brief = self.cli_status("--brief")
+                self.assertEqual((full_code, brief_code), (2, 2) if scenario in {"blocked", "historical"} else (0, 0))
+                self.assertEqual({k: v for k, v in brief.items() if k not in {"workflow_nodes", "details"}},
+                                 {k: v for k, v in full.items() if k != "workflow_nodes"})
+                self.assertEqual({k: v for k, v in brief["workflow_nodes"].items() if k != "nodes"},
+                                 {k: v for k, v in full["workflow_nodes"].items() if k != "nodes"})
+                self.assertNotIn("attempts", brief["workflow_nodes"]["nodes"][0])
+                self.assertEqual(brief["details"], ["./rdd status", "./rdd workflow nodes", "./rdd export-run FILE"])
+                self.assertEqual([r["id"] for r in brief["workflow_nodes"]["nodes"]],
+                                 [r["id"] for r in full["workflow_nodes"]["nodes"]])
+                for row, original in zip(brief["workflow_nodes"]["nodes"], full["workflow_nodes"]["nodes"]):
+                    self.assertEqual(row["status"], original["status"])
+                    self.assertEqual(row["attempt_count"], len(original.get("attempts", [])))
+                    self.assertFalse({"attempts", "outputs", "validator", "responsible_roles"} & row.keys())
+                    if "claim" in original:
+                        self.assertEqual(row["claim"], {k: v for k, v in original["claim"].items() if k != "inputs"})
+                self.assertEqual(c.state(allow_blocked=True), before)
 
     def specification(self):
         self.fixture.begin_s6()

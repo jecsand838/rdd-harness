@@ -502,7 +502,12 @@ class Controller(StageWorkflow, ReviewStream, WorkflowNodes, RefinementWorkflow)
                 "next": "Commit materialized artifacts; run preparation readiness, both reviews, then gate preparation."}
 
     def status(self) -> dict:
-        locator = read_json(self.root / ".rdd/run.json")
+        locator_path = self.root / ".rdd/run.json"
+        try:
+            locator_path.lstat()
+        except FileNotFoundError:
+            return {"status": "not_started", "next": "./rdd init"}
+        locator = read_json(locator_path)
         if not locator.get("run_id"):
             return {"status": "not_started", "next": "./rdd workflow specification"}
         state = self.state(allow_blocked=True)
