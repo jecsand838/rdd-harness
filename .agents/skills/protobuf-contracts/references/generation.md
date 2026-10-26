@@ -20,14 +20,9 @@ Subprocess output is captured within a fixed budget and deadlines terminate the 
 
 ## Bootstrap and later checks
 
-Install the repository-documented Rust and Buf versions and the WASM target required by the Rust frontend. From the repository root:
+Use the [authorized bootstrap/check commands](../SKILL.md#commands) with the repository-documented Rust/Buf versions and required targets.
 
-```sh
-./rdd contracts generate --bootstrap-lock --target wasm32-unknown-unknown
-./rdd contracts check --target wasm32-unknown-unknown
-```
-
-The first command resolves missing `tools/proto-codegen/Cargo.lock` and `gen/rust/Cargo.lock`; inspect and commit them. Later commands use `--locked`. If a dependency amendment changes the generator manifest, deliberately update locks and rerun qualification during specification. Do not use missing locks or a dependency network outage as a reason to remove `--locked` in a frozen run.
+Bootstrap resolves missing `tools/proto-codegen/Cargo.lock` and `gen/rust/Cargo.lock`; inspect and commit them. Later commands use `--locked`. If a dependency amendment changes the generator manifest, deliberately update locks and rerun qualification during specification. Do not use missing locks or a dependency network outage as a reason to remove `--locked` in a frozen run.
 
 Use `--against` with the actual accepted Buf baseline input for amendment checks, for example a retained descriptor or an approved Git ref/subdirectory. Do not guess that `main` is the accepted contract baseline. The host compile always runs; repeated `--target` options add other installed targets. Specification qualifies disposable consumers/providers and dependency experiments on required targets. Actual frontend/native application/package conformance belongs to implementation and must have planned producers and first-due phases; it cannot be a specification prerequisite.
 
@@ -35,17 +30,7 @@ The generated crate intentionally has its own `[workspace]` for isolated verific
 
 ## Minimal Buf configuration
 
-The repository supplies root `buf.yaml`; this is the expected v2 shape:
-
-```yaml
-version: v2
-modules:
-  - path: contracts
-lint:
-  use: [STANDARD]
-breaking:
-  use: [FILE]
-```
+The root [Buf configuration](../../../../buf.yaml) is authoritative; inspect it rather than copying a second configuration from documentation.
 
 `buf build --as-file-descriptor-set --output <file>` supplies the standard descriptor consumed by `Config::compile_fds`. That Prost API does not invoke `protoc`; Buf is the schema compiler in this route. Add approved external schema dependencies to Buf's configuration/lock and the specification inventory.
 

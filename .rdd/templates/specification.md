@@ -28,7 +28,7 @@ For every public or module operation specify caller, owner, inputs/outputs, erro
 
 ## Canonical contracts
 
-List exact `.proto` paths/import closure, packages, generator/runtime/configuration/lock identities, generated outputs and descriptor-derived symbols. Link solution operations to actual methods. Use schema-owned response success/failure variants and separately freeze adapter decoding, size, cancellation and lifecycle mappings. Link positive and negative disposable provider/consumer qualification on required targets. Define future real adoption, dependency and bypass checks without requiring product code here. Keep schema fields solely in Protobuf; exact downstream immutability is stronger than amendment compatibility.
+Link the selected boundary semantics and qualified bundle under [protobuf-contracts](../../.agents/skills/protobuf-contracts/SKILL.md). Record project decisions here; generation and freeze procedures remain with that skill.
 
 ## Persistence and recovery
 
@@ -50,6 +50,4 @@ Include the exact accepted S3 catalog in `documents` and preserve every scenario
 
 For every complete check identify exact tools/versions, runner/input paths, host facilities, external evidence and when each is needed. Link actual provisioning/qualification and transfer probes. Distinguish baseline resources from implementation outputs and never claim a partial oracle is the complete check.
 
-## Independent review and freeze
-
-Record S0–S8 node handoffs, registered authors, continuous review against requirements, and verified steering corrections. Record distinct final semantic/execution sessions, exact candidate identity and current readiness/compile evidence. Both perspectives must approve the same candidate with zero unresolved findings. Re-review after corrections; no missing proof or budget timeout can be called completion.
+Follow [specification-workflow](../../.agents/skills/specification-workflow/SKILL.md) for handoffs and freeze, and [phase-review](../../.agents/skills/phase-review/SKILL.md) for independent acceptance. Keep receipts outside the normative documents they certify.
