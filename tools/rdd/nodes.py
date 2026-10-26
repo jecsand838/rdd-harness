@@ -35,10 +35,19 @@ DERIVED = {"S8", "P6", "P7", "P8", *(node for node, _, _ in _IMPL)}
 
 
 def _prior_artifact(root: Path, claim: dict, path: str, prior_attempts: list[dict]) -> bool:
-    if claim["sources"].get(path, "MISSING") == "MISSING":
-        for attempt in reversed(prior_attempts):
-            if attempt.get("status") == "complete" and path in attempt.get("outputs", {}):
-                return attempt["outputs"][path] == "MISSING"
+    if path not in claim["writes"]:
+        return False
+    while claim["sources"].get(path, "MISSING") == "MISSING":
+        if not prior_attempts:
+            return False
+        attempt, prior_attempts = prior_attempts[-1], prior_attempts[:-1]
+        if path not in attempt["claim"]["writes"] or attempt.get("outputs", {}).get(path) != "MISSING":
+            return False
+        if attempt["status"] == "complete":
+            return True
+        if attempt["status"] != "released":
+            return False
+        claim = attempt["claim"]
     value = claim["sources"].get(path)
     if not re.fullmatch(r"[0-9a-f]{64}", str(value)):
         return False
@@ -373,9 +382,11 @@ class WorkflowNodes:
         row = state.get("workflow_nodes", {}).get(node)
         if not row or row["status"] != "claimed" or not reason.strip():
             raise RddError("Release requires a claimed node and reason")
-        row["attempts"][-1].update(status="released", reason=reason)
+        outputs = inventory(self.root, row["claim"]["writes"])
+        row["attempts"][-1].update(status="released", reason=reason, outputs=outputs)
         row["status"] = "pending"
-        event(state, "workflow_node_released", node=node, reason=reason)
+        event(state, "workflow_node_released", node=node, reason=reason,
+              attempt=row["claim"]["attempt"], output_digest=digest(outputs))
         self.save(state)
         return {"node": node, "status": "pending", "preserved_outputs": row["claim"]["writes"]}
 
@@ -453,6 +464,22 @@ class WorkflowNodes:
                     raise RddError("Checkpoint concurrent ownership is invalid")
                 for path in concurrent:
                     safe_path(self.root, path)
+                if attempt["status"] == "released":
+                    outputs = attempt.get("outputs")
+                    releases = [i for i, e in enumerate(state["events"])
+                                if e.get("action") == "workflow_node_released" and e.get("node") == node
+                                and e.get("attempt") == number]
+                    if outputs is not None or releases:
+                        if (not isinstance(outputs, dict) or set(outputs) != set(claim["writes"])
+                                or any(h != "MISSING" and not re.fullmatch(r"[0-9a-f]{64}", str(h)) for h in outputs.values())
+                                or len(releases) != 1 or releases[0] <= matching_events[0]
+                                or state["events"][releases[0]].get("output_digest") != digest(outputs)
+                                or state["events"][releases[0]].get("reason") != attempt.get("reason")
+                                or any(e.get("action") == "workflow_node_claimed" and e.get("node") == node
+                                       for e in state["events"][matching_events[0] + 1:releases[0]])):
+                            raise RddError("Checkpoint released node output observation is invalid")
+                elif attempt["status"] == "claimed" and "outputs" in attempt:
+                    raise RddError("Checkpoint claimed node cannot contain an output observation")
                 if attempt["status"] == "complete":
                     outputs = attempt.get("outputs", {})
                     if (not isinstance(outputs, dict) or set(outputs) != set(claim["writes"])

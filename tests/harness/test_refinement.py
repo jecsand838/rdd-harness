@@ -19,7 +19,7 @@ from tools.rdd.adapters import CommandResult
 from tools.rdd.checks import platform_name
 from tools.rdd.common import RddError, digest, event, file_hash, head, read_json, source_digest, write_json
 from tools.rdd.engine import Controller
-from tools.rdd.nodes import NODES
+from tools.rdd.nodes import NODES, _prior_artifact
 
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -587,6 +587,138 @@ class RefinementTests(HarnessTestCase):
         with self.assertRaises(RddError):
             artifacts.spec_validate(self.root, self.controller.spec(),
                 artifacts.requirements(self.root, "requirements/requirements.md"), self.controller.config)
+
+    def test_released_s6_deletion_survives_retries_and_checkpoint(self):
+        f, c = self.fixture, self.controller
+        retired = "contracts/retired-seed.proto"
+        f.text(retired, "// Committed seed retired by the canonical contracts.\n")
+        f.begin_s6([retired])
+        writes = c.state()["workflow_nodes"]["S6"]["claim"]["writes"]
+        (self.root / retired).unlink()
+        for _ in range(2):
+            expired = c.state()["workflow_nodes"]["S6"]["claim"]["expires"] + 1
+            with patch("tools.rdd.nodes.time.time", return_value=expired):
+                with self.assertRaisesRegex(RddError, "claim expired"):
+                    f.record("S6")
+                c.workflow_release("S6", "Preserve retirement while correcting the candidate.")
+            checkpoint = self.root / ".rdd/runtime/released.json"
+            c.export_run(checkpoint)
+            saved = read_json(checkpoint)
+            c.validate_checkpoint_state(saved["state"], saved)
+            # Old releases without snapshots remain importable as history.
+            legacy = copy.deepcopy(saved)
+            for attempt in legacy["state"]["workflow_nodes"]["S6"]["attempts"]:
+                attempt.pop("outputs", None)
+            for released in legacy["state"]["events"]:
+                if released.get("action") == "workflow_node_released":
+                    for field in ("attempt", "output_digest"):
+                        released.pop(field, None)
+            c.validate_checkpoint_state(legacy["state"], legacy)
+            self.assertEqual(f.claim("S6", writes)["sources"][retired], "MISSING")
+        try:
+            f.complete_s6()
+        except RddError as exc:
+            self.fail(f"Retirement observed before release must survive the retry: {exc}")
+        self.assertEqual(c.state()["workflow_nodes"]["S6"]["outputs"][retired], "MISSING")
+        f.commit()
+        c.export_run(checkpoint)
+        saved = read_json(checkpoint)
+        c.resume(checkpoint)
+        self.assertEqual(c.state()["workflow_nodes"], saved["state"]["workflow_nodes"])
+        for mode in ("legacy", "hash", "commit", "ownership", "present", "event", "order", "digest", "paths", "status"):
+            bad = copy.deepcopy(saved)
+            state = bad["state"]
+            attempt = state["workflow_nodes"]["S6"]["attempts"][0]
+            claim = attempt["claim"]
+            if mode == "legacy":
+                attempt.pop("outputs", None)
+            elif mode == "hash":
+                claim["sources"][retired] = "0" * 64
+                claim["source_digest"] = digest(claim["sources"])
+            elif mode == "commit":
+                claim["source_commit"] = f.git("rev-list", "--max-parents=0", "HEAD")
+            elif mode == "ownership":
+                claim["writes"].remove(retired)
+            elif mode == "present":
+                attempt["outputs"][retired] = claim["sources"][retired]
+                next(e for e in state["events"] if e.get("action") == "workflow_node_released")["output_digest"] = digest(attempt["outputs"])
+            elif mode == "digest":
+                next(e for e in state["events"] if e.get("action") == "workflow_node_released")["output_digest"] = "0" * 64
+            elif mode == "paths":
+                attempt["outputs"]["docs/specs/unowned.md"] = "MISSING"
+            elif mode == "status":
+                attempt["status"] = "claimed"
+            else:
+                index = next(i for i, e in enumerate(state["events"])
+                             if e.get("action") == "workflow_node_released" and e.get("node") == "S6")
+                released = state["events"].pop(index)
+                if mode == "order":
+                    state["events"].append(released)
+            with self.subTest(mode=mode), self.assertRaises(RddError):
+                c.validate_checkpoint_state(state, bad)
+
+    def test_retry_rejects_unproven_deletions(self):
+        for mode in ("unowned", "uncommitted", "modified", "late", "never_present", "newer_present", "ownership_gap", "completed_present"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory(prefix="rdd-deletion-test-") as temporary:
+                f = build_fixture(Path(temporary))
+                c, retired, intake = f.controller, "docs/specs/seed.md", "docs/specs/intake.md"
+                self.addCleanup(c.close)
+                if mode != "never_present":
+                    f.text(retired, "# Original seed\n")
+                    if mode != "uncommitted":
+                        f.commit()
+                if mode == "modified":
+                    f.text(retired, "# Uncommitted replacement\n")
+                f.observe()
+                writes = [intake, retired]
+                f.claim("S0", [intake] if mode == "unowned" else writes)
+                f.text(intake, "# Actual intake artifact\n")
+                if mode not in {"late", "never_present"}:
+                    (f.root / retired).unlink()
+                if mode == "completed_present":
+                    f.record("S0")
+                    f.text(retired, "# Reintroduced after completion\n")
+                    f.claim("S0", writes)
+                c.workflow_release("S0", "Retry bounded intake.")
+                if mode in {"newer_present", "ownership_gap"}:
+                    f.claim("S0", [intake] if mode == "ownership_gap" else writes)
+                    if mode == "newer_present":
+                        f.text(retired, "# Reintroduced during the second claim\n")
+                    c.workflow_release("S0", "Preserve the most recent ownership observation.")
+                if mode in {"late", "newer_present", "completed_present"}:
+                    (f.root / retired).unlink()
+                f.claim("S0", writes)
+                before = c.state()
+                with self.assertRaisesRegex(RddError, "previously present claimed artifact"):
+                    f.record("S0")
+                self.assertEqual(c.state(), before)
+
+    def test_release_snapshot_failure_preserves_claim(self):
+        f, c = self.fixture, self.controller
+        f.observe()
+        f.claim("S0", ["docs/specs/intake.md"])
+        before = c.state()
+        with patch("tools.rdd.nodes.inventory", side_effect=RddError("Snapshot capture failed")):
+            with self.assertRaisesRegex(RddError, "Snapshot capture failed"):
+                c.workflow_release("S0", "Preserve claim if snapshot fails.")
+        self.assertEqual(c.state(), before)
+
+    def test_retirement_requires_committed_regular_nonempty_blob(self):
+        f = self.fixture
+        f.text("docs/specs/regular", "Original committed bytes\n")
+        f.text("docs/specs/empty", "")
+        f.text("docs/specs/directory/child", "Tree entry\n")
+        (self.root / "docs/specs/symlink").symlink_to("regular")
+        f.commit()
+        f.git("update-index", "--add", "--cacheinfo", "160000," + head(self.root) + ",docs/specs/gitlink")
+        f.git("commit", "-m", "Gitlink fixture")
+        expected = file_hash(self.root / "docs/specs/regular")
+        for kind in ("regular", "empty", "directory", "symlink", "gitlink", "uncommitted", "modified"):
+            path = "docs/specs/" + ("regular" if kind == "modified" else kind)
+            value = hashlib.sha256(b"").hexdigest() if kind == "empty" else "0" * 64 if kind == "modified" else expected
+            claim = {"writes": [path], "sources": {path: value}, "source_commit": head(self.root)}
+            with self.subTest(kind=kind):
+                self.assertEqual(_prior_artifact(self.root, claim, path, []), kind == "regular")
 
     def test_snapshot_bootstrap_bookkeeping_and_clean_candidate_freeze(self):
         f = self.fixture

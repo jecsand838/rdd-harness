@@ -102,7 +102,7 @@ Replace the angle-bracket tokens with the exact current specification digest and
 
 Follow the [workflow guide](workflow-guide.md) for readiness, review and gate sequencing. Register actual authors with `./rdd author record --stage STAGE --session-id ID`; manifest authors must match. Readiness receipts bind the stage and candidate to actual probes of baseline tools, facilities, fixtures and evidence-transfer routes. Future implementation resources require correctly ordered producer tasks; readiness does not implement the product early.
 
-For specification and preparation, two distinct reviewer sessions record `semantic` and `execution` perspectives through `./rdd review record FILE`. Both must be independent of the registered authors, inspect the same exact candidate and required raw evidence, and approve with zero unresolved findings. Use the stage-review schema for complete fields. Session/model provenance is an explicit runtime record, not an authenticated attestation. Profile identity/hash, model, effort and sandbox are requested configuration; observed JSONL thread/turn events and process results remain separate. Do not assert an unobserved backend model or effort. Preserve previous findings and reviewer-verified resolutions across iterations.
+Use the [stage-review schema](../../.rdd/schemas/stage-review.schema.json) and the [two independent perspectives](../../.agents/skills/phase-review/SKILL.md#specification-and-preparation-reviews). Requested profiles/settings and observed runtime events are separate provenance; neither authenticates an unobserved backend.
 
 Final preparation evidence covers the committed materialization, clean-checkout CI and required native prerequisites; transfer actual receipts and raw logs into the run. Review, readiness and gate outputs are excluded from the candidate they certify by explicit controller inventory rules. Do not add ignore paths to conceal unreviewed source or create a report hash that recursively includes itself.
 
@@ -120,11 +120,7 @@ Gate validation joins these results to the frozen scenario/check mapping. Requir
 
 ## Independent phase review
 
-Obtain the candidate source commit/digest from `./rdd status` after source and marker cleanup are committed. The independent reviewer reads the cumulative receipts and returns JSON matching `review.schema.json`. It must use the configured `rdd_reviewer` role/model and a session distinct from implementors.
-
-The review covers requirement completeness, actual boundary usage, phase closure, test validity, privacy/security, idiomatic Rust/Tauri/Turso, code/spec bloat, reuse decisions, documentation and raw benchmark protocols. It references every cumulative check. Unresolved blocking/high/medium findings prevent the phase gate. Low findings remain visible in the accepted review/report; do not erase them.
-
-Record the review with `./rdd review record FILE`, then `./rdd gate phase P01`. A later source change invalidates the review and gate. Live progress review occurs throughout implementation; the final phase gate is the acceptance point.
+Follow [phase acceptance review](../../.agents/skills/phase-review/SKILL.md#phase-acceptance-review), using the [review schema](../../.rdd/schemas/review.schema.json) and current `./rdd status` identity after committed source/marker cleanup. Reference every cumulative check. Blocking/high/medium findings prevent gating; low findings remain visible. Record the review before `gate phase`; source changes invalidate both.
 
 ## Artifacts and retention
 

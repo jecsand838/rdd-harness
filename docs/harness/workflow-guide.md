@@ -147,6 +147,10 @@ Within an open phase, `./rdd task reopen T002 --reason TEXT` corrects existing s
 
 For storage errors preserve the database, WAL/journals, evidence, checkpoints, source, and worktrees. Stop uncertain writes; do not delete journals or assume integrity proves every update survived. Record blockers with `./rdd block --kind KIND --reason TEXT`. Specification/planning escapes require origin/detection stage, affected IDs, candidate identities, and evidence immediately; stop affected execution and require a preventive-control repair with a reproducing regression. Distinguish outages/permissions from defective execution design. Missing evidence is never an automatic skip.
 
+For each blocker retain expected versus observed behavior, affected requirement/scenario/phase, exact source identity, reproduction and raw evidence. State why the next action is blocked, the smallest resolution and verifiable resume conditions; continue independent safe work. Use the supported kind from `./rdd block --help`; these notes support controller state rather than replace it.
+
+Specification/preparation node release records the current claimed output hashes, including absence, without accepting the node. A reclaimed deletion needs uninterrupted owned, release-observed provenance back to a committed artifact or accepted deletion. Older releases lacking that observation remain historical evidence, not retroactive authorization; preserve blocked runs and use a new policy baseline for this repair. Normal leases, attempts, reviews and handoff validation still apply.
+
 ## Release after project acceptance
 
 Keep accepted branches and PR bases intact. Create `codex/rdd-release/RUN_ID` at the project-accepted commit for a separate release PR into `main`, with the operator's exact policy/source pins required by [release CI](codex-runtime.md#ci-and-reference-platform-evidence). Merge/release requires separate authority. After merging, verify ancestry, identical tracked contents, and clean status; preserve accepted-phase and main-merge identities separately.
