@@ -20,7 +20,7 @@ Cover lifecycle, async/runtime ownership, concurrency, persistence, failure sema
 
 ## Reproducible experiment
 
-Before execution, preserve immutable source, fixture/seed, generator/configuration and dependency-lock inputs with hashes; record tools, acquisition, exact build/package route and expected behavior. Bind the built, packaged and actually executed binary identities, commands, host observations, output, exit status and limitations. Changed inputs or route require a new run, not a retrospective relabel. Include the required negative/interruption case and disable outbound networking when qualifying an offline claim. Retain per-file mismatch details on replay failure; distinguish reconstructed files from contemporaneous snapshots.
+Follow the [evidence retention procedure](../../docs/harness/evidence-guide.md#artifacts-and-retention) for immutable inputs, build/runtime identities and captured results. Changed inputs or route require a new experiment, not a retrospective relabel. Include the required negative/interruption case and disable outbound networking when qualifying an offline claim. Retain per-file mismatch details on replay failure; distinguish reconstructed files from contemporaneous snapshots.
 
 ## Decision
 
