@@ -15,10 +15,10 @@ Read NFR-TECH, NFR-PLAT, NFR-OFF, NFR-PRIV, NFR-SEC, the approved dependency qua
 4. Enumerate only required plugins, permissions, windows, and paths. Restrict custom application commands explicitly; registering a handler alone does not establish per-window authorization. Test denied commands and narrow file selection scopes, including path aliases.
 5. Configure the CSP for bundled assets and the selected Rust/WASM framework. Add only the WASM loading allowance required by the framework; never disable CSP to resolve a development error. Review release configuration independently of development configuration.
 6. Keep storage and diagnostics under account-specific application-data locations. Distinguish first launch from unreadable/corrupt/newer-format existing storage. Avoid silently creating an empty replacement.
-7. Package per platform with documented WebView prerequisites, signing/distribution decisions, and normal-user permissions. Verify the actual installer and installed binary in a clean profile; a browser preview is development feedback only.
+7. Before packaging, verify required icons/assets and the configured normal application entrypoint; a successful assertion-only executable is not a UI build. Package for the required platforms with documented WebView prerequisites, signing/distribution decisions and normal-user permissions. Resolve the package's executable metadata and verify that actual binary and installer in a clean profile without Rust, Turso CLI or a development server; a browser preview is development feedback only.
 
 ## Evidence
 
-Record package digest, revision, platform/WebView versions, install/uninstall checks, offline observation, denied-operation results, and clean release dependency inventory. Keep instrumented test builds distinguishable and exclude their command mocks and WebDriver servers from delivery. Use the phase gate for review.
+Record package digest, revision, platform/WebView versions, install/uninstall checks, offline observation, denied-operation results, and clean release dependency inventory. Keep instrumented builds separate; inspect features, dependencies, symbols/configuration and runtime to verify command mocks and automation servers are absent from delivery. Follow [artifact retention](../../../docs/harness/evidence-guide.md#artifacts-and-retention) and use the phase gate for review.
 
 Read [runtime guidance](references/runtime.md) for configuration traps, original examples, and primary sources. Read `tauri-commands-events` for IPC changes.

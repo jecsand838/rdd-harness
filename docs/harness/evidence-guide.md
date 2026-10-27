@@ -124,6 +124,10 @@ Follow [phase acceptance review](../../.agents/skills/phase-review/SKILL.md#phas
 
 ## Artifacts and retention
 
-Runtime and evidence are ignored by Git so that writing an observation cannot change the source revision it describes. Use `export-run` before moving or deleting a working checkout. The completed-run checkpoint contains run state, raw check logs and the final reports. Actual source, frozen artifacts, worker branches and any large external datasets must be preserved separately.
+Runtime and evidence are ignored by Git so observations do not change the source revision they describe. Before execution, preserve immutable source, fixture/seed, generator/configuration and lock inputs with hashes; record tools, acquisition, exact build/package route and expected behavior. Retain commands, host observations, output, exit status and limitations. After each build, preserve its actual executable/package, result and logs before another build reuses the output cache; distinguish built, installed and executed identities. Missing bytes remain a limitation, never a substitute artifact's hash.
+
+Use `export-run` before moving or deleting a checkout. Reserve distinct paths for the exported payload, command receipt and raw logs; after capture finishes, verify the payload still parses and matches the export's returned hash. Checkpoints contain run state, registered raw check logs and designated reports, not arbitrary scratch evidence. Preserve source, frozen artifacts, worker branches, external datasets and required experiment artifacts separately.
+
+Give evidence inventories an explicit cutoff, included scope and exclusions. Stop writers or inventory an immutable snapshot; identify continuing logs separately. Verify included hashes and sizes after the last write. Record later reviews and their link/hash verification outside the inventory they certify; do not claim those future files were inventoried or exclude required source/evidence to conceal changes.
 
 Keep final validation bound to the tested commit. Copying its report into versioned project documentation creates a later documentation commit and does not retroactively change the accepted revision. Do not call that later revision tested unless its relevant verification is rerun.

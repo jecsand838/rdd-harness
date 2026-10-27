@@ -34,23 +34,13 @@ Capabilities can accumulate when a window belongs to several files. Explicitly e
 
 ## Lifecycle choices
 
-| Event | Required application behavior |
-|---|---|
-| First launch | Initialize only when there is no existing dataset |
-| Storage unavailable | Preserve files and enter actionable retry/exit state |
-| Second launch | Arbitrate before database ownership, activate existing window |
-| Normal close with draft | Offer retain/discard without changing committed data |
-| Normal close with mutation | Wait for a known outcome while displaying pending state |
-| Resume or focus | Re-evaluate local date and refresh required derived state |
-| Forced termination | Let next startup verify/recover the persisted state under the failure model |
+Derive startup, close, focus and failure tests from the [requirements](../../../../requirements/requirements.md) and frozen scenarios, rather than maintaining a second lifecycle inventory here.
 
 The single-instance plugin is a starting point, not evidence that simultaneous first launches are safe. Verify initialization order, data-location identity, and behavior on all required operating systems. Build any test-only override of the data directory so it cannot become an unrestricted production command.
 
 ## Packaging evidence
 
-Keep the required Windows x86_64, macOS arm64, and Linux x86_64 builds distinct. Pin and document prerequisites from current Tauri guidance. Test installation without Rust, Turso CLI, or a development server. Record the installed package's digest and build revision. Signing or notarization credentials are environment configuration; missing credentials must be reported as blocked delivery evidence, never substituted with a fabricated pass.
-
-Test instrumentation and ordinary release artifacts are separate outputs. An embedded automation server may help a test build, but violates this baseline if left in the release. Inspect features, dependencies, symbols/configuration, and runtime behavior to establish removal.
+Use the [package procedure and evidence inventory](../SKILL.md#procedure) for the platforms selected by NFR-PLAT-001 and the frozen specification. Pin prerequisites from current Tauri guidance. Signing or notarization credentials are environment configuration; missing required credentials block delivery evidence, never justify a fabricated pass.
 
 ## Primary references
 
