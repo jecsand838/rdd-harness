@@ -1,0 +1,1 @@
+fn main(){tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(&["probe_api","forbidden_probe","todo_invoke"]))).expect("qualification app permissions");}

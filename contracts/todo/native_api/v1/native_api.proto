@@ -1,0 +1,12 @@
+syntax = "proto3";
+package todo.native_api.v1;
+import "todo/workspace/v1/workspace.proto";
+
+enum ErrorCode { ERROR_CODE_UNSPECIFIED = 0; ERROR_CODE_MALFORMED = 1; ERROR_CODE_DENIED = 2; ERROR_CODE_CANCELLED = 3; ERROR_CODE_UNAVAILABLE = 4; ERROR_CODE_INVALID_OUTCOME = 5; }
+message Failure { ErrorCode code = 1; string correlation_id = 2; }
+message InvokeRequest { oneof action { todo.workspace.v1.OpenRequest open = 1; todo.workspace.v1.UpdateDraftRequest update_draft = 2; todo.workspace.v1.NavigateRequest navigate = 3; todo.workspace.v1.DecideIntentRequest decide_intent = 4; todo.workspace.v1.SubmitRequest submit = 5; todo.workspace.v1.ReadStateRequest read_state = 6; todo.workspace.v1.EvaluateViewRequest evaluate_view = 7; todo.workspace.v1.TransferRequest transfer = 8; todo.workspace.v1.ReadHelpRequest read_help = 9; } }
+message Reply { oneof operation { todo.workspace.v1.OpenResponse open = 1; todo.workspace.v1.UpdateDraftResponse update_draft = 2; todo.workspace.v1.NavigateResponse navigate = 3; todo.workspace.v1.DecideIntentResponse decide_intent = 4; todo.workspace.v1.SubmitResponse submit = 5; todo.workspace.v1.ReadStateResponse read_state = 6; todo.workspace.v1.EvaluateViewResponse evaluate_view = 7; todo.workspace.v1.TransferResponse transfer = 8; todo.workspace.v1.ReadHelpResponse read_help = 9; } }
+message InvokeResponse { oneof outcome { Reply success = 1; Failure failure = 2; } }
+service NativeApiService {
+  rpc Invoke(InvokeRequest) returns (InvokeResponse);
+}

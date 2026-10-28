@@ -1,0 +1,1751 @@
+{
+  "schema_version": 2,
+  "requirements_digest": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31",
+  "domains": [
+    {
+      "id": "D.Collection",
+      "module": "collection",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-010",
+        "FR-016",
+        "FR-017",
+        "FR-019",
+        "FR-021",
+        "FR-023"
+      ],
+      "behaviors": [
+        {
+          "id": "C.Initialize",
+          "requirements": [
+            "FR-001"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.Load",
+          "requirements": [
+            "FR-002"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.Create",
+          "requirements": [
+            "FR-003",
+            "FR-004"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.ValidLimits",
+          "requirements": [
+            "FR-004"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.RejectField",
+          "requirements": [
+            "FR-004"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "C.RejectCapacity",
+          "requirements": [
+            "FR-004"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "C.Edit",
+          "requirements": [
+            "FR-004",
+            "FR-005"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.Noop",
+          "requirements": [
+            "FR-005",
+            "FR-007",
+            "FR-008"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.Complete",
+          "requirements": [
+            "FR-007"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.Reopen",
+          "requirements": [
+            "FR-008"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.Delete",
+          "requirements": [
+            "FR-009"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.ReadSnapshot",
+          "requirements": [
+            "FR-010",
+            "FR-019"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.ValidateImport",
+          "requirements": [
+            "FR-004",
+            "FR-021"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.RejectImport",
+          "requirements": [
+            "FR-004",
+            "FR-021"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "C.Replace",
+          "requirements": [
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.ResolveOutcome",
+          "requirements": [
+            "FR-017"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "C.StorageUnavailable",
+          "requirements": [
+            "FR-001",
+            "FR-002"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "C.CommitFailure",
+          "requirements": [
+            "FR-016",
+            "FR-017",
+            "FR-023"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "C.FormatPolicy",
+          "requirements": [
+            "FR-001",
+            "FR-002"
+          ],
+          "behavior": "support"
+        }
+      ],
+      "invariants": [
+        {
+          "id": "CI.Identity",
+          "requirements": [
+            "FR-003",
+            "FR-005",
+            "FR-007",
+            "FR-008",
+            "FR-009",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.Text",
+          "requirements": [
+            "FR-004"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.Date",
+          "requirements": [
+            "FR-004"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.StatusHistory",
+          "requirements": [
+            "FR-004",
+            "FR-007",
+            "FR-008",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.Timestamps",
+          "requirements": [
+            "FR-003",
+            "FR-005",
+            "FR-007",
+            "FR-008",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.Capacity",
+          "requirements": [
+            "FR-004"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.AtomicCommittedHistory",
+          "requirements": [
+            "FR-016",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.Noop",
+          "requirements": [
+            "FR-005",
+            "FR-007",
+            "FR-008"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "CI.InaccessiblePreservation",
+          "requirements": [
+            "FR-001",
+            "FR-002"
+          ],
+          "behavior": "negative"
+        }
+      ]
+    },
+    {
+      "id": "D.Query",
+      "module": "query",
+      "requirements": [
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014"
+      ],
+      "behaviors": [
+        {
+          "id": "Q.StatusViews",
+          "requirements": [
+            "FR-010"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "Q.DateFilters",
+          "requirements": [
+            "FR-011"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "Q.Search",
+          "requirements": [
+            "FR-012"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "Q.BlankSearch",
+          "requirements": [
+            "FR-012"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "Q.OrderChoices",
+          "requirements": [
+            "FR-013"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "Q.CountAndEmptyStates",
+          "requirements": [
+            "FR-014"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "Q.RejectQuery",
+          "requirements": [
+            "FR-010",
+            "FR-011",
+            "FR-013"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "Q.ReadOnly",
+          "requirements": [
+            "FR-012"
+          ],
+          "behavior": "support"
+        }
+      ],
+      "invariants": [
+        {
+          "id": "QI.And",
+          "requirements": [
+            "FR-010",
+            "FR-011",
+            "FR-012"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "QI.Comparison",
+          "requirements": [
+            "FR-012"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "QI.Order",
+          "requirements": [
+            "FR-013"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "QI.Calendar",
+          "requirements": [
+            "FR-011"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "QI.Count",
+          "requirements": [
+            "FR-014"
+          ],
+          "behavior": "positive"
+        }
+      ]
+    },
+    {
+      "id": "D.Backup",
+      "module": "backup",
+      "requirements": [
+        "FR-004",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023"
+      ],
+      "behaviors": [
+        {
+          "id": "B.SnapshotExport",
+          "requirements": [
+            "FR-019"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.DestinationConsent",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.CancelExport",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.Publish",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.RejectPublication",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "B.UncertainPublication",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "B.ResolvePublication",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.ProtectedDestination",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "B.UnsupportedDestination",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "B.ValidateCandidate",
+          "requirements": [
+            "FR-004",
+            "FR-021"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.RejectDocument",
+          "requirements": [
+            "FR-004",
+            "FR-021"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "B.RestoreConsent",
+          "requirements": [
+            "FR-022"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.CancelRestore",
+          "requirements": [
+            "FR-022"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.StaleConsent",
+          "requirements": [
+            "FR-022",
+            "FR-023"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "B.ApplyCandidate",
+          "requirements": [
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "B.CandidateLifecycle",
+          "requirements": [
+            "FR-021",
+            "FR-022",
+            "FR-023"
+          ],
+          "behavior": "support"
+        }
+      ],
+      "invariants": [
+        {
+          "id": "BI.Format",
+          "requirements": [
+            "FR-019",
+            "FR-021"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "BI.Snapshot",
+          "requirements": [
+            "FR-019"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "BI.Destination",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "BI.RetainedCandidate",
+          "requirements": [
+            "FR-021",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "BI.Consent",
+          "requirements": [
+            "FR-022",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "BI.RoundTrip",
+          "requirements": [
+            "FR-019",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        }
+      ]
+    },
+    {
+      "id": "D.Workspace",
+      "module": "workspace",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-006",
+        "FR-009",
+        "FR-010",
+        "FR-014",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "FR-024",
+        "FR-025"
+      ],
+      "behaviors": [
+        {
+          "id": "W.Startup",
+          "requirements": [
+            "FR-001",
+            "FR-002",
+            "FR-010",
+            "FR-024"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.DraftProtection",
+          "requirements": [
+            "FR-006"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.RetainDraft",
+          "requirements": [
+            "FR-006"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.DiscardDraft",
+          "requirements": [
+            "FR-006"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.DeleteConsent",
+          "requirements": [
+            "FR-009"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.CancelDelete",
+          "requirements": [
+            "FR-009"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.Submit",
+          "requirements": [
+            "FR-016",
+            "FR-018"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.Pending",
+          "requirements": [
+            "FR-016",
+            "FR-018"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.Committed",
+          "requirements": [
+            "FR-016"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.Rejected",
+          "requirements": [
+            "FR-017"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "W.Uncertain",
+          "requirements": [
+            "FR-017"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "W.Resolve",
+          "requirements": [
+            "FR-017",
+            "FR-018"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.ViewPending",
+          "requirements": [
+            "FR-018"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.ClosePending",
+          "requirements": [
+            "FR-018"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.DefaultAfterRestore",
+          "requirements": [
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.ClearConstraints",
+          "requirements": [
+            "FR-014"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.InstanceActivation",
+          "requirements": [
+            "FR-024"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.Help",
+          "requirements": [
+            "FR-025"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "W.InvalidHandle",
+          "requirements": [
+            "FR-017",
+            "FR-018"
+          ],
+          "behavior": "negative"
+        }
+      ],
+      "invariants": [
+        {
+          "id": "WI.Draft",
+          "requirements": [
+            "FR-006"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "WI.MutationSlot",
+          "requirements": [
+            "FR-018"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "WI.Acknowledgment",
+          "requirements": [
+            "FR-016"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "WI.Retry",
+          "requirements": [
+            "FR-017"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "WI.DefaultView",
+          "requirements": [
+            "FR-010",
+            "FR-023"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "WI.DestructiveIntent",
+          "requirements": [
+            "FR-009"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "WI.Lifecycle",
+          "requirements": [
+            "FR-018",
+            "FR-024"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "WI.HelpIdentity",
+          "requirements": [
+            "FR-025"
+          ],
+          "behavior": "positive"
+        }
+      ]
+    }
+  ],
+  "supporting_modules": [
+    {
+      "id": "Support.UI",
+      "module": "ui",
+      "kind": "presentation",
+      "requirements": [
+        "FR-004",
+        "FR-006",
+        "FR-009",
+        "FR-010",
+        "FR-014",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-022",
+        "FR-023",
+        "FR-025",
+        "NFR-TECH-001",
+        "NFR-ARCH-002",
+        "NFR-OFF-001",
+        "NFR-PRIV-001",
+        "NFR-SEC-001",
+        "NFR-A11Y-001",
+        "NFR-A11Y-003",
+        "NFR-PERF-005"
+      ],
+      "behaviors": [
+        {
+          "id": "UI.Render",
+          "requirements": [
+            "FR-010",
+            "FR-014"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "UI.EditorFeedback",
+          "requirements": [
+            "FR-004",
+            "FR-006",
+            "FR-017"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "UI.Accessible",
+          "requirements": [
+            "NFR-A11Y-001",
+            "NFR-A11Y-003"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "UI.Pending",
+          "requirements": [
+            "FR-016",
+            "FR-018",
+            "NFR-PERF-005"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "UI.TextSafe",
+          "requirements": [
+            "NFR-SEC-001"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "UI.LocalHelp",
+          "requirements": [
+            "FR-025"
+          ],
+          "behavior": "positive"
+        },
+        {
+          "id": "UI.NoBypass",
+          "requirements": [
+            "NFR-ARCH-002"
+          ],
+          "behavior": "negative"
+        }
+      ]
+    },
+    {
+      "id": "Support.NativeAPI",
+      "module": "native_api",
+      "kind": "adapter",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-004",
+        "FR-005",
+        "FR-006",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "FR-024",
+        "FR-025",
+        "NFR-ARCH-001",
+        "NFR-ARCH-002",
+        "NFR-SEC-001",
+        "NFR-SEC-002",
+        "NFR-TECH-001",
+        "NFR-OFF-001",
+        "NFR-OBS-001"
+      ],
+      "behaviors": [
+        {
+          "id": "API.Dispatch",
+          "requirements": [
+            "FR-001",
+            "FR-002",
+            "FR-003",
+            "FR-004",
+            "FR-005",
+            "FR-006",
+            "FR-007",
+            "FR-008",
+            "FR-009",
+            "FR-010",
+            "FR-011",
+            "FR-012",
+            "FR-013",
+            "FR-014",
+            "FR-016",
+            "FR-017",
+            "FR-018",
+            "FR-019",
+            "FR-020",
+            "FR-021",
+            "FR-022",
+            "FR-023",
+            "FR-024",
+            "FR-025",
+            "NFR-ARCH-001",
+            "NFR-ARCH-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "API.RejectShape",
+          "requirements": [
+            "NFR-SEC-001"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "API.RestrictCapabilities",
+          "requirements": [
+            "NFR-SEC-002",
+            "NFR-ARCH-002"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "API.SafeErrors",
+          "requirements": [
+            "FR-017"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "API.RecordOutcome",
+          "requirements": [
+            "NFR-OBS-001"
+          ],
+          "behavior": "support"
+        }
+      ]
+    },
+    {
+      "id": "Support.Storage",
+      "module": "storage",
+      "kind": "infrastructure",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-016",
+        "FR-017",
+        "FR-023",
+        "NFR-TECH-003",
+        "NFR-PRIV-002",
+        "NFR-DATA-001",
+        "NFR-DATA-002",
+        "NFR-DATA-003",
+        "NFR-DATA-004",
+        "NFR-SEC-001",
+        "NFR-PERF-001"
+      ],
+      "behaviors": [
+        {
+          "id": "ST.Open",
+          "requirements": [
+            "FR-001",
+            "FR-002",
+            "NFR-TECH-003"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "ST.Read",
+          "requirements": [
+            "FR-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "ST.Commit",
+          "requirements": [
+            "FR-016",
+            "FR-023",
+            "NFR-DATA-001",
+            "NFR-DATA-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "ST.Outcome",
+          "requirements": [
+            "FR-017"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "ST.Preserve",
+          "requirements": [
+            "NFR-DATA-003"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "ST.Version",
+          "requirements": [
+            "NFR-DATA-004"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "ST.AccountScope",
+          "requirements": [
+            "NFR-PRIV-002"
+          ],
+          "behavior": "support"
+        }
+      ]
+    },
+    {
+      "id": "Support.SelectedFiles",
+      "module": "selected_files",
+      "kind": "infrastructure",
+      "requirements": [
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "NFR-PRIV-002"
+      ],
+      "behaviors": [
+        {
+          "id": "FS.Select",
+          "requirements": [
+            "FR-019",
+            "FR-021",
+            "NFR-PRIV-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "FS.Read",
+          "requirements": [
+            "FR-021"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "FS.Probe",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "FS.Publish",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "FS.Resolve",
+          "requirements": [
+            "FR-020"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "FS.Cleanup",
+          "requirements": [
+            "FR-020",
+            "FR-021",
+            "NFR-PRIV-002"
+          ],
+          "behavior": "support"
+        }
+      ]
+    },
+    {
+      "id": "Support.Desktop",
+      "module": "desktop",
+      "kind": "infrastructure",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-006",
+        "FR-018",
+        "FR-024",
+        "FR-025",
+        "NFR-TECH-002",
+        "NFR-PLAT-001",
+        "NFR-PRIV-002",
+        "NFR-PRIV-001",
+        "NFR-OFF-001",
+        "NFR-SEC-002"
+      ],
+      "behaviors": [
+        {
+          "id": "DT.Instance",
+          "requirements": [
+            "FR-024"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "DT.Events",
+          "requirements": [
+            "FR-006",
+            "FR-018",
+            "FR-024"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "DT.Resources",
+          "requirements": [
+            "FR-025",
+            "NFR-OFF-001",
+            "NFR-PRIV-001",
+            "NFR-SEC-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "DT.Paths",
+          "requirements": [
+            "NFR-PRIV-002"
+          ],
+          "behavior": "support"
+        }
+      ]
+    },
+    {
+      "id": "Support.Diagnostics",
+      "module": "diagnostics",
+      "kind": "infrastructure",
+      "requirements": [
+        "NFR-OBS-001",
+        "NFR-PRIV-002"
+      ],
+      "behaviors": [
+        {
+          "id": "DG.Emit",
+          "requirements": [
+            "NFR-OBS-001"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "DG.Redact",
+          "requirements": [
+            "NFR-OBS-001"
+          ],
+          "behavior": "negative"
+        },
+        {
+          "id": "DG.Retention",
+          "requirements": [
+            "NFR-OBS-001"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "DG.Nonblocking",
+          "requirements": [
+            "NFR-OBS-001"
+          ],
+          "behavior": "negative"
+        }
+      ]
+    },
+    {
+      "id": "Support.Composition",
+      "module": "composition",
+      "kind": "orchestration",
+      "requirements": [
+        "FR-001",
+        "FR-024",
+        "NFR-ARCH-001",
+        "NFR-ARCH-002",
+        "NFR-TECH-001",
+        "NFR-TECH-002",
+        "NFR-TECH-003",
+        "NFR-SEC-002",
+        "NFR-DATA-003"
+      ],
+      "behaviors": [
+        {
+          "id": "CP.Lifecycle",
+          "requirements": [
+            "FR-001",
+            "FR-024",
+            "NFR-TECH-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "CP.Register",
+          "requirements": [
+            "NFR-ARCH-001",
+            "NFR-ARCH-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "CP.InitFailure",
+          "requirements": [
+            "NFR-DATA-003"
+          ],
+          "behavior": "negative"
+        }
+      ]
+    },
+    {
+      "id": "Support.Build",
+      "module": "build_support",
+      "kind": "build",
+      "requirements": [
+        "NFR-TECH-001",
+        "NFR-TECH-002",
+        "NFR-TECH-003",
+        "NFR-TECH-004",
+        "NFR-ARCH-001",
+        "NFR-MAINT-001",
+        "NFR-PLAT-001",
+        "NFR-OFF-001",
+        "NFR-PRIV-001",
+        "NFR-SEC-002",
+        "NFR-PERF-001",
+        "NFR-PERF-002",
+        "NFR-PERF-003",
+        "NFR-PERF-004",
+        "NFR-PERF-005",
+        "NFR-QUAL-001",
+        "NFR-QUAL-002"
+      ],
+      "behaviors": [
+        {
+          "id": "BL.Reproduce",
+          "requirements": [
+            "NFR-TECH-001",
+            "NFR-TECH-004",
+            "NFR-QUAL-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "BL.Package",
+          "requirements": [
+            "NFR-TECH-002",
+            "NFR-PLAT-001",
+            "NFR-OFF-001",
+            "NFR-PRIV-001",
+            "NFR-SEC-002"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "BL.Scope",
+          "requirements": [
+            "NFR-MAINT-001",
+            "NFR-ARCH-001"
+          ],
+          "behavior": "support"
+        },
+        {
+          "id": "BL.Verify",
+          "requirements": [
+            "NFR-QUAL-001",
+            "NFR-QUAL-002",
+            "NFR-PERF-001",
+            "NFR-PERF-002",
+            "NFR-PERF-003",
+            "NFR-PERF-004",
+            "NFR-PERF-005"
+          ],
+          "behavior": "support"
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "id": "I.UI.API",
+      "consumer": "ui",
+      "provider": "native_api",
+      "kind": "call",
+      "requirements": [
+        "FR-006",
+        "FR-010",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-025"
+      ],
+      "behaviors": [
+        "API.Dispatch",
+        "API.RejectShape",
+        "API.RestrictCapabilities",
+        "API.SafeErrors"
+      ]
+    },
+    {
+      "id": "I.API.Workspace",
+      "consumer": "native_api",
+      "provider": "workspace",
+      "kind": "call",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-006",
+        "FR-009",
+        "FR-010",
+        "FR-014",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "FR-024",
+        "FR-025"
+      ],
+      "behaviors": [
+        "W.Startup",
+        "W.DraftProtection",
+        "W.RetainDraft",
+        "W.DiscardDraft",
+        "W.DeleteConsent",
+        "W.CancelDelete",
+        "W.Submit",
+        "W.Pending",
+        "W.Committed",
+        "W.Rejected",
+        "W.Uncertain",
+        "W.Resolve",
+        "W.ViewPending",
+        "W.ClosePending",
+        "W.DefaultAfterRestore",
+        "W.ClearConstraints",
+        "W.InstanceActivation",
+        "W.Help",
+        "W.InvalidHandle"
+      ]
+    },
+    {
+      "id": "I.Workspace.Collection",
+      "consumer": "workspace",
+      "provider": "collection",
+      "kind": "call",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-003",
+        "FR-005",
+        "FR-007",
+        "FR-008",
+        "FR-009",
+        "FR-017"
+      ],
+      "behaviors": [
+        "C.Initialize",
+        "C.Load",
+        "C.Create",
+        "C.Edit",
+        "C.Noop",
+        "C.Complete",
+        "C.Reopen",
+        "C.Delete",
+        "C.ResolveOutcome"
+      ]
+    },
+    {
+      "id": "I.Workspace.Query",
+      "consumer": "workspace",
+      "provider": "query",
+      "kind": "call",
+      "requirements": [
+        "FR-010",
+        "FR-011",
+        "FR-012",
+        "FR-013",
+        "FR-014"
+      ],
+      "behaviors": [
+        "Q.StatusViews",
+        "Q.DateFilters",
+        "Q.Search",
+        "Q.BlankSearch",
+        "Q.OrderChoices",
+        "Q.CountAndEmptyStates",
+        "Q.RejectQuery"
+      ]
+    },
+    {
+      "id": "I.Workspace.Backup",
+      "consumer": "workspace",
+      "provider": "backup",
+      "kind": "call",
+      "requirements": [
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023"
+      ],
+      "behaviors": [
+        "B.SnapshotExport",
+        "B.DestinationConsent",
+        "B.CancelExport",
+        "B.Publish",
+        "B.RejectPublication",
+        "B.UncertainPublication",
+        "B.ResolvePublication",
+        "B.ProtectedDestination",
+        "B.UnsupportedDestination",
+        "B.ValidateCandidate",
+        "B.RejectDocument",
+        "B.RestoreConsent",
+        "B.CancelRestore",
+        "B.StaleConsent",
+        "B.ApplyCandidate"
+      ]
+    },
+    {
+      "id": "I.Workspace.Desktop",
+      "consumer": "workspace",
+      "provider": "desktop",
+      "kind": "call",
+      "requirements": [
+        "FR-006",
+        "FR-018",
+        "FR-024",
+        "FR-025"
+      ],
+      "behaviors": [
+        "DT.Instance",
+        "DT.Events",
+        "DT.Resources",
+        "DT.Paths"
+      ]
+    },
+    {
+      "id": "I.Query.Collection",
+      "consumer": "query",
+      "provider": "collection",
+      "kind": "call",
+      "requirements": [
+        "FR-010"
+      ],
+      "behaviors": [
+        "C.ReadSnapshot"
+      ]
+    },
+    {
+      "id": "I.Backup.Collection",
+      "consumer": "backup",
+      "provider": "collection",
+      "kind": "call",
+      "requirements": [
+        "FR-004",
+        "FR-019",
+        "FR-021",
+        "FR-023"
+      ],
+      "behaviors": [
+        "C.ReadSnapshot",
+        "C.ValidateImport",
+        "C.RejectImport",
+        "C.Replace"
+      ]
+    },
+    {
+      "id": "I.Collection.Storage",
+      "consumer": "collection",
+      "provider": "storage",
+      "kind": "call",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-016",
+        "FR-017",
+        "FR-023"
+      ],
+      "behaviors": [
+        "ST.Open",
+        "ST.Read",
+        "ST.Commit",
+        "ST.Outcome",
+        "ST.Preserve",
+        "ST.Version",
+        "ST.AccountScope"
+      ]
+    },
+    {
+      "id": "I.Backup.Files",
+      "consumer": "backup",
+      "provider": "selected_files",
+      "kind": "call",
+      "requirements": [
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023"
+      ],
+      "behaviors": [
+        "FS.Select",
+        "FS.Read",
+        "FS.Probe",
+        "FS.Publish",
+        "FS.Resolve",
+        "FS.Cleanup"
+      ]
+    },
+    {
+      "id": "I.API.Diagnostics",
+      "consumer": "native_api",
+      "provider": "diagnostics",
+      "kind": "call",
+      "requirements": [
+        "NFR-OBS-001"
+      ],
+      "behaviors": [
+        "DG.Emit",
+        "DG.Redact",
+        "DG.Retention",
+        "DG.Nonblocking"
+      ]
+    },
+    {
+      "id": "I.Storage.Diagnostics",
+      "consumer": "storage",
+      "provider": "diagnostics",
+      "kind": "call",
+      "requirements": [
+        "NFR-OBS-001"
+      ],
+      "behaviors": [
+        "DG.Emit",
+        "DG.Redact",
+        "DG.Retention",
+        "DG.Nonblocking"
+      ]
+    },
+    {
+      "id": "I.Types.ui.workspace",
+      "consumer": "ui",
+      "provider": "workspace",
+      "kind": "type_only",
+      "requirements": [
+        "FR-006",
+        "FR-010",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-025"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Types.native_api.workspace",
+      "consumer": "native_api",
+      "provider": "workspace",
+      "kind": "type_only",
+      "requirements": [
+        "FR-001",
+        "FR-002",
+        "FR-006",
+        "FR-009",
+        "FR-010",
+        "FR-014",
+        "FR-016",
+        "FR-017",
+        "FR-018",
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023",
+        "FR-024",
+        "FR-025"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Types.workspace.collection",
+      "consumer": "workspace",
+      "provider": "collection",
+      "kind": "type_only",
+      "requirements": [
+        "FR-006",
+        "FR-009",
+        "FR-016",
+        "FR-017"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Types.workspace.query",
+      "consumer": "workspace",
+      "provider": "query",
+      "kind": "type_only",
+      "requirements": [
+        "FR-010",
+        "FR-014"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Types.workspace.backup",
+      "consumer": "workspace",
+      "provider": "backup",
+      "kind": "type_only",
+      "requirements": [
+        "FR-019",
+        "FR-020",
+        "FR-021",
+        "FR-022",
+        "FR-023"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Types.query.collection",
+      "consumer": "query",
+      "provider": "collection",
+      "kind": "type_only",
+      "requirements": [
+        "FR-010"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Types.backup.collection",
+      "consumer": "backup",
+      "provider": "collection",
+      "kind": "type_only",
+      "requirements": [
+        "FR-004",
+        "FR-019",
+        "FR-021",
+        "FR-023"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.native_api",
+      "consumer": "composition",
+      "provider": "native_api",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.workspace",
+      "consumer": "composition",
+      "provider": "workspace",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.query",
+      "consumer": "composition",
+      "provider": "query",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.backup",
+      "consumer": "composition",
+      "provider": "backup",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.collection",
+      "consumer": "composition",
+      "provider": "collection",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.storage",
+      "consumer": "composition",
+      "provider": "storage",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.selected_files",
+      "consumer": "composition",
+      "provider": "selected_files",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.desktop",
+      "consumer": "composition",
+      "provider": "desktop",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    },
+    {
+      "id": "I.Compose.diagnostics",
+      "consumer": "composition",
+      "provider": "diagnostics",
+      "kind": "composition",
+      "requirements": [
+        "NFR-ARCH-001"
+      ],
+      "behaviors": []
+    }
+  ]
+}

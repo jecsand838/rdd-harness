@@ -1,0 +1,22 @@
+[package]
+name = "rdd-native-mechanisms"
+version = "0.1.0"
+edition = "2021"
+publish = false
+[workspace]
+[dependencies]
+objc2 = "=0.6.5"
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSApplication", "NSRunningApplication", "NSWindow", "NSPanel", "NSResponder", "NSView", "NSGraphics", "NSTextField", "NSControl", "NSCell", "NSMenu", "NSMenuItem", "NSOpenPanel", "NSSavePanel", "block2"] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSObject", "NSString", "NSURL", "NSArray", "NSError", "NSGeometry", "NSTimer", "NSRunLoop", "NSDate", "block2"] }
+block2 = "=0.6.2"
+libc = "=0.2.191"
+sha2 = "=0.10.9"
+serde_json = "=1.0.154"
+[profile.dev]
+debug = 0
+incremental = false
+[profile.release]
+debug = 0
+opt-level = 1
+incremental = false
+lto = false

@@ -1,0 +1,590 @@
+{
+  "status": "Pinned immutable official acquisition metadata; actual invocation and package qualification are separately recorded.",
+  "toolchain": "1.99.0",
+  "buf": "1.73.0",
+  "prost_family": "0.14.4",
+  "primary_dependencies": [
+    {
+      "name": "leptos-0.8.22",
+      "source": "https://crates.io/api/v1/crates/leptos/0.8.22",
+      "retrieved_utc": "2026-10-28T02:18:31.416177+00:00",
+      "metadata": {
+        "crate": "leptos",
+        "num": "0.8.22",
+        "created_at": "2026-10-05T13:28:16.443095Z",
+        "yanked": false,
+        "rust_version": "1.88",
+        "license": "MIT",
+        "checksum": "713ee6895e3d1126ea9781280d01414f5643f3f201a949b71efffac07d735f00",
+        "features": {
+          "bitcode": [
+            "server_fn/bitcode"
+          ],
+          "bitcode-serde": [
+            "server_fn/bitcode-serde"
+          ],
+          "cbor": [
+            "server_fn/cbor"
+          ],
+          "csr": [
+            "leptos_macro/csr",
+            "reactive_graph/effects",
+            "getrandom?/wasm_js"
+          ],
+          "default-tls": [
+            "server_fn/default-tls"
+          ],
+          "delegation": [
+            "tachys/delegation"
+          ],
+          "hydrate": [
+            "leptos_macro/hydrate",
+            "hydration",
+            "tachys/hydrate",
+            "reactive_graph/effects",
+            "getrandom?/wasm_js"
+          ],
+          "hydration": [
+            "reactive_graph/hydration",
+            "leptos_server/hydration",
+            "hydration_context/browser",
+            "leptos_dom/hydration"
+          ],
+          "islands": [
+            "leptos_macro/islands"
+          ],
+          "islands-router": [
+            "tachys/mark_branches"
+          ],
+          "msgpack": [
+            "server_fn/msgpack"
+          ],
+          "multipart": [
+            "server_fn/multipart"
+          ],
+          "nightly": [
+            "leptos_macro/nightly",
+            "reactive_graph/nightly",
+            "tachys/nightly"
+          ],
+          "nonce": [
+            "base64",
+            "rand",
+            "dep:getrandom"
+          ],
+          "postcard": [
+            "server_fn/postcard"
+          ],
+          "rkyv": [
+            "server_fn/rkyv",
+            "leptos_server/rkyv"
+          ],
+          "rustls": [
+            "server_fn/rustls"
+          ],
+          "serde-lite": [
+            "server_fn/serde-lite",
+            "leptos_server/serde-lite"
+          ],
+          "spin": [
+            "leptos-spin-macro"
+          ],
+          "ssr": [
+            "leptos_macro/ssr",
+            "leptos_server/ssr",
+            "server_fn/ssr",
+            "hydration",
+            "tachys/ssr"
+          ],
+          "subsecond": [
+            "reactive_graph/subsecond",
+            "dep:subsecond",
+            "dep:dioxus-cli-config",
+            "dep:dioxus-devtools",
+            "web-sys/Location",
+            "web-sys/MessageEvent",
+            "web-sys/WebSocket",
+            "web-sys/Window"
+          ],
+          "trace-component-props": [
+            "leptos_macro/trace-component-props",
+            "leptos_dom/trace-component-props"
+          ],
+          "tracing": [
+            "dep:tracing",
+            "reactive_graph/tracing",
+            "tachys/tracing",
+            "leptos_macro/tracing",
+            "leptos_dom/tracing",
+            "leptos_server/tracing"
+          ]
+        }
+      }
+    },
+    {
+      "name": "trunk-0.22.1",
+      "source": "https://crates.io/api/v1/crates/trunk/0.22.1",
+      "retrieved_utc": "2026-10-28T02:18:31.428867+00:00",
+      "metadata": {
+        "crate": "trunk",
+        "num": "0.22.1",
+        "created_at": "2026-10-26T07:56:17.442245Z",
+        "yanked": false,
+        "rust_version": "1.96.1",
+        "license": "MIT/Apache-2.0",
+        "checksum": "5c78467f3bbfb1814616da5fb05cdff9b3c01afd4c08543b2ab51e29bf7a3a17",
+        "features": {
+          "default": [
+            "update_check",
+            "rustls"
+          ],
+          "native-tls": [
+            "dep:native-tls-provider",
+            "dep:pkcs8",
+            "dep:tokio-native-tls",
+            "reqwest/native-tls",
+            "tokio-tungstenite/native-tls"
+          ],
+          "rustls": [
+            "dep:rustls-provider",
+            "rustls-provider/ring",
+            "axum-server/tls-rustls-no-provider",
+            "reqwest/rustls-no-provider",
+            "tokio-tungstenite/rustls",
+            "tokio-tungstenite/rustls-tls-native-roots"
+          ],
+          "rustls-aws-lc": [
+            "dep:rustls-provider",
+            "rustls-provider/aws-lc-rs",
+            "axum-server/tls-rustls-no-provider",
+            "reqwest/rustls-no-provider",
+            "tokio-tungstenite/rustls",
+            "tokio-tungstenite/rustls-tls-native-roots"
+          ],
+          "update_check": [],
+          "vendored": [
+            "native-tls-provider?/vendored"
+          ]
+        }
+      }
+    },
+    {
+      "name": "wasm-bindgen-0.2.129",
+      "source": "https://crates.io/api/v1/crates/wasm-bindgen/0.2.129",
+      "retrieved_utc": "2026-10-28T02:18:31.304635+00:00",
+      "metadata": {
+        "crate": "wasm-bindgen",
+        "num": "0.2.129",
+        "created_at": "2026-09-25T07:13:40.367031Z",
+        "yanked": false,
+        "rust_version": "1.81",
+        "license": "MIT OR Apache-2.0",
+        "checksum": "9bb54f33acc68fd454578d9820b0bde1a1a3d17aa17bb7b6595806d02886d409",
+        "features": {
+          "default": [
+            "std"
+          ],
+          "enable-interning": [
+            "std"
+          ],
+          "gg-alloc": [],
+          "msrv": [],
+          "rustversion": [],
+          "serde-serialize": [
+            "serde",
+            "serde_json",
+            "std"
+          ],
+          "spans": [],
+          "std": [],
+          "strict-macro": [
+            "wasm-bindgen-macro/strict-macro"
+          ],
+          "xxx_debug_only_print_generated_code": []
+        }
+      }
+    },
+    {
+      "name": "wasm-bindgen-cli-0.2.129",
+      "source": "https://crates.io/api/v1/crates/wasm-bindgen-cli/0.2.129",
+      "retrieved_utc": "2026-10-28T02:18:31.431314+00:00",
+      "metadata": {
+        "crate": "wasm-bindgen-cli",
+        "num": "0.2.129",
+        "created_at": "2026-09-25T07:13:50.788214Z",
+        "yanked": false,
+        "rust_version": "1.86",
+        "license": "MIT OR Apache-2.0",
+        "checksum": "5fd044ed178958a277eeaf21f3d384287b0f4428d38c019141df01da9c03168c",
+        "features": {
+          "default": [
+            "rustls-tls"
+          ],
+          "native-tls": [
+            "ureq/native-tls"
+          ],
+          "openssl": [
+            "dep:native-tls"
+          ],
+          "rustls-tls": [
+            "ureq/rustls"
+          ],
+          "vendored-openssl": [
+            "openssl",
+            "native-tls/vendored"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tauri-2.12.5",
+      "source": "https://crates.io/api/v1/crates/tauri/2.12.5",
+      "retrieved_utc": "2026-10-28T02:18:31.555755+00:00",
+      "metadata": {
+        "crate": "tauri",
+        "num": "2.12.5",
+        "created_at": "2026-10-21T11:54:45.622972Z",
+        "yanked": false,
+        "rust_version": "1.90",
+        "license": "Apache-2.0 OR MIT",
+        "checksum": "5fb0244332cfb9cee7e2a568bf5da29a36ed8fdbd717f6f47a66b6b7b358c072",
+        "features": {
+          "common-controls-v6": [
+            "tray-icon?/muda-common-controls-v6",
+            "muda/common-controls-v6",
+            "tauri-runtime-wry?/common-controls-v6"
+          ],
+          "compression": [
+            "tauri-macros/compression",
+            "tauri-utils/compression"
+          ],
+          "config-json5": [
+            "tauri-macros/config-json5"
+          ],
+          "config-toml": [
+            "tauri-macros/config-toml"
+          ],
+          "custom-protocol": [
+            "tauri-macros/custom-protocol"
+          ],
+          "dbus": [
+            "tauri-runtime-wry?/dbus"
+          ],
+          "default": [
+            "wry",
+            "compression",
+            "common-controls-v6",
+            "dynamic-acl",
+            "x11",
+            "dbus"
+          ],
+          "devtools": [
+            "tauri-runtime/devtools",
+            "tauri-runtime-wry?/devtools"
+          ],
+          "dynamic-acl": [],
+          "image-ico": [
+            "image/ico"
+          ],
+          "image-png": [
+            "image/png"
+          ],
+          "isolation": [
+            "tauri-utils/isolation",
+            "tauri-macros/isolation",
+            "uuid"
+          ],
+          "linux-libxdo": [
+            "tray-icon/muda-libxdo",
+            "muda/libxdo"
+          ],
+          "macos-private-api": [
+            "tauri-runtime/macos-private-api",
+            "tauri-runtime-wry?/macos-private-api"
+          ],
+          "macos-proxy": [
+            "tauri-runtime-wry?/macos-proxy"
+          ],
+          "native-tls": [
+            "reqwest/native-tls"
+          ],
+          "native-tls-vendored": [
+            "reqwest/native-tls-vendored"
+          ],
+          "objc-exception": [],
+          "process-relaunch-dangerous-allow-symlink-macos": [
+            "tauri-utils/process-relaunch-dangerous-allow-symlink-macos"
+          ],
+          "protocol-asset": [
+            "http-range"
+          ],
+          "rustls-tls": [
+            "reqwest/rustls-no-provider",
+            "dep:rustls"
+          ],
+          "specta": [
+            "dep:specta"
+          ],
+          "test": [],
+          "tracing": [
+            "dep:tracing",
+            "tauri-macros/tracing",
+            "tauri-runtime-wry?/tracing"
+          ],
+          "tray-icon": [
+            "dep:tray-icon"
+          ],
+          "unstable": [
+            "tauri-runtime-wry?/unstable"
+          ],
+          "webview-data-url": [
+            "data-url",
+            "tauri-utils/html-manipulation-2"
+          ],
+          "wry": [
+            "webview2-com",
+            "webkit2gtk",
+            "tauri-runtime-wry"
+          ],
+          "x11": [
+            "tauri-runtime-wry?/x11"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tauri-cli-2.12.4",
+      "source": "https://crates.io/api/v1/crates/tauri-cli/2.12.4",
+      "retrieved_utc": "2026-10-28T02:18:31.656707+00:00",
+      "metadata": {
+        "crate": "tauri-cli",
+        "num": "2.12.4",
+        "created_at": "2026-10-21T11:56:41.516281Z",
+        "yanked": false,
+        "rust_version": "1.90",
+        "license": "Apache-2.0 OR MIT",
+        "checksum": "9966558da94fd1c9485d0d78f12233bea5fd4235826fb78e930fe7a26910b956",
+        "features": {
+          "default": [
+            "rustls",
+            "platform-certs"
+          ],
+          "native-tls": [
+            "tauri-bundler/native-tls",
+            "cargo-mobile2/native-tls",
+            "ureq/native-tls"
+          ],
+          "native-tls-vendored": [
+            "native-tls",
+            "tauri-bundler/native-tls-vendored"
+          ],
+          "platform-certs": [
+            "tauri-bundler/platform-certs",
+            "ureq/platform-verifier"
+          ],
+          "rustls": [
+            "tauri-bundler/rustls",
+            "cargo-mobile2/rustls",
+            "ureq/rustls"
+          ]
+        }
+      }
+    },
+    {
+      "name": "tauri-build-2.7.4",
+      "source": "https://crates.io/api/v1/crates/tauri-build/2.7.4",
+      "retrieved_utc": "2026-10-28T02:18:31.545954+00:00",
+      "metadata": {
+        "crate": "tauri-build",
+        "num": "2.7.4",
+        "created_at": "2026-10-21T11:53:41.144795Z",
+        "yanked": false,
+        "rust_version": "1.90",
+        "license": "Apache-2.0 OR MIT",
+        "checksum": "adddb0e648752aaac5da9c3c3c6a68e1e87cab55e3b757b18a9441ef8c3ac614",
+        "features": {
+          "codegen": [
+            "tauri-codegen",
+            "quote"
+          ],
+          "config-json": [],
+          "config-json5": [
+            "tauri-utils/config-json5"
+          ],
+          "config-toml": [
+            "tauri-utils/config-toml"
+          ],
+          "default": [
+            "config-json"
+          ],
+          "isolation": [
+            "tauri-codegen/isolation",
+            "tauri-utils/isolation"
+          ]
+        }
+      }
+    },
+    {
+      "name": "turso-0.8.3",
+      "source": "https://crates.io/api/v1/crates/turso/0.8.3",
+      "retrieved_utc": "2026-10-28T02:18:31.675891+00:00",
+      "metadata": {
+        "crate": "turso",
+        "num": "0.8.3",
+        "created_at": "2026-10-12T14:48:03.613089Z",
+        "yanked": false,
+        "rust_version": null,
+        "license": "MIT",
+        "checksum": "f1cf9c519a3a971e845a42c870930557cb53c2368c5737d4c78f8fbfd0444e98",
+        "features": {
+          "default": [
+            "mimalloc",
+            "fts"
+          ],
+          "fts": [
+            "turso_sdk_kit/fts"
+          ],
+          "io_memory_yield": [
+            "turso_core/io_memory_yield"
+          ],
+          "mimalloc": [
+            "dep:mimalloc"
+          ],
+          "pure-rust-crypto": [
+            "turso_sdk_kit/pure-rust-crypto",
+            "turso_sync_sdk_kit/pure-rust-crypto"
+          ],
+          "stacker": [
+            "turso_core/stacker"
+          ],
+          "sync": [
+            "dep:hyper",
+            "dep:tokio",
+            "dep:hyper-rustls",
+            "dep:hyper-util",
+            "dep:http-body-util",
+            "dep:bytes"
+          ],
+          "test_helper": [
+            "turso_core/test_helper"
+          ]
+        }
+      }
+    },
+    {
+      "name": "icu_casemap-2.4.0",
+      "source": "https://crates.io/api/v1/crates/icu_casemap/2.4.0",
+      "retrieved_utc": "2026-10-28T02:18:31.658319+00:00",
+      "metadata": {
+        "crate": "icu_casemap",
+        "num": "2.4.0",
+        "created_at": "2026-10-22T08:56:28.287153Z",
+        "yanked": false,
+        "rust_version": "1.88",
+        "license": "Unicode-3.0",
+        "checksum": "1a6f143e9349267b80ae071a6ec25d4797c45756d8b2671a8b24b7b25b81ab94",
+        "features": {
+          "compiled_data": [
+            "dep:icu_casemap_data",
+            "icu_properties/compiled_data",
+            "icu_provider/baked"
+          ],
+          "datagen": [
+            "serde",
+            "dep:databake",
+            "zerovec/databake",
+            "icu_collections/databake",
+            "icu_provider/export"
+          ],
+          "default": [
+            "compiled_data"
+          ],
+          "serde": [
+            "dep:serde",
+            "zerovec/serde",
+            "icu_collections/serde",
+            "icu_provider/serde",
+            "icu_properties/serde",
+            "potential_utf/serde"
+          ]
+        }
+      }
+    },
+    {
+      "name": "icu_normalizer-2.4.0",
+      "source": "https://crates.io/api/v1/crates/icu_normalizer/2.4.0",
+      "retrieved_utc": "2026-10-28T02:18:31.801186+00:00",
+      "metadata": {
+        "crate": "icu_normalizer",
+        "num": "2.4.0",
+        "created_at": "2026-10-22T08:56:44.926074Z",
+        "yanked": false,
+        "rust_version": "1.88",
+        "license": "Unicode-3.0",
+        "checksum": "404a3b8c486f205c87fe7f23ab6894d84a4ad76d6e4671ae1981ba7def87c599",
+        "features": {
+          "compiled_data": [
+            "dep:icu_normalizer_data",
+            "icu_properties?/compiled_data",
+            "icu_provider/baked"
+          ],
+          "datagen": [
+            "serde",
+            "dep:databake",
+            "icu_properties",
+            "icu_collections/databake",
+            "zerovec/databake",
+            "icu_properties?/datagen",
+            "icu_provider/export"
+          ],
+          "default": [
+            "compiled_data",
+            "utf8_iter",
+            "utf16_iter"
+          ],
+          "harfbuzz_traits": [
+            "dep:harfbuzz-traits"
+          ],
+          "icu_properties": [
+            "dep:icu_properties"
+          ],
+          "serde": [
+            "dep:serde",
+            "icu_collections/serde",
+            "zerovec/serde",
+            "icu_properties?/serde",
+            "icu_provider/serde"
+          ],
+          "utf16_iter": [
+            "dep:utf16_iter",
+            "dep:write16"
+          ],
+          "utf8_iter": [
+            "dep:utf8_iter"
+          ],
+          "write16": []
+        }
+      }
+    }
+  ],
+  "official_prebuilt_tools": [
+    {
+      "name": "trunk-aarch64-apple-darwin.tar.gz",
+      "size": 8146622,
+      "url": "https://github.com/trunk-rs/trunk/releases/download/v0.22.1/trunk-aarch64-apple-darwin.tar.gz",
+      "digest": "sha256:18e381936c848700fefb9ee3f64f362419fab700200eefee323ebc0d00a8e9db"
+    },
+    {
+      "name": "cargo-tauri-aarch64-apple-darwin.zip",
+      "size": 7795035,
+      "url": "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.12.4/cargo-tauri-aarch64-apple-darwin.zip",
+      "digest": "sha256:f71a34ada728ca2d1a51c28d6d21639e1e080898ec69ec8d49c5da3b7e8bc1be"
+    },
+    {
+      "name": "wasm-bindgen-0.2.129-aarch64-apple-darwin.tar.gz",
+      "size": 7925587,
+      "url": "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-aarch64-apple-darwin.tar.gz",
+      "digest": "sha256:81d4a23d56b3c3eb8187658329116d50e0b228a93b343825fb71f70179051cd1"
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "provided_baseline": "macOS 26.6.2 arm64, 32 GiB, SDK27/CLT; not freshly installed OS",
+  "acquisition_plan": {
+    "rustup_version": "1.29.2",
+    "rustup_init_url": "https://static.rust-lang.org/rustup/archive/1.29.2/aarch64-apple-darwin/rustup-init",
+    "rustup_init_sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9",
+    "rust_component_manifest_sha256": "ce6dddc886364f8d786514771212cebe9b731ba82d6b859951c6b0ccc516b6a2",
+    "method": "prefetch immutable official component archives and preserve checksum-matched bytes, then run exact pinned official rustup-init with new RUSTUP_HOME/CARGO_HOME; installed member hashes compared to preserved archives",
+    "runtime_claim": "provided existing macOS26.6.2/SDK27CLT baseline; no fresh OS/SDK proof"
+  },
+  "rust_components": {
+    "manifest_sha256": "ce6dddc886364f8d786514771212cebe9b731ba82d6b859951c6b0ccc516b6a2",
+    "manifest_date": "2026-10-01",
+    "rust_version": "1.99.0 (b940084d7 2026-09-28)",
+    "components": [
+      {
+        "package": "rustc",
+        "target": "aarch64-apple-darwin",
+        "version": "1.99.0 (b940084d7 2026-09-28)",
+        "url": "https://static.rust-lang.org/dist/2026-10-01/rustc-1.99.0-aarch64-apple-darwin.tar.xz",
+        "sha256": "334a66714ca316d71bbe5efe44f71762d0b276cea73be2987374693a837f7450"
+      },
+      {
+        "package": "cargo",
+        "target": "aarch64-apple-darwin",
+        "version": "0.100.0 (5f94df478 2026-08-27)",
+        "url": "https://static.rust-lang.org/dist/2026-10-01/cargo-1.99.0-aarch64-apple-darwin.tar.xz",
+        "sha256": "76abff0ad79a10a3152dff640ea0d8b3c37637d9300bf55da41b95c3ddc069c1"
+      },
+      {
+        "package": "rust-std",
+        "target": "aarch64-apple-darwin",
+        "version": "1.99.0 (b940084d7 2026-09-28)",
+        "url": "https://static.rust-lang.org/dist/2026-10-01/rust-std-1.99.0-aarch64-apple-darwin.tar.xz",
+        "sha256": "a7c6de8aa21e7c31163a7656295b321bb85f5dce55ed8ea95ac9ac561202bb5b"
+      },
+      {
+        "package": "rust-std",
+        "target": "wasm32-unknown-unknown",
+        "version": "1.99.0 (b940084d7 2026-09-28)",
+        "url": "https://static.rust-lang.org/dist/2026-10-01/rust-std-1.99.0-wasm32-unknown-unknown.tar.xz",
+        "sha256": "b760b0c9b08a6843c05de0098bd6802e23178ff473c4715ae57c1d679125bf22"
+      },
+      {
+        "package": "rustfmt-preview",
+        "target": "aarch64-apple-darwin",
+        "version": "1.10.0",
+        "url": "https://static.rust-lang.org/dist/2026-10-01/rustfmt-1.99.0-aarch64-apple-darwin.tar.xz",
+        "sha256": "8b1436085c081e5efa88febadf667171a7a107073d168cd32b249a8eb70800da"
+      },
+      {
+        "package": "clippy-preview",
+        "target": "aarch64-apple-darwin",
+        "version": "0.1.99",
+        "url": "https://static.rust-lang.org/dist/2026-10-01/clippy-1.99.0-aarch64-apple-darwin.tar.xz",
+        "sha256": "c31a0765ed31d98515a09a13b44486048873d90ac75bb1e6690a17fb36a5d4e2"
+      }
+    ]
+  },
+  "buf_assets": {
+    "tag_name": "v1.73.0",
+    "published_at": "2026-09-11T13:27:59Z",
+    "assets": [
+      {
+        "name": "buf-Darwin-arm64",
+        "url": "https://github.com/bufbuild/buf/releases/download/v1.73.0/buf-Darwin-arm64",
+        "bytes": 53316098,
+        "digest": "sha256:6e6df0fef4522e4e43dfe7c341873c3f2c29ceb45a9dfa5e0bad5580b8b2022f"
+      },
+      {
+        "name": "sha256.txt",
+        "url": "https://github.com/bufbuild/buf/releases/download/v1.73.0/sha256.txt",
+        "bytes": 5312,
+        "digest": "sha256:18f603d3b418f6a1259da4425b04bbe2fbaf60c2b796b98114d961e8736198b9"
+      }
+    ]
+  },
+  "expected_identities": [
+    {
+      "name": "rustup",
+      "bytes": 11321792,
+      "sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9"
+    },
+    {
+      "name": "rustc",
+      "bytes": 413480,
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo",
+      "bytes": 32181448,
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    },
+    {
+      "name": "rustfmt",
+      "bytes": 4473176,
+      "sha256": "5f552ee4d89172baa898b816c56dd5448f4060436d979ba8690d6007833996dd"
+    },
+    {
+      "name": "cargo_fmt",
+      "bytes": 1268504,
+      "sha256": "799d513bc5772171275046af32800619951fcd5eb8217088a5232486881c19a1"
+    },
+    {
+      "name": "clippy_driver",
+      "bytes": 12449424,
+      "sha256": "0469c2c76677f536fb9851501ab39216a25ab4963e2878d4ad1eee94a8952889"
+    },
+    {
+      "name": "cargo_clippy",
+      "bytes": 1113200,
+      "sha256": "b28b16ce5c703577f1b0ccc7b3af1792586da9231619566ab3cd4e1a36551759"
+    },
+    {
+      "name": "buf",
+      "bytes": 53316098,
+      "sha256": "6e6df0fef4522e4e43dfe7c341873c3f2c29ceb45a9dfa5e0bad5580b8b2022f"
+    }
+  ],
+  "existing_cli_identities": {
+    "trunk": {
+      "path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/tools/bin/trunk",
+      "sha256": "60f31779487148284727fa8bce014fa18f401884bf0e3b19e18351f2ac85e885",
+      "version_argv": [
+        "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/tools/bin/trunk",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "trunk 0.22.1\n",
+      "stderr": ""
+    },
+    "wasm-bindgen": {
+      "path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/tools/bin/wasm-bindgen",
+      "sha256": "6ad2f953d8abcb36d6b084df221fb2f0716217854c1b8df938aa2f5678d1b948",
+      "version_argv": [
+        "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/tools/bin/wasm-bindgen",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "wasm-bindgen 0.2.129\n",
+      "stderr": ""
+    },
+    "cargo-tauri": {
+      "path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/tools/bin/cargo-tauri",
+      "sha256": "bfd63bb474c7929b0aa0c9e096e275321b4d0920908359eee557eed42305765b",
+      "version_argv": [
+        "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/tools/bin/cargo-tauri",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "tauri-cli 2.12.4\n",
+      "stderr": ""
+    }
+  },
+  "provided_host_webkit": {
+    "path": "/System/Volumes/Preboot/Cryptexes/OS/System/Library/Frameworks/WebKit.framework/Versions/A/Resources/Info.plist",
+    "sha256": "de760399a5ba3dcb26c679723c5864759ef8ce20c5b278fe451eb44f2cedf752",
+    "values": {
+      "CFBundleIdentifier": "com.apple.WebKit",
+      "CFBundleVersion": "21624.5.1.11.3",
+      "CFBundleShortVersionString": "21624"
+    }
+  }
+}

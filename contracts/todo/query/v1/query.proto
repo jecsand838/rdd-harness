@@ -1,0 +1,15 @@
+syntax = "proto3";
+package todo.query.v1;
+import "todo/collection/v1/collection.proto";
+
+enum StatusView { STATUS_VIEW_UNSPECIFIED = 0; STATUS_VIEW_OPEN = 1; STATUS_VIEW_COMPLETED = 2; STATUS_VIEW_ALL = 3; }
+enum DateFilter { DATE_FILTER_UNSPECIFIED = 0; DATE_FILTER_ANY = 1; DATE_FILTER_TODAY = 2; DATE_FILTER_OVERDUE = 3; DATE_FILTER_NO_DATE = 4; }
+enum Ordering { ORDERING_UNSPECIFIED = 0; ORDERING_NEWEST = 1; ORDERING_OLDEST = 2; ORDERING_DUE = 3; }
+message Selection { StatusView status = 1; DateFilter date = 2; string search = 3; Ordering ordering = 4; }
+message Result { uint64 revision = 1; repeated todo.collection.v1.Task tasks = 2; uint32 collection_count = 3; uint32 matching_count = 4; todo.collection.v1.Date observed_today = 5; }
+message Failure { oneof reason { string invalid_selector = 1; todo.collection.v1.Failure collection = 2; } }
+message EvaluateRequest { Selection selection = 1; }
+message EvaluateResponse { oneof outcome { Result success = 1; Failure failure = 2; } }
+service QueryService {
+  rpc Evaluate(EvaluateRequest) returns (EvaluateResponse);
+}
