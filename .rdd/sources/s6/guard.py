@@ -19,7 +19,7 @@ def main():
     lock=open(state['lock'],'a+');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     started=time.time()
     if started+a.timeout>state['deadline']: raise SystemExit('command plus shutdown reserve exceeds current lease')
-    initial=usage(state['roots']);canonical=state['roots'][1]
+    initial=usage(state['roots']);canonical=state.get('canonical_root',state['roots'][1])
     if initial-state['baseline_bytes']>=state['growth_limit_bytes'] or usage([canonical])>=state['canonical_growth_limit_bytes'] or shutil.disk_usage(out).free<state['minimum_free_bytes']: raise SystemExit('resource headroom unavailable')
     record={'argv':command,'started_epoch':started,'deadline':min(state['deadline'],started+a.timeout),'samples':[],'owned_processes':{}}
     owned={};reason=None
