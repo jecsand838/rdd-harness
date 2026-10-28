@@ -494,7 +494,7 @@
       "sha256": "d00ca2d61a5f1288efab458d8293e9fc17a62de026b68772a5f83552306d426f"
     }
   ],
-  "normative_dependency_document_words": 1109,
+  "normative_dependency_document_words": 1110,
   "corrects_finding": "R5-S5-001",
   "supplemental_evidence_roots": [
     ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2"
