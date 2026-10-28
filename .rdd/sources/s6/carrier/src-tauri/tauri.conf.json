@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "RDD Qualification Carrier",
+  "version": "0.1.0",
+  "identifier": "com.rdd.qualification.r20261028",
+  "build": {
+    "frontendDist": "../ui/dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "RDD Qualification Carrier",
+        "width": 640,
+        "height": 480
+      }
+    ],
+    "security": {
+      "capabilities": [
+        "probe-window"
+      ],
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "icon": [
+      "icons/generated/32x32.png",
+      "icons/generated/128x128.png",
+      "icons/generated/128x128@2x.png",
+      "icons/generated/icon.icns",
+      "icons/generated/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "26.0",
+      "signingIdentity": "-"
+    }
+  }
+}

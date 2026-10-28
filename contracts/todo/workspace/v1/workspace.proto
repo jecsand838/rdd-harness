@@ -1,0 +1,47 @@
+syntax = "proto3";
+package todo.workspace.v1;
+import "todo/collection/v1/collection.proto";
+import "todo/query/v1/query.proto";
+import "todo/backup/v1/backup.proto";
+
+enum ErrorCode { ERROR_CODE_UNSPECIFIED = 0; ERROR_CODE_INVALID_INPUT = 1; ERROR_CODE_INVALID_HANDLE = 2; ERROR_CODE_BUSY = 3; ERROR_CODE_UNAVAILABLE = 4; ERROR_CODE_UNCERTAIN = 5; }
+message Failure { ErrorCode code = 1; string field = 2; string safe_message = 3; string correlation_id = 4; todo.collection.v1.Failure collection = 5; todo.backup.v1.Failure backup = 6; }
+enum PendingState { PENDING_STATE_UNSPECIFIED = 0; PENDING_STATE_IDLE = 1; PENDING_STATE_PENDING = 2; PENDING_STATE_COMMITTED = 3; PENDING_STATE_REJECTED = 4; PENDING_STATE_UNCERTAIN = 5; }
+enum Navigation { NAVIGATION_UNSPECIFIED = 0; NAVIGATION_SELECT_TASK = 1; NAVIGATION_NEW_TASK = 2; NAVIGATION_CANCEL_EDITOR = 3; NAVIGATION_RESTORE = 4; NAVIGATION_CLOSE = 5; NAVIGATION_DELETE = 6; NAVIGATION_CLEAR_CONSTRAINTS = 7; NAVIGATION_ACTIVATE = 8; }
+enum IntentDecision { INTENT_DECISION_UNSPECIFIED = 0; INTENT_DECISION_RETAIN = 1; INTENT_DECISION_DISCARD = 2; INTENT_DECISION_CONFIRM_DELETE = 3; INTENT_DECISION_CANCEL = 4; }
+message Intent { string handle = 1; Navigation action = 2; string selected_identity = 3; string identifying_title = 4; bool permanent = 5; }
+message State { string session = 1; optional string selected_identity = 2; todo.collection.v1.Draft draft = 3; bool dirty = 4; todo.query.v1.Selection selection = 5; todo.query.v1.Result view = 6; PendingState pending = 7; string operation_handle = 8; Intent intent = 9; todo.backup.v1.ExportOffer export_offer = 10; todo.backup.v1.RestoreOffer restore_offer = 11; bool closing = 12; Failure last_failure = 13; todo.backup.v1.ExportResult export_result = 14; string next_activation_handle = 15; }
+message Help { string application_version = 1; string plain_text = 2; }
+message OpenRequest {}
+message UpdateDraftRequest { string session = 1; todo.collection.v1.Draft draft = 2; }
+message NavigateRequest { string session = 1; Navigation action = 2; optional string selected_identity = 3; }
+message DecideIntentRequest { string session = 1; string intent_handle = 2; IntentDecision decision = 3; }
+message Create { todo.collection.v1.Draft draft = 1; }
+message Edit { string identity = 1; todo.collection.v1.Draft draft = 2; }
+message SetStatus { string identity = 1; todo.collection.v1.Status status = 2; }
+message Delete { string intent_handle = 1; }
+message SubmitRequest { string session = 1; string activation_handle = 2; oneof mutation { Create create = 3; Edit edit = 4; SetStatus set_status = 5; Delete delete = 6; } }
+message ReadStateRequest { string session = 1; }
+message EvaluateViewRequest { string session = 1; todo.query.v1.Selection selection = 2; }
+message TransferRequest { string session = 1; string activation_handle = 2; oneof action { todo.backup.v1.BeginExportRequest begin_export = 3; todo.backup.v1.FinishExportRequest finish_export = 4; todo.backup.v1.ResolveExportRequest resolve_export = 5; todo.backup.v1.BeginRestoreRequest begin_restore = 6; todo.backup.v1.FinishRestoreRequest finish_restore = 7; } }
+message ReadHelpRequest { string session = 1; }
+message OpenResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message UpdateDraftResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message NavigateResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message DecideIntentResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message SubmitResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message ReadStateResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message EvaluateViewResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message TransferResponse { oneof outcome { State success = 1; Failure failure = 2; } }
+message ReadHelpResponse { oneof outcome { Help success = 1; Failure failure = 2; } }
+service WorkspaceService {
+  rpc Open(OpenRequest) returns (OpenResponse);
+  rpc UpdateDraft(UpdateDraftRequest) returns (UpdateDraftResponse);
+  rpc Navigate(NavigateRequest) returns (NavigateResponse);
+  rpc DecideIntent(DecideIntentRequest) returns (DecideIntentResponse);
+  rpc Submit(SubmitRequest) returns (SubmitResponse);
+  rpc ReadState(ReadStateRequest) returns (ReadStateResponse);
+  rpc EvaluateView(EvaluateViewRequest) returns (EvaluateViewResponse);
+  rpc Transfer(TransferRequest) returns (TransferResponse);
+  rpc ReadHelp(ReadHelpRequest) returns (ReadHelpResponse);
+}

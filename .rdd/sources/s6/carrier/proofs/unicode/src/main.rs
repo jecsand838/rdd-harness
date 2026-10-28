@@ -1,0 +1,9 @@
+fn main(){
+ let path=std::env::args().nth(1).expect("vectors");let raw=std::fs::read(path).expect("read vectors");let data:serde_json::Value=serde_json::from_slice(&raw).expect("parse vectors");assert_eq!(data["unicode_version"],"18.0.0");
+ let normalizer=icu_normalizer::ComposingNormalizer::new_nfc();let mapper=icu_casemap::CaseMapper::new();
+ let fold=data["default_full_casefold"].as_array().unwrap();let nfc=data["nfc"].as_array().unwrap();
+ for (i,v) in fold.iter().enumerate(){let input=v["input"].as_str().unwrap();let expected=v["expected"].as_str().unwrap();assert_eq!(mapper.fold_string(input),expected,"default fold vector {i}");}
+ for (i,v) in nfc.iter().enumerate(){let input=v["input"].as_str().unwrap();let expected=v["expected"].as_str().unwrap();assert_eq!(normalizer.normalize(input),expected,"NFC vector {i}");}
+ let white_path=std::env::args().nth(2).expect("whitespace vectors");let white:serde_json::Value=serde_json::from_slice(&std::fs::read(white_path).unwrap()).unwrap();let expected:std::collections::BTreeSet<u32>=white["white_space_scalars"].as_array().unwrap().iter().map(|x|x.as_u64().unwrap() as u32).collect();let property=icu_properties::CodePointSetData::new::<icu_properties::props::WhiteSpace>();let mut scalar_count=0;for code in 0..=0x10ffff{if let Some(ch)=char::from_u32(code){assert_eq!(property.contains(ch),expected.contains(&code),"White_Space U+{code:04X}");scalar_count+=1;}}
+ println!("{}",serde_json::json!({"status":"pass","unicode_version":"18.0.0","default_full_casefold_vectors":fold.len(),"nfc_vectors":nfc.len(),"white_space_scalars_checked":scalar_count,"scope":"all C/F single-scalar mappings plus bounded independent normative NFC vectors; not full Unicode conformance"}));
+}

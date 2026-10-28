@@ -1,0 +1,21 @@
+{
+  "app_path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/binaries/RDD Bounded AX Observer v6.app",
+  "bundle_identifier": "com.rdd.qualification.axobserver.r20261028.v6",
+  "identities": [
+    {
+      "path": "sources/ax-observer-v6.swift",
+      "bytes": 11024,
+      "sha256": "95f52b6ac52f1a7deeaa2fa86d8118c48f6689ae96f7ec3e778df0661f49d0e0"
+    },
+    {
+      "path": "binaries/RDD Bounded AX Observer v6.app/Contents/MacOS/ax-observer",
+      "bytes": 176624,
+      "sha256": "9bf232ca84a66c345e7a2ec1b13520539f2cab1fd909a0f523db1000942a5eb2"
+    },
+    {
+      "path": "binaries/RDD Bounded AX Observer v6.app/Contents/Info.plist",
+      "bytes": 748,
+      "sha256": "6ab9829330970e496f8e74d4cdafde17e95bc30ce0dac4831e8f2ad3f00b4fbc"
+    }
+  ]
+}

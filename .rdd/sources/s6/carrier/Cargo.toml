@@ -1,0 +1,12 @@
+[workspace]
+members = ["src-tauri", "ui"]
+exclude = ["generator", "gen/rust", "candidate-contracts"]
+resolver = "2"
+[profile.dev]
+debug = 0
+incremental = false
+[profile.release]
+opt-level = 1
+debug = 0
+incremental = false
+lto = false

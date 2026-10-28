@@ -1,0 +1,11 @@
+{
+  "identifier": "probe-window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "allow-probe-api",
+    "allow-todo-invoke"
+  ]
+}

@@ -1,0 +1,46 @@
+syntax = "proto3";
+package todo.collection.v1;
+
+enum Status { STATUS_UNSPECIFIED = 0; STATUS_OPEN = 1; STATUS_COMPLETED = 2; }
+enum ErrorCode { ERROR_CODE_UNSPECIFIED = 0; ERROR_CODE_INVALID_FIELD = 1; ERROR_CODE_CAPACITY = 2; ERROR_CODE_NOT_FOUND = 3; ERROR_CODE_STORAGE_UNAVAILABLE = 4; ERROR_CODE_REJECTED = 5; ERROR_CODE_UNCERTAIN = 6; ERROR_CODE_REVISION_CHANGED = 7; ERROR_CODE_INVALID_HANDLE = 8; }
+enum Recovery { RECOVERY_UNSPECIFIED = 0; RECOVERY_CORRECT_INPUT = 1; RECOVERY_RETRY = 2; RECOVERY_RECONCILE = 3; RECOVERY_RECONFIRM = 4; RECOVERY_EXIT = 5; }
+message Failure { ErrorCode code = 1; string field = 2; optional uint32 record_index = 3; Recovery recovery = 4; string correlation_id = 5; }
+message Instant { sint64 seconds = 1; uint32 nanos = 2; }
+message Date { uint32 year = 1; uint32 month = 2; uint32 day = 3; }
+message Task { string identity = 1; string title = 2; string notes = 3; Date due_date = 4; Status status = 5; Instant created_time = 6; Instant updated_time = 7; Instant completed_time = 8; }
+message Draft { string title = 1; string notes = 2; optional string due_date = 3; }
+message Snapshot { uint64 revision = 1; repeated Task tasks = 2; }
+message Receipt { string operation_id = 1; uint64 revision = 2; bool changed = 3; Task task = 4; }
+message ValidatedImport { repeated Task tasks = 1; }
+message Pending { string operation_id = 1; }
+message Resolution { oneof state { Receipt committed = 1; Failure rejected = 2; Pending pending = 3; } }
+message OpenRequest {}
+message CreateRequest { string operation_id = 1; Draft draft = 2; }
+message EditRequest { string operation_id = 1; string identity = 2; Draft draft = 3; }
+message SetStatusRequest { string operation_id = 1; string identity = 2; Status status = 3; }
+message DeleteRequest { string operation_id = 1; string identity = 2; }
+message ReadSnapshotRequest {}
+message ValidateImportRequest { repeated Task tasks = 1; }
+message ReplaceRequest { string operation_id = 1; uint64 expected_revision = 2; repeated Task tasks = 3; }
+message ResolveOutcomeRequest { string operation_id = 1; }
+message OpenResponse { oneof outcome { Snapshot success = 1; Failure failure = 2; } }
+message CreateResponse { oneof outcome { Receipt success = 1; Failure failure = 2; } }
+message EditResponse { oneof outcome { Receipt success = 1; Failure failure = 2; } }
+message SetStatusResponse { oneof outcome { Receipt success = 1; Failure failure = 2; } }
+message DeleteResponse { oneof outcome { Receipt success = 1; Failure failure = 2; } }
+message ReadSnapshotResponse { oneof outcome { Snapshot success = 1; Failure failure = 2; } }
+message ValidateImportResponse { oneof outcome { ValidatedImport success = 1; Failure failure = 2; } }
+message ReplaceResponse { oneof outcome { Receipt success = 1; Failure failure = 2; } }
+message ResolveOutcomeResponse { oneof outcome { Resolution success = 1; Failure failure = 2; } }
+
+service CollectionService {
+  rpc Open(OpenRequest) returns (OpenResponse);
+  rpc Create(CreateRequest) returns (CreateResponse);
+  rpc Edit(EditRequest) returns (EditResponse);
+  rpc SetStatus(SetStatusRequest) returns (SetStatusResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc ReadSnapshot(ReadSnapshotRequest) returns (ReadSnapshotResponse);
+  rpc ValidateImport(ValidateImportRequest) returns (ValidateImportResponse);
+  rpc Replace(ReplaceRequest) returns (ReplaceResponse);
+  rpc ResolveOutcome(ResolveOutcomeRequest) returns (ResolveOutcomeResponse);
+}

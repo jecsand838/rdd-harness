@@ -1,0 +1,32 @@
+syntax = "proto3";
+package todo.backup.v1;
+import "todo/collection/v1/collection.proto";
+
+enum Decision { DECISION_UNSPECIFIED = 0; DECISION_CONFIRM = 1; DECISION_CANCEL = 2; }
+enum ErrorCode { ERROR_CODE_UNSPECIFIED = 0; ERROR_CODE_INVALID_DOCUMENT = 1; ERROR_CODE_PROTECTED_DESTINATION = 2; ERROR_CODE_UNSUPPORTED_DESTINATION = 3; ERROR_CODE_REJECTED = 4; ERROR_CODE_UNCERTAIN = 5; ERROR_CODE_INVALID_HANDLE = 6; ERROR_CODE_STALE_CONSENT = 7; ERROR_CODE_SELECTION_CANCELLED = 8; }
+message Failure { ErrorCode code = 1; string field = 2; optional uint32 record_index = 3; todo.collection.v1.Failure validation = 4; string correlation_id = 5; }
+message ExportOffer { string handle = 1; string selected_label = 2; bool replacement_required = 3; }
+message RestoreOffer { string handle = 1; string selected_label = 2; uint32 existing_count = 3; uint32 replacement_count = 4; uint64 current_revision = 5; }
+message Cancelled {}
+message Published { string selected_label = 1; }
+message Pending { string handle = 1; }
+message ExportResult { oneof state { Published published = 1; Cancelled cancelled = 2; Pending pending = 3; } }
+message RestoreResult { oneof state { todo.collection.v1.Receipt applied = 1; Cancelled cancelled = 2; RestoreOffer renew_consent = 3; Pending pending = 4; } }
+message BeginExportRequest {}
+message FinishExportRequest { string handle = 1; Decision decision = 2; }
+message ResolveExportRequest { string handle = 1; }
+message BeginRestoreRequest {}
+message FinishRestoreRequest { string handle = 1; Decision decision = 2; string operation_id = 3; }
+message BeginExportResponse { oneof outcome { ExportOffer success = 1; Failure failure = 2; } }
+message FinishExportResponse { oneof outcome { ExportResult success = 1; Failure failure = 2; } }
+message ResolveExportResponse { oneof outcome { ExportResult success = 1; Failure failure = 2; } }
+message BeginRestoreResponse { oneof outcome { RestoreOffer success = 1; Failure failure = 2; } }
+message FinishRestoreResponse { oneof outcome { RestoreResult success = 1; Failure failure = 2; } }
+
+service BackupService {
+  rpc BeginExport(BeginExportRequest) returns (BeginExportResponse);
+  rpc FinishExport(FinishExportRequest) returns (FinishExportResponse);
+  rpc ResolveExport(ResolveExportRequest) returns (ResolveExportResponse);
+  rpc BeginRestore(BeginRestoreRequest) returns (BeginRestoreResponse);
+  rpc FinishRestore(FinishRestoreRequest) returns (FinishRestoreResponse);
+}

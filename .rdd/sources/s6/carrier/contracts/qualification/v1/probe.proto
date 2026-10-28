@@ -1,0 +1,13 @@
+syntax = "proto3";
+package qualification.v1;
+service ProbeService {
+  rpc Echo(EchoRequest) returns (EchoResponse);
+}
+message EchoRequest { string value = 1; }
+message EchoResponse {
+  oneof outcome {
+    string value = 1;
+    Failure failure = 2;
+  }
+}
+message Failure { string code = 1; }

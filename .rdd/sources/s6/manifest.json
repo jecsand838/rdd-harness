@@ -1,0 +1,423 @@
+{
+  "schema_version": 1,
+  "purpose": "Immutable replay inputs with exact S5 provenance; explicitly adapted carrier package names and candidate-crate consumption retain original and resulting identities.",
+  "copies": [
+    {
+      "path": ".rdd/sources/s6/carrier/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/Cargo.toml",
+      "sha256": "62cc36ce0bd96a34a08fc9a5c56723ee9c264ce333ce761ec190c634ac8752d9",
+      "bytes": 234,
+      "original_sha256": "2276f691abf0b1f99e12d46386bec09866d638123c0a283dcb38b2f1390f1ebc",
+      "original_bytes": 211,
+      "adaptation": "S6 explicit canonical Invoke integration, package-name separation and workspace exclusion; original S5 evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/Cargo.lock",
+      "sha256": "8204a36ba36bbbebcd1582dc65f4e2550cc2b1ff8cd2d7fb56740a621beafbc3",
+      "bytes": 158604,
+      "original_sha256": "73a3e1d2aab6318b86d997133e9bd8efb4a37c3a62284da50e6546a71dc59c38",
+      "original_bytes": 158439,
+      "adaptation": "S6 exact candidate contracts/Builder registration and Cargo-normalized local package lock; original S5 evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/buf.yaml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/buf.yaml",
+      "sha256": "f48118bf591108bdf29a5382d346994401342fb593f6491f7dae06783e9964a3",
+      "bytes": 89
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/contracts/qualification/v1/probe.proto",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/contracts/qualification/v1/probe.proto",
+      "sha256": "1f8d1835e7ebdab76a89846f946795aa083ce73bde1407de3168477537979b3d",
+      "bytes": 291
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/Cargo.toml",
+      "sha256": "c01c215eeceb160486f67af8d8a34ebb3e6a174815f239700c6532b602836468",
+      "bytes": 613,
+      "original_sha256": "903eddf6edb1b8f846bf0588f3bb5df2d9e49012010765525b0bb6a4e85ff032",
+      "original_bytes": 496,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/build.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/build.rs",
+      "sha256": "51eae70c760d39b08c5e9beed645aaa9043cb9d10e82bbe07d043964f72d2a34",
+      "bytes": 209,
+      "original_sha256": "69e347c1cb84fa9f50e570538ff8fcf0f53d941a69cfd4f3fdd6df96dce912d5",
+      "original_bytes": 195,
+      "adaptation": "S6 explicit canonical Invoke integration and package-name separation; original S5 evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/src/main.rs",
+      "sha256": "af70dc13eff50f337aaf5d9ca0abaeba0494e2932a026b682e8f15f6082a2df4",
+      "bytes": 13469,
+      "original_sha256": "2ee90d7110518901f24bad13eba53a476319d5138e7244a8d95f76eb41d7b97a",
+      "original_bytes": 5645,
+      "adaptation": "S6 exact candidate contracts and typed Builder/Invoke registration; original S5 evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/tauri.conf.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/tauri.conf.json",
+      "sha256": "4fa36a2962cb08934c384b555bf637eef6d31978c917ad57c68cab38f537a91d",
+      "bytes": 1038
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/capabilities/probe-window.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/capabilities/probe-window.json",
+      "sha256": "1e7b742ac77249acd2cc9a786efd5fd435f01de7ddbdfc489039379f4094e5fb",
+      "bytes": 157,
+      "original_sha256": "313e3d8c4711aa321d07998a70f0c8a1a13e03eb5be94a64d759a5434279ee0e",
+      "original_bytes": 97,
+      "adaptation": "S6 explicit canonical Invoke integration and package-name separation; original S5 evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/ui/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/ui/Cargo.toml",
+      "sha256": "3ecffc43e4d6ec8473512e5c9a6cb32026084851379f1d59e1adea88aadd85cf",
+      "bytes": 420,
+      "original_sha256": "8b38ce00eaaee89821fd23d038eecb47aca517c840b986de532f8772e20eb501",
+      "original_bytes": 303,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/ui/Trunk.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/ui/Trunk.toml",
+      "sha256": "269bcc9dcb4e6f5689fa442177bb51c19551a10bb15ea6c1a028d967d3725d8c",
+      "bytes": 77
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/ui/index.html",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/ui/index.html",
+      "sha256": "48194624b3b952a65faf457548d415ace4b7144af8f85400dd0b02c6472461a8",
+      "bytes": 283
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/ui/style.css",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/ui/style.css",
+      "sha256": "c1d8245b2a806b73dc1214079b62a6349521422b37715297a4b749cba471a4a9",
+      "bytes": 226
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/ui/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/ui/src/main.rs",
+      "sha256": "50086220cb27551322bd731de07070c012a118fb735886bbaa16c1e7e6c9c221",
+      "bytes": 4357,
+      "original_sha256": "3042e9252442ace60310565f043af3e52db3ab004ab32abd22d50d38341aa326",
+      "original_bytes": 2455,
+      "adaptation": "S6 explicit canonical Invoke integration and package-name separation; original S5 evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/icons/generated/32x32.png",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/icons/generated/32x32.png",
+      "sha256": "fdd5ad1e46de31b1c111c9d205f868a0e98596067245af59ad4bf8cca4c7fce9",
+      "bytes": 106
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/icons/generated/128x128.png",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/icons/generated/128x128.png",
+      "sha256": "75b6ebadce2b9efafbc37b884fc2945ea1736f3934ee844e486bbe4a3b04262e",
+      "bytes": 299
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/icons/generated/128x128@2x.png",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/icons/generated/128x128@2x.png",
+      "sha256": "323007612deef619fd1470558e3567031c8b6bec88da4360bb68f381f98ef929",
+      "bytes": 666
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/icons/generated/icon.icns",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/icons/generated/icon.icns",
+      "sha256": "60eb1a0dfd9012b7c6fe840b32a76c3378f0056a7492b8b57763ca761e1869ed",
+      "bytes": 12672
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/src-tauri/icons/generated/icon.ico",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/src-tauri/icons/generated/icon.ico",
+      "sha256": "4bfc894e908719e24773f6a2778bbc3088c3f3abf89431d9f0611bc952ad8d22",
+      "bytes": 1960
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/gen/rust/.rdd-generated.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/gen/rust/.rdd-generated.json",
+      "sha256": "a58e8b34aa02deb86e741d4dbe7c4429571aa024fc58b27bc869a7e96c317b34",
+      "bytes": 2244
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/gen/rust/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/gen/rust/Cargo.toml",
+      "sha256": "76637819aa7efd19d3678fbd3bc4d7813510c76280924fe99e9330a52e0862b1",
+      "bytes": 187,
+      "original_sha256": "f760f99abe1e5ef96384034c3876e7cb84d20a59a6569e31fb05c77e30f7fdd8",
+      "original_bytes": 177,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/gen/rust/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/gen/rust/Cargo.lock",
+      "sha256": "c5f045a18057369b339c55b04847a743d3d18ed5354170f5616bccd62c41c1ae",
+      "bytes": 2654,
+      "original_sha256": "2e479a616de5b523737b5a728b10f098eed3b58b2954f0469322c407653da335",
+      "original_bytes": 2644,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/gen/rust/src/lib.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/gen/rust/src/lib.rs",
+      "sha256": "11b78efd31d03c45b9053295cea71a0e4ded060769b9ef2faba572e9e614db11",
+      "bytes": 250
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/gen/rust/src/generated/qualification.v1.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/gen/rust/src/generated/qualification.v1.rs",
+      "sha256": "d250de34a46b118ce56550b7c3cd174f5d2285b615f71b5cbdcdad04729ab0c1",
+      "bytes": 1115
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/valid/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/valid/Cargo.toml",
+      "sha256": "41bf06adfa45126c2ad75a7011d2826c9674a9cda34133684172a6a8e1c183bd",
+      "bytes": 167,
+      "original_sha256": "884562f76aa92eddc02d7c49eac3e8a6eb0832fb4878439a3d94bfeceb8c6ec9",
+      "original_bytes": 133,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/valid/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/valid/Cargo.lock",
+      "sha256": "163fc0a2a715bdba51130f5ef89488f0ba39600c459be42d4146d8e74a74f5e7",
+      "bytes": 2761,
+      "original_sha256": "45612cddd4892cfcbc37f3557612802d88737ec9791ee3bc6e128a663f033ba7",
+      "original_bytes": 2741,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/response/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/response/Cargo.toml",
+      "sha256": "240975a626b1c8cc85134154192ba5633c57c629705e0ba70e741b0eb3419987",
+      "bytes": 170,
+      "original_sha256": "db4f04996381d7d0d57643a5c37a0922ad2602620c7eed06ea1465c9da20509c",
+      "original_bytes": 136,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/response/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/response/Cargo.lock",
+      "sha256": "fec2f0c27de3f219403ec353cf8d3ba166cb8644ac26e66a3dddec19c67fca57",
+      "bytes": 2764,
+      "original_sha256": "b3b8f75fe32a8f0d013899badd9fecad4343ca88b69c826163f27c9b6621fc7c",
+      "original_bytes": 2744,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/signature/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/signature/Cargo.toml",
+      "sha256": "558a7caa25f93d137845b53e7714ced3601654fdc11fd036e977ee616e4053b3",
+      "bytes": 171,
+      "original_sha256": "6437410c9ed6b828ce5f41cbfce95e361ac8fd2bf9d4c617a45a17159098313e",
+      "original_bytes": 137,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/signature/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/signature/Cargo.lock",
+      "sha256": "4537daa5227b7f5b91038cffe97f38f25440bf70fcc886508d1e05f1451037c6",
+      "bytes": 2765,
+      "original_sha256": "148efb321ec8a9ce0f8e91c6b61bd73fd8596b403c742c81701dd28657e902b7",
+      "original_bytes": 2745,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/unicode/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/unicode/Cargo.toml",
+      "sha256": "84d8b2d8da5bdeb5ceff3eae0855911359351b3c3f0a36325cc1c923cf136dea",
+      "bytes": 188
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/unicode/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/unicode/Cargo.lock",
+      "sha256": "bffba27ae2badbb215e91dc5cf4f30125d611fd524ad9031b5c90a9cf32b5d45",
+      "bytes": 9491
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/request/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/request/Cargo.toml",
+      "sha256": "2894eb0aaf42ff4f406a71ecc5937d93d48f47181df1ee9793bec3918e5d581f",
+      "bytes": 169,
+      "original_sha256": "d98865aacacd32af5e4b5858a78c0552e1c37563fb6bcb68535a801dcbe5d248",
+      "original_bytes": 135,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/request/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/request/Cargo.lock",
+      "sha256": "ad5bb274b4ccbe6713e19e3421598f71e8317b228c3b58816d51ae8baa6d5cc9",
+      "bytes": 2763,
+      "original_sha256": "3c0e0d3637cfe644961dabef40f9dba0b7cdb2ba1bcf88408de6dcca02d2c7c1",
+      "original_bytes": 2743,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/error/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/error/Cargo.toml",
+      "sha256": "28679e51e06b83b55ddbdc6f388e578d3a3c11ff5429e0f2de9fb42cf9495cad",
+      "bytes": 167,
+      "original_sha256": "6ba87a963cb2b8697e2188622cc624fe659c17cadd096881dfcc2b4386cdeabe",
+      "original_bytes": 133,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/error/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/error/Cargo.lock",
+      "sha256": "b1641c6db80dfbb4b4fd230492d41eddf9aa25d5b274500a1e9ad1bfc12c24ac",
+      "bytes": 2761,
+      "original_sha256": "46647bb977f95302c987ab4e7e17ee76eddbbf42cc14db46adfdfa295f489bd9",
+      "original_bytes": 2741,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/error/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/error/src/main.rs",
+      "sha256": "2066d6019fa73ed2d3c18233af3d00f395d4b7b3cb3d645b312b7670eb33ca57",
+      "bytes": 414
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/request/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/request/src/main.rs",
+      "sha256": "52c1bb7946719a9b479a8530bfc22c5edff88dda8ec05110abc5723ed31522f1",
+      "bytes": 396
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/unicode/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/unicode/src/main.rs",
+      "sha256": "3e6f24f33659a79f470bb5e4ccbfe83afe11589fc58abb1da6fcf30cd4307ba3",
+      "bytes": 1735
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/signature/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/signature/src/main.rs",
+      "sha256": "2724c8aea57c08372ef39cdd7cdf8b1aa393fa1f37e0099d88b462071696131c",
+      "bytes": 389
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/response/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/response/src/main.rs",
+      "sha256": "1dfcda0f7b76ce0984ec0be24ec7746fa74409c2ddb47d84460709b342e5954e",
+      "bytes": 393
+    },
+    {
+      "path": ".rdd/sources/s6/carrier/proofs/valid/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/carrier/proofs/valid/src/main.rs",
+      "sha256": "a02cd5409c1beefa66cf53761b157128f325c04d28fb3836c309eaebce26b213",
+      "bytes": 395
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/d1/generate.py",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/d1/generate.py",
+      "sha256": "47e2845752fbb04a3463c9c3bcf06bc0f26af81cf8578264fd27561e3b36e567",
+      "bytes": 3775
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/d1/D1A.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/d1/D1A.json",
+      "sha256": "4171120e466e7234ac4000f5675d27f63c3804f0981fb95c570ebe0a23c367c7",
+      "bytes": 5729031
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/d1/D1B.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/d1/D1B.json",
+      "sha256": "004476e694cbb273750611cc450b2366285321f071eb738672580b74f7d9a67f",
+      "bytes": 5729031
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/d1/D1A.oracle.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/d1/D1A.oracle.json",
+      "sha256": "bb656b34de409ec8de9b1f63fe7c4e024503e6b00cd2f0b7bfc2aa887d1fe554",
+      "bytes": 3475319
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/d1/D1B.oracle.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/d1/D1B.oracle.json",
+      "sha256": "7aa861ea6124985d16cd36fe93ceb80952fb13c22301f0e9384551b1aade16f9",
+      "bytes": 3475319
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/d1/manifest.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/d1/manifest.json",
+      "sha256": "5fc9e89774ec5097669ccc9c2ed7199b5d40114ceb551462885f440f8b732a7e",
+      "bytes": 747
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/unicode/NormalizationTest.txt",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/sources/NormalizationTest.txt",
+      "sha256": "25a50d816764b04abfb4a646d3eb2b2a803284c3873d9a06757b94fe4513dde3",
+      "bytes": 2863708
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/unicode/UnicodeData.txt",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/sources/UnicodeData.txt",
+      "sha256": "0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950",
+      "bytes": 2243593
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/unicode/CompositionExclusions.txt",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/sources/CompositionExclusions.txt",
+      "sha256": "c759b100e9ae8960ae6b50fc5765950a7581fd9f30d4ef95f68f25a6d97e818e",
+      "bytes": 9007
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/unicode/PropList.txt",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/verification/sources/PropList.txt",
+      "sha256": "f438f532e8737bb8a2702126cdf9c4af5e357c58c7acf9d9eb2fc7c1a1d955d6",
+      "bytes": 149040
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/unicode/CaseFolding.txt",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/unicode-18-casefold.raw",
+      "sha256": "a004797658a457bec4dc11683e39f69249ea3b595b752dbea6721c4c9f587b0d",
+      "bytes": 88776
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/unicode/unicode-vectors.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/sources/unicode-vectors.json",
+      "sha256": "f239b70f31e9188475bb8a39273380c6ff50f4ed181fd985b74dac64e9522a42",
+      "bytes": 109853
+    },
+    {
+      "path": ".rdd/sources/s6/fixtures/unicode/white-space-vectors.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/sources/white-space-vectors.json",
+      "sha256": "77d13cbbf01cdce293584fbaa71b0cd10270758ab429043444d453b9dd39fca6",
+      "bytes": 398
+    },
+    {
+      "path": ".rdd/sources/s6/observer/ax-observer.swift",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/sources/ax-observer-v6.swift",
+      "sha256": "95f52b6ac52f1a7deeaa2fa86d8118c48f6689ae96f7ec3e778df0661f49d0e0",
+      "bytes": 11024
+    },
+    {
+      "path": ".rdd/sources/s6/observer/Info.plist",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/binaries/RDD Bounded AX Observer v6.app/Contents/Info.plist",
+      "sha256": "6ab9829330970e496f8e74d4cdafde17e95bc30ce0dac4831e8f2ad3f00b4fbc",
+      "bytes": 748
+    },
+    {
+      "path": ".rdd/sources/s6/observer/identity.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/observer-v6-identity.json",
+      "sha256": "ce100eac41949a0cb825af60b8fd09ed9dfc78f8245817201ce56ba973088053",
+      "bytes": 852
+    },
+    {
+      "path": ".rdd/sources/s6/tool-acquisition.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/pins-and-acquisition.json",
+      "sha256": "9f2fe79a5c91ee3aa0dfba99439d9f0cc7f92bc605b9a412663eee53d3d657e0",
+      "bytes": 17249,
+      "original_sha256": "5f58d4a480af8046b1f3fd101c2f9d932ed4d3c2df7693b3843273551bc7f6da",
+      "original_bytes": 17270,
+      "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+[package]
+name = "qualification-carrier"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+[dependencies]
+todo-contracts = { package = "rdd-contracts", path = "../candidate-contracts" }
+tauri = { version = "=2.12.5", default-features = false, features = ["wry", "compression"] }
+turso = { version = "=0.8.3", default-features = false }
+prost = "=0.14.4"
+rdd-contracts = { package = "qualification-contracts", path = "../gen/rust" }
+icu_normalizer = "=2.4.0"
+icu_casemap = "=2.4.0"
+[build-dependencies]
+tauri-build = { version = "=2.7.4", features = [] }
+[features]
+custom-protocol = ["tauri/custom-protocol"]

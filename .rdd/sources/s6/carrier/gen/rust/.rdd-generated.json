@@ -1,0 +1,72 @@
+{
+  "binding_files": [
+    "gen/rust/src/generated/qualification.v1.rs"
+  ],
+  "binding_sources": {
+    "gen/rust/src/generated/qualification.v1.rs": [
+      "qualification/v1/probe.proto"
+    ]
+  },
+  "descriptor_sources": [
+    "qualification/v1/probe.proto"
+  ],
+  "schema_version": 1,
+  "services": [
+    {
+      "descriptor_source": "qualification/v1/probe.proto",
+      "generated_path": "gen/rust/src/generated/qualification.v1.rs",
+      "operations": [
+        {
+          "input": "qualification.v1.EchoRequest",
+          "output": "qualification.v1.EchoResponse",
+          "response_oneofs": [
+            {
+              "fields": [
+                "value",
+                "failure"
+              ],
+              "name": "outcome"
+            }
+          ],
+          "rust_input": "rdd_contracts::qualification::v1::EchoRequest",
+          "rust_method": "echo",
+          "rust_output": "rdd_contracts::qualification::v1::EchoResponse",
+          "symbol": "qualification.v1.ProbeService.Echo"
+        }
+      ],
+      "rust_trait": "rdd_contracts::qualification::v1::ProbeService",
+      "symbol": "qualification.v1.ProbeService"
+    }
+  ],
+  "support_files": [
+    "gen/rust/Cargo.toml",
+    "gen/rust/src/lib.rs",
+    "gen/rust/.rdd-generated.json"
+  ],
+  "types": [
+    {
+      "descriptor_source": "qualification/v1/probe.proto",
+      "generated_path": "gen/rust/src/generated/qualification.v1.rs",
+      "kind": "message",
+      "package": "qualification.v1",
+      "rust_type": "rdd_contracts::qualification::v1::EchoRequest",
+      "symbol": "qualification.v1.EchoRequest"
+    },
+    {
+      "descriptor_source": "qualification/v1/probe.proto",
+      "generated_path": "gen/rust/src/generated/qualification.v1.rs",
+      "kind": "message",
+      "package": "qualification.v1",
+      "rust_type": "rdd_contracts::qualification::v1::EchoResponse",
+      "symbol": "qualification.v1.EchoResponse"
+    },
+    {
+      "descriptor_source": "qualification/v1/probe.proto",
+      "generated_path": "gen/rust/src/generated/qualification.v1.rs",
+      "kind": "message",
+      "package": "qualification.v1",
+      "rust_type": "rdd_contracts::qualification::v1::Failure",
+      "symbol": "qualification.v1.Failure"
+    }
+  ]
+}
