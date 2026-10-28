@@ -10,7 +10,7 @@
     "revision": 1,
     "canonical": "docs/specs/dependencies.md#accepted-stack-d-stack-revision-1"
   },
-  "qualification_status": "qualified_joint_and_external_AX_with_native_GUI_mechanism_gaps",
+  "qualification_status": "joint_and_native_mechanisms_qualified_for_recorded_scope",
   "application_acceptance_claimed": false,
   "existing_host_clean_cargo_provisioning": true,
   "clean_host_toolchain_installation_exercised": false,
@@ -340,12 +340,14 @@
       "../S5-attempt3/mechanism-v2-results.json",
       "../S5-attempt3/supplemental-results.json",
       "../S5-attempt3/metadata/native-v3-identity.json",
-      "../S5-attempt3/mechanism-v3-results.json"
+      "../S5-attempt3/mechanism-v3-results.json",
+      "../S5-attempt3/resume-ui-results.json"
     ],
     "Q-INSTANCE": [
       "../S5-attempt3/mechanism-v2-results.json",
       "../S5-attempt3/supplemental-results.json",
-      "../S5-attempt3/mechanism-v3-results.json"
+      "../S5-attempt3/mechanism-v3-results.json",
+      "../S5-attempt3/resume-ui-results.json"
     ],
     "Q-PUBLICATION-COVERAGE": [
       "../S5-attempt3/logs/26-publication.command.json",
@@ -446,17 +448,6 @@
         "required benchmark sampling and all reference conditions",
         "accuracy/overhead bounds beyond observed clock tick and AX marker upper bound"
       ]
-    },
-    {
-      "id": "GAP-NATIVE-GUI",
-      "status": "environment_screen_locked",
-      "missing": [
-        "actual native panel selection/cancellation and overwrite consent",
-        "actual existing-window activation and edited synthetic-value preservation"
-      ],
-      "claim_attempt": 3,
-      "claim_expiry": 1793167377.3254871,
-      "no_GUI_action_counted": true
     }
   ],
   "observer": {
@@ -544,9 +535,24 @@
       "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/findings-notes.json",
       "bytes": 2548,
       "sha256": "e0994d01ab6d934bdae70592110a495b9cdaef401e7173433887ffcc289efd72"
+    },
+    {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/resume-ui-results.json",
+      "bytes": 10052,
+      "sha256": "55c4cb889ad1f32de717c05f6dd70d0eca0af0bbc64a3fb38af4008ba9adc4a9"
+    },
+    {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/parent-native-gui-observations.json",
+      "bytes": 3616,
+      "sha256": "49b3169e64f5da4eededfa70ca3618445a9b73527c4c4458e878d9dd26f58915"
+    },
+    {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/resume-window-0538.json",
+      "bytes": 577,
+      "sha256": "b3d2c52eba09febb83dc64fd2f73bc893f928d262449e14ae620eb8416d005a0"
     }
   ],
-  "normative_dependency_document_words": 1174,
+  "normative_dependency_document_words": 1191,
   "corrects_finding": "R5-S5-001",
   "supplemental_evidence_roots": [
     ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2",
@@ -805,7 +811,7 @@
   ],
   "prior_correction_preserved": "R5-S5-001",
   "native_mechanisms": {
-    "status": "CLI_qualified_GUI_environment_blocked",
+    "status": "CLI_and_native_GUI_qualified_recorded_scope",
     "direct_pins": {
       "direct": {
         "objc2": "=0.6.5",
@@ -958,6 +964,12 @@
       "v3_final_core": {
         "commands": 32,
         "expected_nonzero": 10
+      },
+      "native_GUI": {
+        "primary_sessions": 6,
+        "secondary_processes": 1,
+        "normal_exit_zero": 7,
+        "watchdog_timeouts": 0
       }
     },
     "identity_record": "../S5-attempt3/metadata/native-v3-identity.json",
@@ -978,11 +990,14 @@
       "../S5-attempt3/metadata/native-archive-identities.json"
     ],
     "finding_status": {
-      "R5-S5-002": "unchanged decision publication revision4 recorded with six accepted scenario IDs; independent resolution required",
-      "R5-S5-003": "CLI mechanism passed; native file panel actions unverified",
-      "R5-S5-004": "CLI admission/activation framing passed; actual window activation/draft preservation unverified"
+      "R5-S5-002": "unchanged decision publication revision4 records six accepted scenario IDs",
+      "R5-S5-003": "native selection/grant/publication and interruption/reconciliation mechanism proofs recorded",
+      "R5-S5-004": "CLI admission/framing plus actual inactive-window activation and edited-value retention proofs recorded"
     },
-    "publication_receipt": "../S5-attempt3/logs/26-publication.stdout"
+    "publication_receipt": "../S5-attempt3/logs/26-publication.stdout",
+    "native_GUI_result": "../S5-attempt3/resume-ui-results.json",
+    "GUI_scope": "six actual native GUI sessions and one secondary process, normal exits; not full Todo or actual engine ownership",
+    "independent_resolution_authority": "controller live-review records; this index reports measured artifacts"
   },
   "publication_scenarios": [
     "SC-JOINT-QUALIFICATION",
@@ -991,5 +1006,22 @@
     "SC-PACKAGE-INSTALL",
     "SC-RUNTIME-RESTRICTIONS",
     "SC-RELEASE-HANDOFF"
+  ],
+  "execution_gap_history": [
+    {
+      "prior_gap": {
+        "id": "GAP-NATIVE-GUI",
+        "status": "environment_screen_locked",
+        "missing": [
+          "actual native panel selection/cancellation and overwrite consent",
+          "actual existing-window activation and edited synthetic-value preservation"
+        ],
+        "claim_attempt": 3,
+        "claim_expiry": 1793167377.3254871,
+        "no_GUI_action_counted": true
+      },
+      "resolution_evidence": "../S5-attempt3/resume-ui-results.json",
+      "resolved_measured_scope": "native mechanism only after actual user unlock"
+    }
   ]
 }
