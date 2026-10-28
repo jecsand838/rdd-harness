@@ -13,15 +13,16 @@ import tomllib
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from tools.rdd.adapters import RddAdapterError, run_argv
-    from tools.rdd.common import git
+    from tools.rdd.common import RddError, git
+    from tools.rdd.readiness import HOSTED_RUNNERS as RUNNERS, preparation_ci_pairs, qualification_check_ids
 else:
     from .adapters import RddAdapterError, run_argv
-    from .common import git
+    from .common import RddError, git
+    from .readiness import HOSTED_RUNNERS as RUNNERS, preparation_ci_pairs, qualification_check_ids
 
 PIN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 CARGO_TOOLS = {"cargo-tauri": "tauri-cli", "trunk": "trunk",
                "wasm-bindgen": "wasm-bindgen-cli", "wasm-pack": "wasm-pack"}
-RUNNERS = {"linux": "ubuntu-24.04", "macos": "macos-latest", "windows": "windows-latest"}
 
 
 def platform_name() -> str:
@@ -30,10 +31,9 @@ def platform_name() -> str:
 
 def preparation_matrix(root: Path) -> dict:
     spec = json.loads((root / ".rdd/spec.json").read_text(encoding="utf-8"))
-    platforms = {environment["platform"] for environment in spec.get("environments", [])
-                 if not environment["host_profile"]}
-    if not platforms or platforms - RUNNERS.keys():
-        raise ValueError("Preparation needs at least one supported declared hosted environment")
+    plan_path = root / ".rdd/plan/plan.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8")) if plan_path.is_file() else None
+    platforms = {platform for _, platform in preparation_ci_pairs(spec, qualification_check_ids(spec, plan))}
     return {"include": [{"platform": platform, "os": RUNNERS[platform]} for platform in sorted(platforms)]}
 
 
@@ -162,5 +162,5 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, OSError, RddAdapterError) as exc:
+    except (ValueError, OSError, RddAdapterError, RddError) as exc:
         raise SystemExit(str(exc)) from exc

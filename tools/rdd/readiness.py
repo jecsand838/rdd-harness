@@ -4,6 +4,8 @@ from pathlib import Path
 from .artifacts import CATEGORIES, ancestors, subset, unique
 from .common import RddError, read_json, safe_path
 
+HOSTED_RUNNERS = {"linux": "ubuntu-24.04", "macos": "macos-latest", "windows": "windows-latest"}
+
 
 def validate_resources(root: Path, spec: dict) -> None:
     resources = unique(spec["resources"], "resource")
@@ -55,6 +57,7 @@ def validate_resources(root: Path, spec: dict) -> None:
                 if resources[rid]["availability"] == "implementation" or (
                         resources[rid]["kind"] == "external" and resources[rid].get("required_at") == "implementation"):
                     raise RddError(f"Qualification {cid} depends on future product input {rid}; qualify its acquisition protocol with a disposable input", "specification")
+    preparation_ci_pairs(spec, qualification_check_ids(spec))
 
 
 def validate_producers(root: Path, spec: dict, plan: dict) -> None:
@@ -329,6 +332,20 @@ def required_probe_ids(spec: dict, plan: dict | None = None) -> list[str]:
     return sorted(ids)
 
 
+def qualification_check_ids(spec: dict, plan: dict | None = None) -> list[str]:
+    return sorted(set(spec["contract_check_ids"] + required_probe_ids(spec, plan)))
+
+
+def preparation_ci_pairs(spec: dict, ids: list[str]) -> set[tuple[str, str]]:
+    environments = unique(spec["environments"], "environment")
+    pairs = {(check["id"], environments[env]["platform"]) for check in spec["checks"]
+             if check["id"] in ids and not check["host_profile"] and check["kind"] != "manual"
+             for env in check["environments"]}
+    if not pairs or {platform for _, platform in pairs} - HOSTED_RUNNERS.keys():
+        raise RddError("Required portable preparation checks need supported hosted platforms", "specification")
+    return pairs
+
+
 def verify_resource_observations(root: Path, spec: dict, receipts: list[dict]) -> None:
     """Probe logs contain measured identities; protocols remain independently reviewed."""
     from .adapters import _strict_json
@@ -432,15 +449,16 @@ def verify_canonical_contract_receipts(root: Path, spec: dict, receipts: list[di
             raise RddError(f"Canonical contract qualification lacks exact transferable proof: {exc}", "review") from exc
 
 
-def verify_readiness_coverage(spec: dict, ids: list[str], receipts: list[dict], *, require_ci: bool = False) -> None:
+def verify_readiness_coverage(spec: dict, ids: list[str], receipts: list[dict], *, require_ci: bool = False) -> set[tuple[str, str]]:
     checks = unique(spec["checks"], "check")
     environments = unique(spec["environments"], "environment")
     expected = {(cid, environments[env]["platform"]) for cid in ids for env in checks[cid]["environments"]}
     actual = {(r["check_id"], r["platform"]) for r in receipts}
     if actual != expected:
         raise RddError("Readiness receipts omit a required check/environment execution", "review")
+    required_ci = preparation_ci_pairs(spec, ids) if require_ci else set()
     if require_ci:
-        required_ci = {(cid, platform) for cid, platform in expected if not checks[cid]["host_profile"] and checks[cid]["kind"] != "manual"}
         observed_ci = {(r["check_id"], r["platform"]) for r in receipts if r["origin"] == "ci"}
         if not required_ci <= observed_ci:
             raise RddError("Preparation lacks actual exact-source CI coverage", "review")
+    return required_ci

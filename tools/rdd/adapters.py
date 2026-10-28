@@ -358,7 +358,7 @@ class GitHubAdapter:
             blockers.append("Actions returned another repository or run identity")
         if after.get("head_sha") != candidate_sha:
             blockers.append("Preparation run does not target the exact materialized candidate")
-        if after.get("path") != workflow_path or after.get("event") not in {"push", "workflow_dispatch"}:
+        if after.get("path") != workflow_path or after.get("event") != "workflow_dispatch":
             blockers.append("Preparation requires the registered workflow and event")
         if after.get("status") != "completed" or after.get("conclusion") != "success":
             blockers.append("Preparation Actions run has not completed successfully")
