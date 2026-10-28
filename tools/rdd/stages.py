@@ -8,7 +8,7 @@ from . import artifacts
 from .checks import verify_receipt
 from .common import (RddError, clean, digest, event, head, inventory, read_json, safe_path,
                      source_digest, validate_artifact, write_json)
-from .readiness import (required_probe_ids, validate_producers, validate_resources, verify_resource_observations,
+from .readiness import (qualification_check_ids, validate_producers, validate_resources, verify_resource_observations,
                         canonical_contract_check, verify_canonical_contract_receipts, verify_readiness_coverage)
 
 STAGES = ("specification", "plan", "preparation")
@@ -176,9 +176,7 @@ class StageWorkflow:
         return {**body, "digest": digest(body)}
 
     def stage_check_ids(self, stage: str) -> list[str]:
-        spec = self.spec()
-        plan = None if stage == "specification" else self.plan()
-        return sorted(set(spec["contract_check_ids"] + required_probe_ids(spec, plan)))
+        return qualification_check_ids(self.spec(), None if stage == "specification" else self.plan())
 
     def readiness(self, stage: str) -> dict:
         self.guard_source_write(baseline=True)
@@ -222,7 +220,6 @@ class StageWorkflow:
         if inventory(self.root, list(report["baseline_inputs"])) != report["baseline_inputs"]:
             raise RddError("Readiness baseline inputs changed", "review")
         checks = artifacts.unique(self.spec()["checks"], "check")
-        covered = set()
         for eid in report["evidence"]:
             receipt = state["checks"].get(eid)
             if not receipt:
@@ -232,9 +229,6 @@ class StageWorkflow:
             verify_receipt(self.root, receipt, checks[receipt["check_id"]],
                            commit=candidate["source_commit"], sources=candidate["source_digest"],
                            spec_digest=candidate["spec_digest"], plan_digest=candidate["plan_digest"])
-            covered.add(receipt["check_id"])
-        if covered != set(self.stage_check_ids(stage)):
-            raise RddError("Readiness evidence inventory is incomplete", "review")
         verify_readiness_coverage(self.spec(), self.stage_check_ids(stage), [state["checks"][eid] for eid in report["evidence"]])
         verify_resource_observations(self.root, self.spec(), [state["checks"][eid] for eid in report["evidence"]])
         verify_canonical_contract_receipts(self.root, self.spec(), [state["checks"][eid] for eid in report["evidence"]])
@@ -302,29 +296,15 @@ class StageWorkflow:
         self.require_workflow_node("P7")
         acceptance = self.stage_acceptance("preparation")
         state, spec = self.state(), self.spec()
-        # Every portable qualification must have actually run in CI at this exact
-        # materialized revision. Native/profile checks remain required separately.
-        checks = artifacts.unique(spec["checks"], "check")
         readiness = self.current_readiness("preparation", acceptance["candidate"])
-        ci_receipts = {}
-        for cid in self.stage_check_ids("preparation"):
-            check = checks[cid]
-            if check["host_profile"] or check["kind"] == "manual":
-                continue
-            envs = {e["id"]: e for e in spec["environments"]}
-            platforms = {envs[e]["platform"] for e in check["environments"]}
-            for platform in platforms:
-                matching = [state["checks"][eid] for eid in readiness["evidence"]
-                            if state["checks"][eid]["check_id"] == cid
-                            and state["checks"][eid]["platform"] == platform
-                            and state["checks"][eid]["origin"] == "ci"]
-                if not matching:
-                    raise RddError(f"Preparation needs actual exact-source CI evidence for {cid} on {platform}", "environment")
-                ci_receipts.setdefault(platform, []).extend(matching)
+        receipts = [state["checks"][eid] for eid in readiness["evidence"]]
+        required_ci = verify_readiness_coverage(spec, self.stage_check_ids("preparation"), receipts, require_ci=True)
         ci_runs = {}
         from .engine import GitHubAdapter
         from .adapters import RddAdapterError
-        for platform, receipts in ci_receipts.items():
+        for platform in sorted({platform for _, platform in required_ci}):
+            portable = [r for r in receipts if r["origin"] == "ci" and (r["check_id"], r["platform"]) in required_ci
+                        and r["platform"] == platform]
             path = f".rdd/evidence/preparation-ci/{platform}.json"
             report = read_json(safe_path(self.root, path, allow_missing=False))
             if (report.get("scope") != "preparation" or report.get("status") != "passed"
@@ -333,7 +313,7 @@ class StageWorkflow:
                     or report.get("source_digest") != acceptance["candidate"]["source_digest"]):
                 raise RddError("Preparation CI report is stale or does not qualify this candidate/platform", "review")
             reported = {r["id"]: r for r in report.get("checks", [])}
-            if any(reported.get(receipt["id"]) != receipt or receipt["provenance"]["run_url"] != report.get("run_url") for receipt in receipts):
+            if any(reported.get(receipt["id"]) != receipt or receipt["provenance"]["run_url"] != report.get("run_url") for receipt in portable):
                 raise RddError("Preparation CI report does not contain the reviewed raw receipts", "review")
             try:
                 observed = GitHubAdapter(self.root).preparation_status(report["run_url"], acceptance["candidate"]["source_commit"], report.get("harness_source"))

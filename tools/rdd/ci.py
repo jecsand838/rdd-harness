@@ -220,7 +220,7 @@ def verify_preparation(root: Path, policy_root: Path, harness_source: str) -> di
     repository variable, never from candidate manifests or workflow inputs.
     """
     from .engine import POLICY_PREFIXES, POLICY_FILES
-    from .readiness import (required_probe_ids, validate_resources, validate_producers,
+    from .readiness import (qualification_check_ids, preparation_ci_pairs, validate_resources, validate_producers,
                             canonical_contract_check, verify_canonical_contract_receipts)
     root, policy_root = root.resolve(), policy_root.resolve()
     if root == policy_root or not _SHA.fullmatch(harness_source) or head(policy_root) != harness_source:
@@ -255,7 +255,8 @@ def verify_preparation(root: Path, policy_root: Path, harness_source: str) -> di
     commit, sources = head(root), source_digest(root)
     platform = _host_platform()
     checks = artifacts.unique(spec["checks"], "check")
-    selected = sorted(set(spec["contract_check_ids"] + required_probe_ids(spec, plan)))
+    selected = qualification_check_ids(spec, plan)
+    required_ci = preparation_ci_pairs(spec, selected)
     report = {"schema_version": 2, "scope": "preparation", "status": "failed", "application_complete": False,
               "source_commit": commit, "source_digest": sources, "harness_source": harness_source,
               "platform": platform, "run_url": _run_url(), "checks": [], "pending_external": [], "anchors": anchors}
@@ -265,7 +266,7 @@ def verify_preparation(root: Path, policy_root: Path, harness_source: str) -> di
             envs = {e["id"]: e for e in spec["environments"]}
             if platform not in {envs[e]["platform"] for e in check["environments"]}:
                 continue
-            if check["host_profile"] or check["kind"] == "manual":
+            if (cid, platform) not in required_ci:
                 report["pending_external"].append(cid)
                 continue
             receipt = _execute(root, check, phase=None, task_id=None, expectation="pass",

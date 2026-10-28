@@ -4,12 +4,15 @@ import json
 import subprocess
 import sys
 import unittest
+from unittest.mock import Mock, patch
 
 from test_refinement import REPOSITORY, HarnessTestCase
 from tools.rdd import artifacts
+from tools.rdd.adapters import CommandResult, GitHubAdapter
+from tools.rdd.ci_tools import preparation_matrix
 from tools.rdd.common import RddError, write_json
 from tools.rdd.nodes import NODES
-from tools.rdd.readiness import validate_boundary_plan
+from tools.rdd.readiness import validate_boundary_plan, verify_readiness_coverage
 
 
 def plan_for(spec):
@@ -129,6 +132,97 @@ class SpecificationPreparationTests(HarnessTestCase):
         write_json(self.root / artifacts.SCENARIOS_PATH, spec["scenarios"])
         with self.assertRaisesRegex(RddError, "golden.*functional requirement"):
             artifacts.spec_validate(self.root, spec, reqs, self.fixture.controller.config)
+
+    def test_specification_requires_a_runnable_preparation_ci_obligation(self):
+        spec = self.specification()
+        self.controller.spec_validate()
+        for case in ("all_profiled", "unused_hosted", "manual_only_hosted", "product_only_hosted"):
+            broken = copy.deepcopy(spec)
+            broken["environments"][0]["host_profile"] = "fixture-native"
+            for check in broken["checks"]:
+                check["host_profile"] = "fixture-native"
+            if case != "all_profiled":
+                broken["environments"].append(dict(spec["environments"][0], id="E-UNUSED"))
+            if case == "manual_only_hosted":
+                broken["checks"].append(dict(spec["checks"][0], id="C-MANUAL", kind="manual",
+                    argv=[], environments=["E-UNUSED"], requires=[]))
+            if case == "product_only_hosted":
+                broken["checks"][-1].update(host_profile=None, environments=["E-UNUSED"])
+                broken["resources"][0]["environments"].append("E-UNUSED")
+            write_json(self.root / ".rdd/spec.json", broken)
+            with self.subTest(case=case), self.assertRaisesRegex(RddError, "portable.*preparation|preparation.*portable"):
+                self.controller.spec_validate()
+
+    def test_preparation_ci_coverage_keeps_native_and_every_hosted_platform(self):
+        spec = self.specification()
+        check = spec["checks"][0]
+        check["environments"] = ["E-LINUX", "E-WINDOWS"]
+        spec["environments"] = [dict(id="E-" + platform.upper(), platform=platform, host_profile=None)
+                                for platform in ("linux", "windows")]
+        native = dict(check, id="C-NATIVE", host_profile="fixture-native", environments=["E-NATIVE"])
+        spec["checks"].append(native)
+        spec["environments"].append(dict(id="E-NATIVE", platform="macos", host_profile="fixture-native"))
+        ids = [check["id"], native["id"]]
+        receipts = [dict(check_id=check["id"], platform=p, origin="ci") for p in ("linux", "windows")]
+        receipts.append(dict(check_id=native["id"], platform="macos", origin="local"))
+        verify_readiness_coverage(spec, ids, receipts, require_ci=True)
+        for broken in (receipts[:-1], receipts[1:], [dict(r, origin="local") for r in receipts]):
+            with self.subTest(receipts=broken), self.assertRaises(RddError):
+                verify_readiness_coverage(spec, ids, broken, require_ci=True)
+        with self.assertRaisesRegex(RddError, "portable.*preparation|preparation.*portable"):
+            verify_readiness_coverage(spec, [native["id"]], receipts[-1:], require_ci=True)
+
+    def test_preparation_matrix_excludes_unrelated_product_environments(self):
+        spec = self.specification()
+        platform = spec["environments"][0]["platform"]
+        other = "windows" if platform != "windows" else "linux"
+        spec["environments"].append(dict(id="E-PRODUCT", platform=other, host_profile=None))
+        spec["checks"][-1]["environments"] = ["E-PRODUCT"]
+        write_json(self.root / ".rdd/spec.json", spec)
+        self.assertEqual([row["platform"] for row in preparation_matrix(self.root)["include"]], [platform])
+        spec["checks"].append(dict(spec["checks"][-1], id="C-PLAN", kind="readiness"))
+        write_json(self.root / ".rdd/spec.json", spec)
+        write_json(self.root / ".rdd/plan/plan.json", dict(resource_producers=[dict(kind="baseline", checks=["C-PLAN"])]))
+        self.assertEqual(self.controller.stage_check_ids("plan"), ["C-CONTRACTS", "C-PLAN"])
+        self.assertEqual({row["platform"] for row in preparation_matrix(self.root)["include"]}, {platform, other})
+
+    def test_preparation_gate_rejects_native_only_readiness(self):
+        # Accepted-stage prerequisites are synthetic; the gate and its CI checks stay real.
+        spec = dict(checks=[dict(id="C-NATIVE", kind="readiness", host_profile="fixture-native",
+                                environments=["E-NATIVE"])],
+                    environments=[dict(id="E-NATIVE", platform="macos", host_profile="fixture-native")])
+        state = dict(checks={"E1": dict(check_id="C-NATIVE", platform="macos", origin="local")})
+        save = Mock()
+        with patch.multiple(self.controller, guard_source_write=lambda **kwargs: None,
+                require_workflow_node=lambda node: None, stage_acceptance=lambda stage: dict(candidate=dict(digest="fixture")),
+                current_readiness=lambda stage, candidate: dict(evidence=["E1"]),
+                stage_check_ids=lambda stage: ["C-NATIVE"], state=lambda: state, save=save), \
+                patch.object(self.controller, "spec", return_value=spec), \
+                patch("tools.rdd.engine.GitHubAdapter.preparation_status") as github:
+            try:
+                with self.assertRaisesRegex(RddError, "portable.*preparation|preparation.*portable"):
+                    self.controller.gate_preparation()
+            finally:
+                github.assert_not_called()
+                save.assert_not_called()
+
+    def test_preparation_observation_requires_explicit_dispatch(self):
+        candidate, harness, blob = "a" * 40, "b" * 40, "c" * 40
+        url = "https://github.com/fixture/repo/actions/runs/1"
+        run = dict(id=1, html_url=url, repository=dict(full_name="fixture/repo"), head_sha=candidate,
+            path=".github/workflows/preparation.yml", run_attempt=1, status="completed", conclusion="success")
+        workflow = dict(type="file", path=run["path"], sha=blob)
+        jobs = dict(total_count=1, jobs=[dict(id=1, name="preparation (ubuntu-24.04)", status="completed",
+            conclusion="success", steps=[dict(name="Verify committed preparation with trusted controller",
+                                             status="completed", conclusion="success")])])
+        for event in ("workflow_dispatch", "push"):
+            values = iter([dict(run, event=event), jobs,
+                dict(name="RDD_PREPARATION_HARNESS_SHA", value=harness), workflow, workflow, dict(run, event=event)])
+            runner = lambda argv, **kwargs: CommandResult(tuple(argv), 0, json.dumps(next(values)))
+            observed = GitHubAdapter(self.root, runner=runner, repository="fixture/repo").preparation_status(url, candidate, harness)
+            with self.subTest(event=event):
+                self.assertEqual(observed["ready"], event == "workflow_dispatch", observed)
+                self.assertEqual(observed["blockers"], [] if event == "workflow_dispatch" else ["Preparation requires the registered workflow and event"])
 
     def test_every_actionable_frozen_file_needs_a_task(self):
         spec = self.specification()
