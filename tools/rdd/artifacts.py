@@ -220,7 +220,7 @@ def scenario_trace_validate(req_ids, elements, scenarios):
         if element["behavior"] == "positive":
             golden = {rid for sid in element["scenarios"] if scenarios[sid]["kind"] == "golden"
                       for rid in scenarios[sid]["requirements"]}
-            if not {rid for rid in element["requirements"] if rid.startswith("FR-")} <= golden:
+            if not golden or not {rid for rid in element["requirements"] if rid.startswith("FR-")} <= golden:
                 raise RddError(f"Positive {element['kind']} {eid}: missing golden scenario for its requirements")
 
 
