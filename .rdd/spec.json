@@ -1,0 +1,61 @@
+{
+  "amendment": {
+    "paths": [],
+    "rationale": "",
+    "requirements": []
+  },
+  "author_sessions": [],
+  "boundary_bindings": [],
+  "change_summary": "",
+  "checks": [
+    {
+      "argv": [
+        "{python}",
+        "tools/rdd/proto_traits.py"
+      ],
+      "cwd": ".",
+      "environments": [],
+      "host_profile": null,
+      "id": "C-CONTRACTS",
+      "kind": "contract",
+      "metrics": [],
+      "platforms": [
+        "any"
+      ],
+      "red_pattern": null,
+      "requires": [],
+      "results_path": null,
+      "scenario_ids": [],
+      "timeout_seconds": 1800
+    }
+  ],
+  "contract_check_ids": [
+    "C-CONTRACTS"
+  ],
+  "contract_files": [],
+  "contract_index_path": "gen/rust/.rdd-generated.json",
+  "decisions": [],
+  "documents": [
+    "docs/specs/refinement.json"
+  ],
+  "domain_inventory": {
+    "path": "docs/specs/domain-inventory.json",
+    "s1_output_digest": "",
+    "sha256": ""
+  },
+  "environments": [],
+  "generated_files": [],
+  "id": "R20261028T021552Z-5f7dc8",
+  "mode": "regenerate",
+  "modules": [],
+  "parent_spec_digest": null,
+  "project_check_ids": [],
+  "requirement_map": [],
+  "requirements_digest": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31",
+  "resources": [],
+  "scenarios": [],
+  "schema_version": 3,
+  "shared_generated_files": [],
+  "solution_elements": [],
+  "target_tree": []
+}

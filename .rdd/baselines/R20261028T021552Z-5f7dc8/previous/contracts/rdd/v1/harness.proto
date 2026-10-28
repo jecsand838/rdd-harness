@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package rdd.v1;
+
+// HarnessService is the harness toolchain qualification boundary.
+// It is not a Todo module or a runtime network API.
+service HarnessService {
+  // Probe gives the generator a unary operation for its signature proofs.
+  rpc Probe(ProbeRequest) returns (ProbeResponse);
+}
+
+// ProbeRequest carries an opaque qualification payload.
+message ProbeRequest {
+  bytes payload = 1;
+}
+
+// ProbeResponse carries the corresponding qualification payload.
+message ProbeResponse {
+  oneof outcome {
+    bytes payload = 1;
+    string error = 2;
+  }
+}
