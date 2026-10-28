@@ -148,11 +148,20 @@ def acquire_clis(destination):
 
 def build_environment():
     runtime=ROOT/'.rdd/runtime/s6';result=json.loads((runtime/'toolchain.json').read_text());paths=result['paths'];env=os.environ.copy()
+    pins=json.loads(Path(__file__).with_name('tools.json').read_text())
+    for record in pins['expected_identities']:
+        assert hashlib.sha256(Path(paths[record['name']]).read_bytes()).hexdigest()==record['sha256'],record['name']
+    for key in ['RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','RUSTC_WRAPPER','RUSTC_WORKSPACE_WRAPPER','RUSTDOCFLAGS','CARGO_ENCODED_RUSTDOCFLAGS']:
+        env.pop(key,None)
     env.update(RUSTUP_HOME=paths['RUSTUP_HOME'],RUSTUP_AUTO_INSTALL='0',RUSTC=paths['rustc'],CARGO_HOME=str(runtime/'build-cargo-home'),CARGO_BUILD_JOBS='1',CARGO_INCREMENTAL='0',CARGO_PROFILE_DEV_DEBUG='0',CARGO_PROFILE_RELEASE_DEBUG='0',PYTHONDONTWRITEBYTECODE='1')
     clis=acquire_clis(runtime/'clis');env['DYLD_FALLBACK_LIBRARY_PATH']=str(Path(paths['toolchain_root'])/'lib');env['PATH']=os.pathsep.join([str(Path(paths['rustc']).parent),str(Path(paths['rustup']).parent),str(Path(paths['buf']).parent),str(runtime/'clis')])+os.pathsep+env['PATH']
     return env,paths,clis
 
 if __name__=='__main__':
     if len(sys.argv)==3 and sys.argv[1]=='--install':install(Path(sys.argv[2]).resolve())
+    elif len(sys.argv)>2 and sys.argv[1]=='--exec':
+        env,paths,_=build_environment();runtime=ROOT/'.rdd/runtime/s6';out=Path(tempfile.mkdtemp(prefix='qualified-launch-',dir=runtime))
+        (out/'environment.json').write_text(json.dumps({'argv':sys.argv[2:],'paths':paths,'environment':{k:env[k] for k in ['PATH','RUSTC','RUSTUP_HOME','CARGO_HOME','DYLD_FALLBACK_LIBRARY_PATH']},'scope':'outer controller launch; frozen check argv never recursively mutates this checkout'},indent=2)+'\n')
+        raise SystemExit(subprocess.call(sys.argv[2:],env=env,cwd=ROOT))
     elif len(sys.argv)==1:probe()
-    else:raise SystemExit('usage: provision.py [--install OWNED_ROOT]')
+    else:raise SystemExit('usage: provision.py [--install OWNED_ROOT | --exec COMMAND ...]')

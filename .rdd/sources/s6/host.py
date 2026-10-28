@@ -1,6 +1,6 @@
 """Measured native facilities and separately authorized exact observer evidence."""
 from pathlib import Path
-import csv,hashlib,json,os,platform,shutil,signal,socket,subprocess,sys,tempfile,time
+import csv,hashlib,json,os,platform,plistlib,shutil,signal,socket,subprocess,sys,tempfile,time
 ROOT=Path(__file__).resolve().parents[3];runtime=ROOT/'.rdd/runtime/s6';runtime.mkdir(parents=True,exist_ok=True)
 work=Path(tempfile.mkdtemp(prefix='host-',dir=runtime));records=[]
 def interrupted(signum,frame):raise InterruptedError('host probe interrupted: '+str(signum))
@@ -9,13 +9,18 @@ def run(label,args,timeout=15,ok=True):
  r=subprocess.run(args,capture_output=True,timeout=timeout);(work/(label+'.stdout')).write_bytes(r.stdout);(work/(label+'.stderr')).write_bytes(r.stderr);records.append({'label':label,'argv':args,'returncode':r.returncode});assert (r.returncode==0)==ok,(label,r.stderr.decode(errors='replace'));return r
 osversion=run('os',['/usr/bin/sw_vers','-productVersion']).stdout.decode().strip();build=run('os-build',['/usr/bin/sw_vers','-buildVersion']).stdout.decode().strip();memory=int(run('ram',['/usr/sbin/sysctl','-n','hw.memsize']).stdout);model=run('model',['/usr/sbin/sysctl','-n','hw.model']).stdout.decode().strip();sdk=run('sdk',['/usr/bin/xcrun','--sdk','macosx','--show-sdk-version']).stdout.decode().strip()
 assert platform.machine()=='arm64' and osversion=='26.6.2' and build=='25G83' and memory==32*1024**3 and model=='VirtualMac2,1' and sdk=='27.0'
+pins=json.loads(Path(__file__).with_name('tools.json').read_text())['provided_host_webkit'];webpath=Path(pins['path']);webplist=plistlib.loads(webpath.read_bytes())
+webkit={'path':str(webpath.resolve()),'sha256':hashlib.sha256(webpath.read_bytes()).hexdigest(),'bundle_identifier':webplist['CFBundleIdentifier'],'bundle_version':webplist['CFBundleVersion'],'short_version':webplist.get('CFBundleShortVersionString')}
+assert webkit['path']==pins['path'] and webkit['sha256']==pins['sha256']
+assert webkit['bundle_identifier']==pins['values']['CFBundleIdentifier'] and webkit['bundle_version']==pins['values']['CFBundleVersion'] and webkit['short_version']==pins['values']['CFBundleShortVersionString']
 # The alternate principal reads the provided public host file, then is denied
 # a synthetic private file in the current account tree. This qualifies the
 # account-denial mechanism, not any product file layout or mode independently.
 control=work/'account';control.mkdir();(control/'private').write_text('private sensitivity control\n');(control/'private').chmod(0o600)
 run('account-id',['sudo','-n','-u','nobody','--','/usr/bin/id'])
 assert run('account-public',['sudo','-n','-u','nobody','--','/bin/cat','/etc/hosts']).stdout
-run('account-private',['sudo','-n','-u','nobody','--','/bin/cat',str(control/'private')],ok=False)
+denial=run('account-private',['sudo','-n','-u','nobody','--','/bin/cat',str(control/'private')],ok=False)
+assert not denial.stdout and b'Permission denied' in denial.stderr and str(control/'private').encode() in denial.stderr
 # One owned loopback client establishes actual process-attribution sensitivity.
 server=socket.socket();server.settimeout(8);server.bind(('127.0.0.1',0));server.listen(1);port=server.getsockname()[1];client=None;capture=None;conn=None
 try:
@@ -53,6 +58,6 @@ assert any('COMMITTED probe-20261028-R5' in value for value in action['final_tex
 assert 'CANONICAL INVOKE READY' in action['initial_text'] and 'CANONICAL INVOKE READY' in action['final_text']
 # The fresh bound package is one of the actual newly built candidate packages.
 joint=json.loads((runtime/'joint-result.json').read_text());assert any(row['sha256']==binding['target_sha256'] for row in joint['artifacts'])
-report={'os':osversion,'build':build,'machine':platform.machine(),'model':model,'ram_bytes':memory,'sdk':sdk,'free_bytes':shutil.disk_usage(ROOT).free,'benchmark_conditions_qualified':False,'records':records,'account_control_directory':str(control),'observer_binding':binding,'scope':'actual facilities and exact-package synthetic AX mechanism; physical SSD/AC/normal mode remain human attestation; full rendered/input-ready product oracle, process-tree no-egress acceptance, accessibility and benchmark readiness are separate'}
+report={'os':osversion,'build':build,'machine':platform.machine(),'model':model,'ram_bytes':memory,'sdk':sdk,'provided_runtime_webkit':webkit,'free_bytes':shutil.disk_usage(ROOT).free,'benchmark_conditions_qualified':False,'records':records,'account_control_directory':str(control),'observer_binding':binding,'scope':'actual facilities and exact-package synthetic AX mechanism; physical SSD/AC/normal mode remain human attestation; full rendered/input-ready product oracle, process-tree no-egress acceptance, accessibility and benchmark readiness are separate'}
 (work/'result.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps({'resources':{'R-HOST':{'environment':'macos-reference','version':'macos26.6.2-arm64-32GiB-SDK27','observation':json.dumps(report)},'R-OBSERVER':{'environment':'macos-reference','version':'v6-guarded-identity','observation':'Actual current trust, explicit new binding, stable 1280x720 frame and new marker evidence verified: '+str(work)}},'scope':report['scope']}))

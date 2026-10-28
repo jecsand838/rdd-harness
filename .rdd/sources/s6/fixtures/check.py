@@ -6,7 +6,8 @@ manifest=json.loads((HERE.parent/'manifest.json').read_text())
 for row in manifest['copies']:
  p=ROOT/row['path']
  if hashlib.sha256(p.read_bytes()).hexdigest()!=row['sha256']:raise SystemExit('immutable input differs: '+row['path'])
-work=Path(tempfile.mkdtemp(prefix='fixtures-',dir=ROOT/'.rdd/runtime'))
+runtime=ROOT/'.rdd/runtime/s6';runtime.mkdir(parents=True,exist_ok=True)
+work=Path(tempfile.mkdtemp(prefix='fixtures-',dir=runtime))
 shutil.copyfile(HERE/'d1/generate.py',work/'generate.py')
 subprocess.run([sys.executable,str(work/'generate.py')],check=True,capture_output=True,timeout=90)
 for name in ('D1A.json','D1B.json','D1A.oracle.json','D1B.oracle.json'):

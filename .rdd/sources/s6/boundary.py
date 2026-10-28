@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib,json,os,re,shutil,subprocess,sys,tempfile
 ROOT=Path(__file__).resolve().parents[3];sys.path.insert(0,str(ROOT));sys.dont_write_bytecode=True
+from provision import build_environment
 from tools.rdd.artifacts import module_contracts_validate,domain_solution_validate,unique
 spec=json.loads((ROOT/'.rdd/spec.json').read_text());modules=unique(spec['modules'],'module');elements=unique(spec['solution_elements'],'element')
 domain_solution_validate(ROOT,spec,modules,elements)
@@ -55,11 +56,12 @@ for mid,m in modules.items():lines+=['consumer_'+mid+'('+', '.join('&p_'+p for p
 lines += [f'assert_eq!(CALLS.load(Ordering::SeqCst),{expectedcalls+1});',f'assert_eq!(LIVE.load(Ordering::SeqCst),{len(services)});']
 for mid in reversed(order):lines+=['drop(p_'+mid+');']
 lines+=['assert_eq!(LIVE.load(Ordering::SeqCst),0);','}'];source='\n'.join(lines)+'\n';(work/'src/main.rs').write_text(source)
-env=os.environ.copy();env['CARGO_TARGET_DIR']=str(ROOT/'.rdd/runtime/cargo-target');env['CARGO_INCREMENTAL']='0';env['CARGO_PROFILE_DEV_DEBUG']='0'
+env,qualified_paths,_=build_environment();env['CARGO_TARGET_DIR']=str(ROOT/'.rdd/runtime/cargo-target');env['CARGO_INCREMENTAL']='0';env['CARGO_PROFILE_DEV_DEBUG']='0'
 def run(label,argv,ok=True):
  r=subprocess.run(argv,capture_output=True,text=True,timeout=180,env=env);(work/(label+'.stdout')).write_text(r.stdout);(work/(label+'.stderr')).write_text(r.stderr)
  assert (r.returncode==0)==ok,(label,r.stderr);return r
-cargo=['cargo'];manifest=['--manifest-path',str(work/'Cargo.toml')]
+(work/'qualified-environment.json').write_text(json.dumps({'paths':qualified_paths,'cargo_home':env['CARGO_HOME'],'path':env['PATH']},indent=2)+'\n')
+cargo=[qualified_paths['cargo']];manifest=['--manifest-path',str(work/'Cargo.toml')]
 run('lock',cargo+['generate-lockfile','--offline']+manifest)
 run('positive-native',cargo+['run','--quiet','--locked']+manifest)
 run('positive-wasm',cargo+['check','--locked','--target','wasm32-unknown-unknown']+manifest)

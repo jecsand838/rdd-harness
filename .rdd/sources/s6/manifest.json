@@ -418,6 +418,84 @@
       "original_sha256": "5f58d4a480af8046b1f3fd101c2f9d932ed4d3c2df7693b3843273551bc7f6da",
       "original_bytes": 17270,
       "adaptation": "S6 candidate-contract integration or pinned portable replay metadata; original immutable evidence remains unchanged."
+    },
+    {
+      "path": ".rdd/sources/s6/native/Cargo.toml",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/sources/qualified-v3/Cargo.toml",
+      "sha256": "b1432122d464bb22427579dc187ad3870a447650b87ea07098740898196112dd",
+      "bytes": 822
+    },
+    {
+      "path": ".rdd/sources/s6/native/Cargo.lock",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/sources/qualified-v3/Cargo.lock",
+      "sha256": "7c5ed931b07ca0191c7dd6c227422d8e8daf436c962417fe3c10bbb443159606",
+      "bytes": 6819
+    },
+    {
+      "path": ".rdd/sources/s6/native/src/main.rs",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/sources/qualified-v3/src/main.rs",
+      "sha256": "380c769cdae9e791596955359e826cf3beb6c6449951fcf99b4aa5d672b6c4aa",
+      "bytes": 18536
+    },
+    {
+      "path": ".rdd/sources/s6/native/Info.plist",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/binaries/RDD Native Mechanisms v3.app/Contents/Info.plist",
+      "sha256": "b9b4e3b652547267f935a7e0677ce49795e1060a0ec3ba9724eae85179cbeb1c",
+      "bytes": 690
+    },
+    {
+      "path": ".rdd/sources/s6/native/pins.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/native-pins.json",
+      "sha256": "4475c7762d5e49f54901288636e30b51e171919f410d2ea6883c0d78619b0179",
+      "bytes": 3594
+    },
+    {
+      "path": ".rdd/sources/s6/native/archives.json",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/native-archive-identities.json",
+      "sha256": "d67542661d3aca87cc29858fca34494e16374837319a06748a4aa0aae755503c",
+      "bytes": 10456
+    },
+    {
+      "path": ".rdd/sources/s6/native/probe_suite.py",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/sources/probe_suite_v3.py",
+      "sha256": "a84d885a65deca412a2729768a7561edcc48f69ae65cc32b2b420672be878aa8",
+      "bytes": 6707,
+      "original_sha256": "6ee35433b1c6686764b06e53d982d3c897711ac8355fcba6e43ddcd999d81d4a",
+      "original_bytes": 6114,
+      "adaptation": "Explicit owned root/app/current executable identity arguments; original native cases and assertions preserved."
+    },
+    {
+      "path": ".rdd/sources/s6/native/supplemental.py",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/sources/supplemental_probes.py",
+      "sha256": "a213b085429dcd10f7135cd28a212d0df587220995aaf60f9113ce9c00748cae",
+      "bytes": 5804,
+      "original_sha256": "54245f29338d0a4868edd4bff149e5a900c246559148ad11c41eab9fc05960cf",
+      "original_bytes": 5211,
+      "adaptation": "Explicit owned root/app/current executable identity arguments; original native cases and assertions preserved."
+    },
+    {
+      "path": ".rdd/sources/s6/native/gui_watch.py",
+      "source": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/sources/gui_watch_v3.py",
+      "sha256": "7e04d1f64d4c9f6389801f914583e829d32623db56da783fde468cd1710dbcb1",
+      "bytes": 3899,
+      "original_sha256": "8921737190841af9a898d87e1e866230db0ce92f3bf3e13c9b3f594183ab3b2f",
+      "original_bytes": 3250,
+      "adaptation": "Explicit owned root/app/current executable identity arguments; original native cases and assertions preserved."
     }
-  ]
+  ],
+  "native_qualification": {
+    "source_sha256": "380c769cdae9e791596955359e826cf3beb6c6449951fcf99b4aa5d672b6c4aa",
+    "historical_binary_sha256": "5ed70e7b61d1dc25098d32928112d1a3f98524bacd3f6152ed87a9030349a53d",
+    "scope": "Accepted S5 source and GUI mechanism proof; new builds record their own identity, and CLI replay does not claim a repeated GUI observation.",
+    "historical_evidence": [
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/resume-ui-results.json",
+        "sha256": "55c4cb889ad1f32de717c05f6dd70d0eca0af0bbc64a3fb38af4008ba9adc4a9"
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/parent-native-gui-observations.json",
+        "sha256": "49b3169e64f5da4eededfa70ca3618445a9b73527c4c4458e878d9dd26f58915"
+      }
+    ]
+  }
 }

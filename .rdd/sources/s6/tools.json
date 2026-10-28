@@ -152,5 +152,14 @@
       "stdout": "tauri-cli 2.12.4\n",
       "stderr": ""
     }
+  },
+  "provided_host_webkit": {
+    "path": "/System/Volumes/Preboot/Cryptexes/OS/System/Library/Frameworks/WebKit.framework/Versions/A/Resources/Info.plist",
+    "sha256": "de760399a5ba3dcb26c679723c5864759ef8ce20c5b278fe451eb44f2cedf752",
+    "values": {
+      "CFBundleIdentifier": "com.apple.WebKit",
+      "CFBundleVersion": "21624.5.1.11.3",
+      "CFBundleShortVersionString": "21624"
+    }
   }
 }

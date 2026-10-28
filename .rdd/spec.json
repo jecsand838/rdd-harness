@@ -47,7 +47,8 @@
     "C-QUAL-CONTRACTS",
     "C-QUAL-BOUNDARIES",
     "C-QUAL-JOINT",
-    "C-QUAL-FIXTURES"
+    "C-QUAL-FIXTURES",
+    "C-QUAL-NATIVE"
   ],
   "project_check_ids": [
     "C-ACCOUNT",
@@ -1042,7 +1043,8 @@
       ],
       "qualification_checks": {
         "provider": [
-          "C-QUAL-BOUNDARIES"
+          "C-QUAL-BOUNDARIES",
+          "C-QUAL-NATIVE"
         ],
         "consumer": [],
         "negative_signature": [
@@ -1146,7 +1148,8 @@
       ],
       "qualification_checks": {
         "provider": [
-          "C-QUAL-BOUNDARIES"
+          "C-QUAL-BOUNDARIES",
+          "C-QUAL-NATIVE"
         ],
         "consumer": [],
         "negative_signature": [
@@ -3125,7 +3128,17 @@
         "R-GENERATED-12",
         "R-RUST",
         "R-CARGO",
-        "R-BUF"
+        "R-BUF",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -3255,7 +3268,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -3385,7 +3408,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -3515,7 +3548,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -3638,7 +3681,17 @@
         "R-GENERATED-9",
         "R-GENERATED-10",
         "R-GENERATED-11",
-        "R-GENERATED-12"
+        "R-GENERATED-12",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -3761,7 +3814,17 @@
         "R-GENERATED-9",
         "R-GENERATED-10",
         "R-GENERATED-11",
-        "R-GENERATED-12"
+        "R-GENERATED-12",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -3884,7 +3947,17 @@
         "R-GENERATED-9",
         "R-GENERATED-10",
         "R-GENERATED-11",
-        "R-GENERATED-12"
+        "R-GENERATED-12",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -4049,7 +4122,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-ACCOUNT-PRIVACY",
@@ -4205,7 +4288,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-CONTRACT-BOUNDARIES",
@@ -4354,7 +4447,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-VALIDATION",
@@ -4536,7 +4639,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-CAPACITY",
@@ -4692,7 +4805,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-CONTRACT-BOUNDARIES"
@@ -4839,7 +4962,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-DIAGNOSTICS",
@@ -4987,7 +5120,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-TASK-LIFECYCLE",
@@ -5163,7 +5306,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-RELEASE-HANDOFF"
@@ -5330,7 +5483,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-PACKAGE-INSTALL",
@@ -5493,7 +5656,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-OFFLINE-JOURNEYS",
@@ -5661,7 +5834,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-OFFLINE-HELP",
@@ -5840,7 +6023,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-BENCH-P1"
@@ -6082,7 +6275,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-BENCH-P2"
@@ -6268,7 +6471,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-BENCH-P3"
@@ -6435,7 +6648,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-STARTUP",
@@ -6623,7 +6846,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-PENDING-RESPONSIVENESS"
@@ -6790,7 +7023,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-NETWORK-PRIVACY"
@@ -6957,7 +7200,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-JOINT-QUALIFICATION"
@@ -7124,7 +7377,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-PROCESS-RECOVERY"
@@ -7291,7 +7554,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-INVALID-HANDLES",
@@ -7445,7 +7718,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-STORAGE-PRESERVATION",
@@ -7592,7 +7875,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-STARTUP",
@@ -7759,7 +8052,17 @@
         "R-TAURI",
         "R-WASM-BINDGEN",
         "R-HOST",
-        "R-OBSERVER"
+        "R-OBSERVER",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-OFFLINE-JOURNEYS",
@@ -7911,7 +8214,17 @@
         "R-PYTHON",
         "R-TRUNK",
         "R-TAURI",
-        "R-WASM-BINDGEN"
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
       ],
       "scenario_ids": [
         "SC-DRAFT-PROTECTION",
@@ -7921,6 +8234,146 @@
         "SC-REJECTED-UNCERTAIN"
       ],
       "results_path": ".rdd/evidence/results/C-WORKSPACE.json"
+    },
+    {
+      "id": "C-QUAL-NATIVE",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        ".rdd/sources/s6/qualify.py",
+        "native"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 600,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": "todo-macos26-arm64-reference",
+      "environments": [
+        "macos-reference"
+      ],
+      "requires": [
+        "R-INPUTS",
+        "R-S6-guard-py",
+        "R-S6-provision-py",
+        "R-S6-qualify-py",
+        "R-S6-boundary-py",
+        "R-S6-host-py",
+        "R-S6-transfer-py",
+        "R-S6-joint-py",
+        "R-S6-tools-json",
+        "R-S6-tool-acquisition-json",
+        "R-S6-observer-fresh_identity-py",
+        "R-S6-fixtures-check-py",
+        "R-S6-benchmarks-evaluate-py",
+        "R-FROZEN-0",
+        "R-FROZEN-1",
+        "R-FROZEN-2",
+        "R-FROZEN-3",
+        "R-FROZEN-4",
+        "R-FROZEN-5",
+        "R-FROZEN-6",
+        "R-FROZEN-7",
+        "R-FROZEN-8",
+        "R-FROZEN-9",
+        "R-FROZEN-10",
+        "R-FROZEN-11",
+        "R-FROZEN-12",
+        "R-FROZEN-13",
+        "R-FROZEN-14",
+        "R-FROZEN-15",
+        "R-FROZEN-16",
+        "R-FROZEN-17",
+        "R-FROZEN-18",
+        "R-FROZEN-19",
+        "R-FROZEN-20",
+        "R-FROZEN-21",
+        "R-FROZEN-22",
+        "R-FROZEN-23",
+        "R-FROZEN-24",
+        "R-FROZEN-25",
+        "R-FROZEN-26",
+        "R-FROZEN-27",
+        "R-FROZEN-28",
+        "R-FROZEN-29",
+        "R-FROZEN-30",
+        "R-FROZEN-31",
+        "R-FROZEN-32",
+        "R-FROZEN-33",
+        "R-FROZEN-34",
+        "R-FROZEN-35",
+        "R-FROZEN-36",
+        "R-FROZEN-37",
+        "R-FROZEN-38",
+        "R-FROZEN-39",
+        "R-FROZEN-40",
+        "R-FROZEN-41",
+        "R-FROZEN-42",
+        "R-FROZEN-43",
+        "R-FROZEN-44",
+        "R-FROZEN-45",
+        "R-FROZEN-46",
+        "R-FROZEN-47",
+        "R-FROZEN-48",
+        "R-FROZEN-49",
+        "R-FROZEN-50",
+        "R-FROZEN-51",
+        "R-FROZEN-52",
+        "R-FROZEN-53",
+        "R-FROZEN-54",
+        "R-FROZEN-55",
+        "R-FROZEN-56",
+        "R-FROZEN-57",
+        "R-FROZEN-58",
+        "R-GENERATOR",
+        "R-GENERATOR-LOCK",
+        "R-PROTO-DRIVER",
+        "R-RUST-PIN",
+        "R-BUF-CONFIG",
+        "R-PROTO-collection",
+        "R-PROTO-query",
+        "R-PROTO-backup",
+        "R-PROTO-workspace",
+        "R-PROTO-native_api",
+        "R-PROTO-storage",
+        "R-PROTO-selected_files",
+        "R-PROTO-desktop",
+        "R-PROTO-diagnostics",
+        "R-GENERATED-0",
+        "R-GENERATED-1",
+        "R-GENERATED-2",
+        "R-GENERATED-3",
+        "R-GENERATED-4",
+        "R-GENERATED-5",
+        "R-GENERATED-6",
+        "R-GENERATED-7",
+        "R-GENERATED-8",
+        "R-GENERATED-9",
+        "R-GENERATED-10",
+        "R-GENERATED-11",
+        "R-GENERATED-12",
+        "R-RUST",
+        "R-CARGO",
+        "R-BUF",
+        "R-PYTHON",
+        "R-TRUNK",
+        "R-TAURI",
+        "R-WASM-BINDGEN",
+        "R-NATIVE-Cargo-lock",
+        "R-NATIVE-Cargo-toml",
+        "R-NATIVE-Info-plist",
+        "R-NATIVE-archives-json",
+        "R-NATIVE-gui_watch-py",
+        "R-NATIVE-pins-json",
+        "R-NATIVE-probe_suite-py",
+        "R-NATIVE-replay-py",
+        "R-NATIVE-src-main-rs",
+        "R-NATIVE-supplemental-py"
+      ],
+      "scenario_ids": [],
+      "results_path": null
     }
   ],
   "requirement_map": [
@@ -12480,6 +12933,76 @@
       "owner": "Support.Build",
       "purpose": "Immutable qualification input, replay runner or independent fixture resource.",
       "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/Cargo.lock",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/Cargo.toml",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/Info.plist",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/archives.json",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/gui_watch.py",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/pins.json",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/probe_suite.py",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/replay.py",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/src/main.rs",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
+    },
+    {
+      "path": ".rdd/sources/s6/native/supplemental.py",
+      "kind": "file",
+      "owner": "Support.Build",
+      "purpose": "Immutable native mechanism qualification source, lock, identity input or portable replay.",
+      "disposition": "retain"
     }
   ],
   "resources": [
@@ -14259,6 +14782,126 @@
       "id": "R-GENERATED-12",
       "kind": "repository",
       "path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-Cargo-lock",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/Cargo.lock",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-Cargo-toml",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/Cargo.toml",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-Info-plist",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/Info.plist",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-archives-json",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/archives.json",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-gui_watch-py",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/gui_watch.py",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-pins-json",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/pins.json",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-probe_suite-py",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/probe_suite.py",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-replay-py",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/replay.py",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-src-main-rs",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/src/main.rs",
+      "version": null,
+      "probe_check_ids": [],
+      "environments": [
+        "macos-reference"
+      ],
+      "availability": "baseline",
+      "required_at": "specification"
+    },
+    {
+      "id": "R-NATIVE-supplemental-py",
+      "kind": "repository",
+      "path": ".rdd/sources/s6/native/supplemental.py",
       "version": null,
       "probe_check_ids": [],
       "environments": [
