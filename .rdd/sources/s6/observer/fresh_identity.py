@@ -1,6 +1,6 @@
 """Prepare a narrowly rebound observer; never grant trust or perform UI actions."""
 from pathlib import Path
-import argparse,hashlib,json,subprocess,plistlib,re
+import argparse,hashlib,json,subprocess,plistlib,re,os,time
 p=argparse.ArgumentParser();p.add_argument('--app',required=True);p.add_argument('--output',required=True);p.add_argument('--observer-id',required=True);p.add_argument('--build',action='store_true');a=p.parse_args()
 assert re.fullmatch(r'com\.rdd\.qualification\.axobserver\.r20261028\.s6\.[a-z0-9]+',a.observer_id)
 app=Path(a.app).resolve();out=Path(a.output).resolve();assert not out.exists()
@@ -17,7 +17,18 @@ identity={'target_app':str(app),'target_executable':str(binary),'target_sha256':
 if a.build:
  observer=out/'RDD S6 Exact Observer.app';macos=observer/'Contents/MacOS';macos.mkdir(parents=True)
  plist=plistlib.loads(Path(__file__).with_name('Info.plist').read_bytes());plist['CFBundleIdentifier']=a.observer_id;plist['CFBundleDisplayName']='RDD S6 Exact Observer';plist['CFBundleName']='RDD S6 Exact Observer';(observer/'Contents/Info.plist').write_bytes(plistlib.dumps(plist))
- subprocess.run(['/usr/bin/xcrun','swiftc',str(out/'observer.swift'),'-o',str(macos/'ax-observer')],check=True,capture_output=True,timeout=90)
- subprocess.run(['/usr/bin/codesign','--force','--sign','-',str(observer)],check=True,capture_output=True,timeout=30)
+ (out/'identity.json').write_text(json.dumps(identity,indent=2)+'\n')
+ env=os.environ.copy();temporary=out/'tmp';temporary.mkdir();env['TMPDIR']=str(temporary)
+ def run(label,args,timeout):
+  record={'argv':args,'started_epoch':time.time(),'temporary_directory':str(temporary)};receipt=out/(label+'.json');receipt.write_text(json.dumps(record,indent=2)+'\n')
+  try:
+   with (out/(label+'.stdout')).open('wb') as stdout,(out/(label+'.stderr')).open('wb') as stderr:
+    child=subprocess.run(args,stdout=stdout,stderr=stderr,env=env,timeout=timeout)
+   record.update(returncode=child.returncode,finished_epoch=time.time());assert child.returncode==0,(label,child.returncode)
+  except BaseException as error:record.update(error=repr(error));raise
+  finally:receipt.write_text(json.dumps(record,indent=2)+'\n')
+ run('compile',['/usr/bin/xcrun','swiftc','-module-cache-path',str(out/'module-cache'),'-sdk-module-cache-path',str(out/'sdk-module-cache'),'-clang-scanner-module-cache-path',str(out/'scanner-module-cache'),str(out/'observer.swift'),'-o',str(macos/'ax-observer')],90)
+ run('sign',['/usr/bin/codesign','--force','--sign','-',str(observer)],30)
+ run('verify-signature',['/usr/bin/codesign','--verify','--deep','--strict',str(observer)],30)
  identity.update(observer_executable=str(macos/'ax-observer'),observer_sha256=hashlib.sha256((macos/'ax-observer').read_bytes()).hexdigest(),status='built; exact identity requires review and actual trust before any UI action')
 (out/'identity.json').write_text(json.dumps(identity,indent=2)+'\n');print(json.dumps(identity))
