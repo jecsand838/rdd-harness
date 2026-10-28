@@ -1,11 +1,11 @@
 ---
 document_id: TODO-REQ
 title: Todo Application Requirements
-version: 0.4.0
+version: 0.5.0
 status: draft
-date: 2026-10-25
+date: 2026-10-27
 canonical_path: requirements/requirements.md
-requirement_revision: 4
+requirement_revision: 5
 requirement_priority: must
 ---
 
@@ -15,7 +15,7 @@ requirement_priority: must
 
 This document defines release one of a personal desktop Todo application built with Rust, Tauri 2, and an embedded Turso database. The application helps one person capture work, identify outstanding tasks, record completion, and retain control of their data while working offline.
 
-**Status:** Draft 0.4.0, developer-amended example baseline. Every identified requirement has revision 4 and priority Must under the macOS scope in Section 6. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
+**Status:** Draft 0.5.0, developer-amended revision 5 baseline. The 51 active requirements have revision 5 and priority Must under the macOS scope in Section 6. Acceptance criteria are normative parts of their parent requirement. Numerical limits are proposed product targets, not measured claims about Rust, Tauri, or Turso.
 
 Rust, Tauri 2, and embedded Turso are the requested technology constraints. The desktop platform matrix, Rust UI scope, feature boundaries, field limits, and performance budgets are explicit choices for this example. They can be amended before the requirements baseline is accepted.
 
@@ -162,12 +162,6 @@ Acceptance: Newest and oldest sort by created time in the named direction, then 
 The application shall display the number of matching tasks and distinguish an empty collection from a nonempty collection with no results under the current filters.
 
 Acceptance: The displayed result count matches the filtered identity set after every successful change. The empty-collection state exposes task creation; the no-results state exposes a way to clear search and filters.
-
-**FR-015 Refresh date-dependent state**
-
-While the application is active, the application shall update Today and Overdue results within 60 seconds of a local date or time-zone change, and within one second of resuming or regaining focus after such a change.
-
-Acceptance: Exercise midnight, leap day, a time-zone change across a date boundary, and suspend/resume. Stored due dates remain unchanged. Completed tasks never receive an Overdue indication.
 
 ### Mutation feedback and coordination
 
@@ -446,7 +440,7 @@ The following verification families define minimum coverage to expand into detai
 | Family | Requirement coverage | Minimum cases |
 |---|---|---|
 | V1 Task lifecycle | FR-001 through FR-009, FR-016 through FR-018 | Fresh profile, complete lifecycle, identical task content with distinct identities, exact limits, invalid data, discarded and retained drafts, repeated activation, confirmed and uncertain write outcomes. |
-| V2 Query and calendar | FR-010 through FR-015 | Exact identity sets and sort order, AND combinations, notes-only search, Unicode and punctuation, null due dates, timestamp ties, midnight, leap day, time-zone change, suspend and resume. |
+| V2 Query and calendar | FR-010 through FR-014 | Exact identity sets and sort order, AND combinations, notes-only search, Unicode and punctuation, null due dates, timestamp ties. |
 | V3 Backup and lifecycle | FR-019 through FR-025 | Export with active filters, round trip into a fresh profile on the selected acceptance environment, overwrite cancellation and failure, invalid and empty backup, confirmation, atomic replacement, double launch, and offline help. |
 | V4 Architecture and environment | NFR-TECH-001 through NFR-TECH-004, NFR-ARCH-001 through NFR-ARCH-002, NFR-MAINT-001, NFR-PLAT-001 | Source and dependency inspection, contract generation and boundary checks, clean builds, actual embedded database, justified module ownership, clean platform installation. |
 | V5 Data and privacy | NFR-OFF-001, NFR-PRIV-001 through NFR-PRIV-002, NFR-DATA-001 through NFR-DATA-004, NFR-SEC-001 through NFR-SEC-002, NFR-OBS-001 | Network isolation and observation, account isolation, command abuse, untrusted text, abrupt termination, storage failure, unsupported format, applicable migration, and diagnostic redaction. |
@@ -487,3 +481,4 @@ These references explain the selected technology constraints and verification gu
 | 0.2.0 | 2026-10-08 | Developer-authorized revision 2: restrict support and verification to the current macOS 26.7 / M3 Max / 128 GiB Mac; replace cross-platform backup verification with a fresh-profile round trip on that Mac. All 52 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this platform scope. |
 | 0.3.0 | 2026-10-11 | Developer-authorized revision 3: broaden support and acceptance to macOS 26.x on Apple silicon with at least 32 GB RAM, including qualifying macOS VMs. Specification records the selected acceptance environment for reproducibility. All 52 IDs, functional capabilities, performance thresholds and sampling, privacy, and accessibility obligations are retained within this broader platform scope. |
 | 0.4.0 | 2026-10-25 | Developer-authorized revision 4: lower the Section 6 benchmark free-local-storage minimum from 20 GiB to 15 GiB. All other platform conditions, performance budgets, sampling, and verification obligations remain unchanged. |
+| 0.5.0 | 2026-10-27 | Developer-authorized revision 5: retire and reserve FR-015 without renumbering FR-016 through FR-025; remove its refresh timing thresholds and the corresponding midnight, leap-day, time-zone-change, and suspend/resume verification cases. All unrelated requirements and rules remain unchanged. |
