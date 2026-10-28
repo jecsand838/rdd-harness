@@ -1,5 +1,6 @@
 """S1 allocations constrain the scenario handoff before S6 reconciliation."""
 import copy
+from contextlib import nullcontext
 import unittest
 
 from test_refinement import HarnessTestCase
@@ -31,28 +32,24 @@ class ScenarioHandoffTests(HarnessTestCase):
             f.record("S3")
         self.assertEqual(c.state(), before)
 
-    def test_s6_cannot_change_accepted_s1_polarity(self):
-        f = self.fixture
-        f.begin_s6()
-        spec = f.controller.spec()
-        spec["solution_elements"][1]["behavior"] = "negative"
-        with self.assertRaises(RddError):
-            artifacts.domain_solution_validate(self.root, spec, artifacts.unique(spec["modules"], "module"),
-                artifacts.unique(spec["solution_elements"], "element"))
+    def test_s6_cannot_change_accepted_s1_allocations_or_polarity(self):
+        reqs, inventory, rows = self.trace_fixture()
+        elements = artifacts.inventory_elements(inventory)
+        spec = dict(requirements_digest=reqs["digest"], requirement_map=[dict(requirement=rid) for rid in reqs["records"]],
+                    domain_inventory=dict(path=artifacts.DOMAIN_INVENTORY_PATH, sha256=file_hash(self.root / artifacts.DOMAIN_INVENTORY_PATH)))
+        modules = {"items": dict(requirements=inventory["domains"][0]["requirements"])}
+        for element in elements.values():
+            if element["kind"] == "behavior":
+                element["kind"] = "enabling"
+        artifacts.domain_solution_validate(self.root, spec, modules, elements)
+        for field, value in (("behavior", "negative"), ("requirements", ["FR-005"])):
+            changed = copy.deepcopy(elements)
+            changed["W_BEGIN_EDIT"][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(RddError, "allocation or polarity"):
+                artifacts.domain_solution_validate(self.root, spec, modules, changed)
 
     def trace_fixture(self):
         """Small independent oracle for the eight audited mismatching edges."""
-        requirements = ["FR-002", "FR-004", "FR-005", "FR-006", "FR-010", "FR-017", "FR-018",
-                        "FR-019", "FR-020", "FR-021", "FR-023", "FR-025"]
-        reqs = dict(digest="a" * 64, records={rid: {} for rid in requirements + ["NFR-PERF-002", "NFR-QUAL-002"]})
-        inventory = self.fixture.domain_inventory()
-        inventory["requirements_digest"] = reqs["digest"]
-        owner = inventory["domains"][0]
-        owner["requirements"] = requirements
-        owner["behaviors"] = [dict(id=eid, requirements=allocated, behavior="positive") for eid, allocated in (
-            ("C_SNAPSHOT", ["FR-002", "FR-023"]), ("Q_DEFAULT", ["FR-010"]),
-            ("W_BEGIN_EDIT", ["FR-006"]), ("W_EXPORT_INTENT", ["FR-020"]))]
-        owner["invariants"] = [dict(id="I_DRAFT_PROTECTION", requirements=["FR-006"], behavior="positive")]
         assertions = {
             "FR-002": ("G-SNAPSHOT", "Read an immutable committed snapshot"),
             "FR-004": ("G-CREATE", "Create an accepted task"),
@@ -66,6 +63,15 @@ class ScenarioHandoffTests(HarnessTestCase):
             "FR-021": ("G-EMPTY", "Validate a complete empty restore candidate"),
             "FR-023": ("G-FR023-RESTORE", "Restore the validated snapshot and reconcile state"),
             "FR-025": ("G-FR025-HELP", "Display local help while retaining the current window state")}
+        reqs = dict(digest="a" * 64, records={rid: {} for rid in list(assertions) + ["NFR-PERF-002", "NFR-QUAL-002"]})
+        inventory = self.fixture.domain_inventory()
+        inventory["requirements_digest"] = reqs["digest"]
+        owner = inventory["domains"][0]
+        owner["requirements"] = list(assertions)
+        owner["behaviors"] = [dict(id=eid, requirements=allocated, behavior="positive") for eid, allocated in (
+            ("C_SNAPSHOT", ["FR-002", "FR-023"]), ("Q_DEFAULT", ["FR-010"]),
+            ("W_BEGIN_EDIT", ["FR-006"]), ("W_EXPORT_INTENT", ["FR-020"]))]
+        owner["invariants"] = [dict(id="I_DRAFT_PROTECTION", requirements=["FR-006"], behavior="positive")]
         elements = artifacts.inventory_elements(inventory)
         rows = []
         for rid, (sid, assertion) in assertions.items():
@@ -94,75 +100,67 @@ class ScenarioHandoffTests(HarnessTestCase):
             write_json(self.root / SCENARIOS, broken)
             with self.subTest(element=eid, scenario=sid), self.assertRaisesRegex(RddError, "no shared requirement"):
                 artifacts.scenario_handoff_validate(self.root, reqs)
-        # Genuine multi-requirement coverage intersects each linked row and remains valid.
-        write_json(self.root / SCENARIOS, rows)
-        artifacts.scenario_handoff_validate(self.root, reqs)
 
     def test_s3_schema_identity_and_coverage_failures_preserve_the_oracle(self):
         reqs, inventory, rows = self.trace_fixture()
-        for change in ("unknown_requirement", "unknown_element", "duplicate_id", "duplicate_reference", "nfr_golden",
-                       "missing_assertion", "missing_positive_fr", "union_gap"):
+        restore = next(i for i, row in enumerate(rows) if row["id"] == "G-FR023-RESTORE")
+        changes = {
+            "unknown_requirement": lambda rows: rows[0]["requirements"].append("FR-UNKNOWN"),
+            "unknown_element": lambda rows: rows[0]["solution_elements"].append("UNOWNED"),
+            "duplicate_id": lambda rows: rows.append(copy.deepcopy(rows[0])),
+            "duplicate_reference": lambda rows: rows[0]["solution_elements"].append(rows[0]["solution_elements"][0]),
+            "nfr_golden": lambda rows: rows.append(dict(rows[0], id="G-NFR", requirements=["NFR-PERF-002"])),
+            "missing_assertion": lambda rows: rows[0].pop("verification_method"),
+            "union_gap": lambda rows: rows[restore]["solution_elements"].remove("C_SNAPSHOT"),
+            "missing_positive_fr": lambda rows: rows.append(dict(rows[restore], id="N-SNAPSHOT", kind="negative",
+                                                                  solution_elements=["C_SNAPSHOT"]))}
+        for change, mutate in changes.items():
             broken = copy.deepcopy(rows)
-            if change == "unknown_requirement":
-                broken[0]["requirements"].append("FR-UNKNOWN")
-            elif change == "unknown_element":
-                broken[0]["solution_elements"].append("UNOWNED")
-            elif change == "duplicate_id":
-                broken.append(copy.deepcopy(broken[0]))
-            elif change == "duplicate_reference":
-                broken[0]["solution_elements"].append(broken[0]["solution_elements"][0])
-            elif change == "nfr_golden":
-                broken.append(dict(broken[0], id="G-NFR", requirements=["NFR-PERF-002"]))
-            elif change == "missing_assertion":
-                del broken[0]["verification_method"]
-            else:
-                restore = next(row for row in broken if row["id"] == "G-FR023-RESTORE")
-                restore["solution_elements"].remove("C_SNAPSHOT")
-                if change == "missing_positive_fr":
-                    broken.append(dict(restore, id="N-SNAPSHOT", kind="negative", solution_elements=["C_SNAPSHOT"]))
+            if change == "missing_positive_fr":
+                changes["union_gap"](broken)
+            mutate(broken)
             write_json(self.root / SCENARIOS, broken)
             with self.subTest(change=change), self.assertRaises(RddError):
                 artifacts.scenario_handoff_validate(self.root, reqs)
-        for row in rows:
-            row["solution_elements"] = [eid for eid in row["solution_elements"] if eid != "C_SNAPSHOT"]
-        rows.append(dict(rows[0], id="N-SNAPSHOT", kind="negative", requirements=["FR-002", "FR-023"],
-                         solution_elements=["C_SNAPSHOT"]))
-        write_json(self.root / SCENARIOS, rows)
-        owner = inventory["domains"][0]
-        for behavior in ("negative", "support"):
-            owner["behaviors"][0]["behavior"] = behavior
-            write_json(self.root / artifacts.DOMAIN_INVENTORY_PATH, inventory)
-            artifacts.scenario_handoff_validate(self.root, reqs)
         (self.root / SCENARIOS).unlink()
         with self.assertRaises(RddError):
             artifacts.scenario_handoff_validate(self.root, reqs)
 
-    def test_first_wave_positive_allocations_need_union_and_golden_coverage(self):
+    def test_positive_allocations_need_linked_golden_and_union_coverage(self):
         reqs, inventory, rows = self.trace_fixture()
-        for eid, allocated, kind, expected in (("C_VALIDATE", ["FR-019", "FR-023"], "negative", "missing golden"),
-                                              ("B_EMPTY", ["FR-021", "FR-025"], None, "missing requirement")):
-            changed = copy.deepcopy(inventory)
-            changed["domains"][0]["behaviors"].append(dict(id=eid, requirements=allocated, behavior="positive"))
-            scenarios = copy.deepcopy(rows)
-            next(row for row in scenarios if allocated[0 if eid == "C_VALIDATE" else 1] in row["requirements"])["solution_elements"].append(eid)
-            if kind:
-                scenarios.append(dict(rows[0], id="N-VALIDATE", kind=kind, requirements=["FR-023"], solution_elements=[eid]))
+        nfr, extra = "NFR-PERF-002", "NFR-QUAL-002"
+        cases = ((["FR-019", "FR-023"], ["FR-019"], ["FR-023"], "positive", "missing golden"),
+                 (["FR-021", "FR-025"], ["FR-025"], [], "positive", "missing requirement"),
+                 ([nfr], [], [nfr], "positive", "missing golden"),
+                 ([nfr, extra], ["FR-019", nfr], [extra], "positive", None),
+                 (["FR-019", nfr], ["FR-019"], [nfr], "positive", None),
+                 ([nfr], [], [nfr], "negative", None),
+                 ([nfr], [], [nfr], "support", None),
+                 (["FR-019"], [], ["FR-019"], "negative", None),
+                 (["FR-019"], [], ["FR-019"], "support", None))
+        for allocated, golden, other, behavior, expected in cases:
+            changed, scenarios = copy.deepcopy(inventory), copy.deepcopy(rows)
+            changed["supporting_modules"] = [dict(id="UI", module="ui", kind="presentation", requirements=allocated,
+                behaviors=[dict(id="UI.Accessible", requirements=allocated, behavior=behavior)])]
+            for kind, requirements in (("golden", golden), ("benchmark", other)):
+                if requirements:
+                    scenarios.append(dict(rows[0], id="UI-" + kind, kind=kind, requirements=requirements,
+                                          solution_elements=["UI", "UI.Accessible"]))
             write_json(self.root / artifacts.DOMAIN_INVENTORY_PATH, changed)
             write_json(self.root / SCENARIOS, scenarios)
-            with self.subTest(element=eid), self.assertRaisesRegex(RddError, expected):
+            expectation = self.assertRaisesRegex(RddError, expected) if expected else nullcontext()
+            with self.subTest(allocated=allocated, golden=golden, behavior=behavior), expectation:
                 artifacts.scenario_handoff_validate(self.root, reqs)
 
     def test_s1_rejects_unknown_duplicate_and_out_of_owner_row_allocations(self):
         reqs, inventory, rows = self.trace_fixture()
-        for change in ("unknown", "out_of_owner", "duplicate", "old_schema"):
+        changes = {"unknown": lambda value: value["domains"][0]["behaviors"][0].update(requirements=["FR-UNKNOWN"]),
+                   "out_of_owner": lambda value: value["domains"][0]["behaviors"][0].update(requirements=["NFR-PERF-002"]),
+                   "duplicate": lambda value: value["domains"][0]["invariants"][0].update(id=value["domains"][0]["behaviors"][0]["id"]),
+                   "old_schema": lambda value: value.update(schema_version=1)}
+        for change, mutate in changes.items():
             broken = copy.deepcopy(inventory)
-            owner = broken["domains"][0]
-            if change in {"unknown", "out_of_owner"}:
-                owner["behaviors"][0]["requirements"] = ["FR-UNKNOWN" if change == "unknown" else "NFR-PERF-002"]
-            elif change == "duplicate":
-                owner["invariants"][0]["id"] = owner["behaviors"][0]["id"]
-            else:
-                broken["schema_version"] = 1
+            mutate(broken)
             with self.subTest(change=change), self.assertRaises(RddError):
                 artifacts.domain_inventory_validate(self.root, reqs, broken)
 
@@ -181,46 +179,45 @@ class ScenarioHandoffTests(HarnessTestCase):
             write_json(self.root / ".rdd/spec.json", spec)
             with self.subTest(field=field), self.assertRaises(RddError):
                 c.spec_validate()
-        write_json(self.root / ".rdd/spec.json", original)
         for eid in ("D-ITEMS", "B-STATE", "I-ORDER"):
             spec = copy.deepcopy(original)
             next(row for row in spec["solution_elements"] if row["id"] == eid)["scenarios"] = ["G01"] if eid == "D-ITEMS" else ["N01"]
             write_json(self.root / ".rdd/spec.json", spec)
             with self.subTest(reverse=eid), self.assertRaisesRegex(RddError, "reverse scenario"):
                 c.spec_validate()
-        write_json(self.root / ".rdd/spec.json", original)
         records = c._node_records(c.state())
-        for change in ("hash", "digest", "document"):
+        changes = {"hash": lambda state, spec: state["S3"]["outputs"].update({SCENARIOS: "b" * 64}),
+                   "digest": lambda state, spec: state["S3"].update(output_digest="b" * 64),
+                   "document": lambda state, spec: spec["documents"].remove(SCENARIOS)}
+        for change, mutate in changes.items():
             state, spec = copy.deepcopy(records), copy.deepcopy(original)
-            if change == "hash":
-                state["S3"]["outputs"][SCENARIOS] = "b" * 64
-            elif change == "digest":
-                state["S3"]["output_digest"] = "b" * 64
-            elif change == "document":
-                spec["documents"].remove(SCENARIOS)
+            mutate(state, spec)
             with self.subTest(provenance=change), self.assertRaises(RddError):
                 artifacts.validate_accepted_domain_inventory(self.root, spec, state)
-        for change in ("extra", "missing", "row"):
+        changes = {"extra": lambda spec: spec["scenarios"].append(dict(spec["scenarios"][0], id="NEW-S6")),
+                   "missing": lambda spec: spec["scenarios"].pop(),
+                   "row": lambda spec: spec["scenarios"][0].update(expected="A different independently plausible result")}
+        for change, mutate in changes.items():
             spec = copy.deepcopy(original)
-            if change == "extra":
-                spec["scenarios"].append(dict(spec["scenarios"][0], id="NEW-S6"))
-            elif change == "missing":
-                spec["scenarios"].pop()
-            else:
-                spec["scenarios"][0]["expected"] = "A different independently plausible result"
+            mutate(spec)
             with self.subTest(stateless=change), self.assertRaisesRegex(RddError, "accepted S3 scenario catalog"):
                 artifacts.spec_validate(self.root, spec, artifacts.requirements(self.root, "requirements/requirements.md"), c.config)
-        reqs, inventory, rows = self.trace_fixture()
-        elements = artifacts.inventory_elements(inventory)
-        spec = dict(requirements_digest=reqs["digest"], requirement_map=[dict(requirement=rid) for rid in reqs["records"]],
-                    domain_inventory=dict(path=artifacts.DOMAIN_INVENTORY_PATH, sha256=file_hash(self.root / artifacts.DOMAIN_INVENTORY_PATH)))
-        modules = {"items": dict(requirements=inventory["domains"][0]["requirements"])}
-        elements["W_BEGIN_EDIT"]["kind"] = "enabling"
-        elements["C_SNAPSHOT"]["kind"] = elements["Q_DEFAULT"]["kind"] = elements["W_EXPORT_INTENT"]["kind"] = "enabling"
-        artifacts.domain_solution_validate(self.root, spec, modules, elements)
-        elements["W_BEGIN_EDIT"]["requirements"] = ["FR-005"]
-        with self.assertRaisesRegex(RddError, "allocation or polarity"):
-            artifacts.domain_solution_validate(self.root, spec, modules, elements)
+        nfr = "NFR-UI-001"
+        spec = copy.deepcopy(original)
+        spec["solution_elements"].append(dict(id="UI.Accessible", module=None, kind="enabling", behavior="positive",
+            requirements=[nfr], scenarios=["A01"], specifications=[]))
+        spec["scenarios"].append(dict(rows[0], id="A01", kind="accessibility", requirements=[nfr],
+                                     solution_elements=["UI.Accessible"]))
+        checks = artifacts.unique(spec["checks"], "check")
+        checks["C-APP"]["scenario_ids"].append("A01")
+        with self.assertRaisesRegex(RddError, "Positive enabling UI.Accessible: missing golden"):
+            artifacts.solution_validate(self.root, spec, {"FR-001", nfr}, artifacts.unique(spec["modules"], "module"),
+                artifacts.unique(spec["scenarios"], "scenario"), checks, spec["documents"])
+        spec["scenarios"][0]["solution_elements"].append("UI.Accessible")
+        spec["scenarios"][0]["requirements"].append(nfr)
+        spec["solution_elements"][-1]["scenarios"].append("G01")
+        artifacts.solution_validate(self.root, spec, {"FR-001", nfr}, artifacts.unique(spec["modules"], "module"),
+            artifacts.unique(spec["scenarios"], "scenario"), checks, spec["documents"])
 
     def test_s3_is_the_sole_owner_of_the_required_scenario_artifact(self):
         c = self.fixture.controller
