@@ -1,5 +1,5 @@
 {
-  "closure_digest": "8110677c787abd470318409b9d9eb1b0c8c530e26ad8758d29dd1411e71a1634",
+  "closure_digest": "e4f794c8e07207fe305b876f91757b6f4cce36649b2d3a5caa27424bbc82ead0",
   "decisions": [
     {
       "id": "D-CORE",
@@ -12,13 +12,13 @@
         "S6"
       ],
       "prerequisites": [],
-      "provenance_digest": "b890398a5dacf8a73d29277b7331df419609217a961ca2e2c99cdbf57a60d163",
+      "provenance_digest": "9931e152cd26dd64567a20560a355559374d51664a217e8b0c51dd457f5778c3",
       "publication": {
         "claim": {
           "attempt": 1,
-          "input_digest": "82167a28d61bf7d7907cf58165400951c1cef4159719f9061a11660fdeb76492",
+          "input_digest": "63c6e5cccdc50b7612f24658af02ec080d4306f11566c78fd404bd258a2ca220",
           "node": "S1",
-          "session_id": "/root/r5_domain"
+          "session_id": "/root/corrected_domain"
         },
         "decision": {
           "id": "D-CORE",
@@ -56,7 +56,7 @@
           "SC-NATIVE-INPUT",
           "SC-TEXT-AS-DATA"
         ],
-        "sha256": "f3c4fadda0d03defcb2761ad76dd8677e330173af7665a27e56764e96e8c822f",
+        "sha256": "110c599cd9380ed7330c4789e1dfcaf4dfe74252c048dcd800a08d4ae809d830",
         "text": "Collection, query, backup and workspace are distinct functional owners; supporting modules own mechanisms or presentation, never business invariants. Composition constructs/registers genuine generated providers without business-call or storage permission. Collection alone validates and normalizes task values for create, edit and restore. Identity is lowercase hyphenated UUIDv4, ordered by its unsigned 16 bytes. Title/query outer trimming uses Unicode 18 White_Space; title line breaks are LF, VT, FF, CR, NEL, LS and PS. Search applies NFC then full default non-Turkic case folding without rewriting stored text. UTC instants use signed 64-bit Unix seconds and integer nanoseconds 0–999999999; no chronological ordering is required. Status controls completed-time presence; editing Completed retains that instant.\n\nQuery combines status/date/text with AND and owns ordering and exact counts. Native workspace protects raw editor changes, including normalization-equivalent drafts; it retains submitted input and owns one pending task-mutation/restore slot until commit, confirmed rejection or reconciliation. Repeated activation of the same pending handle cannot reexecute; risky retry waits for reconciliation with committed state. Typed errors identify category, field/record and recovery without raw SQL or stack traces.\n\nBackup v1 is UTF-8 JSON with exactly format_version:1 and tasks. Each task contains identity, title, notes, due_date, status, created_time, updated_time and completed_time; optional date/completed time use null, notes use an empty string when absent, status is Open or Completed, and instants contain seconds/nanos integers. Reject missing/unknown/duplicate keys, wrong types/version and duplicate identities before consent. Dates use strict YYYY-MM-DD within years 0001–9999. The same collection normalization validates imports; valid normalized exports round-trip exactly. Retain the immutable validated candidate, selected-file identity/label, counts and consent association; apply retained bytes/values without substituting changed file contents. Consent also binds current collection revision and is renewed if that revision changes.\n\nExport snapshots one complete committed collection, independent of filters/drafts, including the old committed state while another mutation is pending. Restore replaces the collection atomically through collection. Destination checks include resolved paths and existing file identities for all managed database, recovery, migration and diagnostic files; unsupported replacement semantics reject before overwrite. No arbitrary byte cap may exclude valid 10000-task maximum-field content; decoded scalar limits apply after normalization and JSON escaping/whitespace does not count as task content. Actual storage/publication mechanisms require S5 proof."
       },
       "requirements": [
@@ -98,12 +98,77 @@
           "sha256": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31"
         },
         {
+          "path": ".rdd/baselines/R20261028T233423Z-a24545/previous/docs/specs/domain-model.md",
+          "sha256": "edc8fd93f240155b6eef95d44c32c4a8d0e7802707fa06531a1d69af8b8b2ca0",
+          "text": "Collection, query, backup and workspace are distinct functional owners; supporting modules own mechanisms or presentation, never business invariants. Composition constructs/registers genuine generated providers without business-call or storage permission. Collection alone validates and normalizes task values for create, edit and restore. Identity is lowercase hyphenated UUIDv4, ordered by its unsigned 16 bytes. Title/query outer trimming uses Unicode 18 White_Space; title line breaks are LF, VT, FF, CR, NEL, LS and PS. Search applies NFC then full default non-Turkic case folding without rewriting stored text. UTC instants use signed 64-bit Unix seconds and integer nanoseconds 0–999999999; no chronological ordering is required. Status controls completed-time presence; editing Completed retains that instant.\n\nQuery combines status/date/text with AND and owns ordering and exact counts. Native workspace protects raw editor changes, including normalization-equivalent drafts; it retains submitted input and owns one pending task-mutation/restore slot until commit, confirmed rejection or reconciliation. Repeated activation of the same pending handle cannot reexecute; risky retry waits for reconciliation with committed state. Typed errors identify category, field/record and recovery without raw SQL or stack traces.\n\nBackup v1 is UTF-8 JSON with exactly format_version:1 and tasks. Each task contains identity, title, notes, due_date, status, created_time, updated_time and completed_time; optional date/completed time use null, notes use an empty string when absent, status is Open or Completed, and instants contain seconds/nanos integers. Reject missing/unknown/duplicate keys, wrong types/version and duplicate identities before consent. Dates use strict YYYY-MM-DD within years 0001–9999. The same collection normalization validates imports; valid normalized exports round-trip exactly. Retain the immutable validated candidate, selected-file identity/label, counts and consent association; apply retained bytes/values without substituting changed file contents. Consent also binds current collection revision and is renewed if that revision changes.\n\nExport snapshots one complete committed collection, independent of filters/drafts, including the old committed state while another mutation is pending. Restore replaces the collection atomically through collection. Destination checks include resolved paths and existing file identities for all managed database, recovery, migration and diagnostic files; unsupported replacement semantics reject before overwrite. No arbitrary byte cap may exclude valid 10000-task maximum-field content; decoded scalar limits apply after normalization and JSON escaping/whitespace does not count as task content. Actual storage/publication mechanisms require S5 proof."
+        }
+      ],
+      "statement_digest": "61ca2dbc69b7847da9cbfed5b9ab3ca285639990b473b1999fd1c0119e215187"
+    },
+    {
+      "id": "D-PREP-ROUTE",
+      "nodes": [
+        "S5",
+        "S6"
+      ],
+      "prerequisites": [
+        {
+          "id": "D-CORE",
+          "revision": 1
+        },
+        {
+          "id": "D-VERIFY",
+          "revision": 1
+        },
+        {
+          "id": "D-STACK",
+          "revision": 1
+        }
+      ],
+      "provenance_digest": "a76603b1c345bf84f8fbeb22ebabb652a6a7952f9132f798869f381fc424feb8",
+      "publication": {
+        "claim": {
+          "attempt": 1,
+          "input_digest": "b1fa86598b7902f0b9e6f27da170701b757a6b8ce8bd412af308f9461b898246",
+          "node": "S5",
+          "session_id": "/root/corrected_qualification"
+        },
+        "decision": {
+          "id": "D-PREP-ROUTE",
+          "revision": 1
+        },
+        "path": "docs/specs/dependencies.md",
+        "previous_revision": null,
+        "revision": 1,
+        "scenarios": [
+          "SC-JOINT-QUALIFICATION",
+          "SC-CONTRACT-BOUNDARIES",
+          "SC-PRODUCTION-SCOPE",
+          "SC-PACKAGE-INSTALL",
+          "SC-RUNTIME-RESTRICTIONS",
+          "SC-RELEASE-HANDOFF"
+        ],
+        "sha256": "c8ade4a2bed7e53f5843a353b362e2f1057e184975c389760c324b8a12788c5d",
+        "text": "Use a portable macOS verification environment, macos-portable with no host profile, for C-QUAL-FIXTURES and C-READY-FIXTURE-TOOLS. Both execute the same independent frozen-fixture reproduction and full Unicode-input inspection; the readiness result additionally observes dedicated R-PYTHON-PORTABLE at Python 3.14.7. Declare the exact dispatcher, checker, fixture manifest and 13 fixture inputs they actually read. This environment is build/test infrastructure, not the product acceptance reference host. Preserve all macos-reference native package, generated-boundary, accessibility, privacy, storage and benchmark obligations. S5 proves positive reproduction, repeatability and changed-byte rejection; S6 reconciles the exact check/resource/environment declarations. Missing provisioning, native or current-candidate evidence blocks acceptance; historical proofs are reusable only within verified unchanged scope, and cached binaries do not establish clean provisioning."
+      },
+      "requirements": [
+        "NFR-TECH-004",
+        "NFR-QUAL-001",
+        "NFR-QUAL-002"
+      ],
+      "revision": 1,
+      "sources": [
+        {
+          "path": "requirements/requirements.md",
+          "sha256": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31"
+        },
+        {
           "path": "docs/specs/intake.md",
           "sha256": "f48404672d980a4059e385e86cdbb04d8e3ca53caeed8a4a81bc3ad5221a12cb",
           "text": "The user delegated grill and routine interactive decisions; use truthful delegated provenance and requirements-consistent recommendations, retaining material questions/decisions/publication."
         }
       ],
-      "statement_digest": "61ca2dbc69b7847da9cbfed5b9ab3ca285639990b473b1999fd1c0119e215187"
+      "statement_digest": "c1e40daebf48f0faf527d75b77f14c7fbf7f81988561c4e2c43c9c81ee79462a"
     },
     {
       "id": "D-STACK",
@@ -121,21 +186,21 @@
           "revision": 1
         }
       ],
-      "provenance_digest": "6bf2a8bed9852e08fadc5373e4bab0db1c145abea003f9b8319357b576d908b9",
+      "provenance_digest": "f512439d4737a374272f6eac2fb4595284170d317a9986332a347afd7603692c",
       "publication": {
         "claim": {
-          "attempt": 3,
-          "input_digest": "ab0d7b0c298e620ec432b32bee68ae520a81ceba6445c1c8807f03accad17af5",
+          "attempt": 1,
+          "input_digest": "b1fa86598b7902f0b9e6f27da170701b757a6b8ce8bd412af308f9461b898246",
           "node": "S5",
-          "session_id": "/root/r5_qualification"
+          "session_id": "/root/corrected_qualification"
         },
         "decision": {
           "id": "D-STACK",
           "revision": 1
         },
         "path": "docs/specs/dependencies.md",
-        "previous_revision": 3,
-        "revision": 4,
+        "previous_revision": null,
+        "revision": 1,
         "scenarios": [
           "SC-JOINT-QUALIFICATION",
           "SC-CONTRACT-BOUNDARIES",
@@ -144,7 +209,7 @@
           "SC-RUNTIME-RESTRICTIONS",
           "SC-RELEASE-HANDOFF"
         ],
-        "sha256": "18ce2c2dc84f797fcaec91f5bac586b567667b7f3e46c7c42f2d823812a7ffed",
+        "sha256": "c8ade4a2bed7e53f5843a353b362e2f1057e184975c389760c324b8a12788c5d",
         "text": "Qualify Rust 1.99.0, Tauri 2.12.5 with tauri-build 2.7.4 and CLI 2.12.4, Leptos 0.8.22 CSR, Trunk 0.22.1, wasm-bindgen library/CLI 0.2.129, embedded turso 0.8.3 and ICU4X casemap/normalizer 2.4.0 with compiled Unicode 18 data. Use the existing Buf 1.73.0/Prost 0.14.4 generated local-interface toolchain. Additional necessary dependencies require exact locks and justified purposes in S5; metadata/MSRV compatibility alone is not qualification.\n\nUse bundled Rust/WASM UI assets, no frontend server, cloud synchronization or added production JavaScript behavior. Select a native .app distributed in a .dmg and installed into the current user's Applications location; record signing/quarantine and developer-tool-unavailable launch behavior actually exercised. The observed SDK 27.0/CLT route targets macOS 26.0 or later and must be built on the selected macOS 26.x environment. Acquire the three CLI tools from verified official arm64 release archives into this run's owned tools directory, preserving archive and executable identities.\n\nS5 uses a disposable non-Todo carrier to prove native/frontend/generated API/database integration, persistence/reopen, error/cancellation paths, package/install and external observation. S6/S7 must additionally qualify the exact application contracts and complete candidate. Missing proof remains a blocker; do not patch the harness, weaken requirements or substitute cached binaries for clean provisioning."
       },
       "requirements": [
@@ -167,9 +232,9 @@
           "sha256": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31"
         },
         {
-          "path": "docs/specs/intake.md",
-          "sha256": "f48404672d980a4059e385e86cdbb04d8e3ca53caeed8a4a81bc3ad5221a12cb",
-          "text": "The user delegated grill and routine interactive decisions; use truthful delegated provenance and requirements-consistent recommendations, retaining material questions/decisions/publication."
+          "path": ".rdd/baselines/R20261028T233423Z-a24545/previous/docs/specs/dependencies.md",
+          "sha256": "46fb41446475768be551480b6afebb58ee01318ba87bbc9d3abef4f707d31b2c",
+          "text": "Qualify Rust 1.99.0, Tauri 2.12.5 with tauri-build 2.7.4 and CLI 2.12.4, Leptos 0.8.22 CSR, Trunk 0.22.1, wasm-bindgen library/CLI 0.2.129, embedded turso 0.8.3 and ICU4X casemap/normalizer 2.4.0 with compiled Unicode 18 data. Use the existing Buf 1.73.0/Prost 0.14.4 generated local-interface toolchain. Additional necessary dependencies require exact locks and justified purposes in S5; metadata/MSRV compatibility alone is not qualification.\n\nUse bundled Rust/WASM UI assets, no frontend server, cloud synchronization or added production JavaScript behavior. Select a native .app distributed in a .dmg and installed into the current user's Applications location; record signing/quarantine and developer-tool-unavailable launch behavior actually exercised. The observed SDK 27.0/CLT route targets macOS 26.0 or later and must be built on the selected macOS 26.x environment. Acquire the three CLI tools from verified official arm64 release archives into this run's owned tools directory, preserving archive and executable identities.\n\nS5 uses a disposable non-Todo carrier to prove native/frontend/generated API/database integration, persistence/reopen, error/cancellation paths, package/install and external observation. S6/S7 must additionally qualify the exact application contracts and complete candidate. Missing proof remains a blocker; do not patch the harness, weaken requirements or substitute cached binaries for clean provisioning."
         }
       ],
       "statement_digest": "de391f61ef3a58d30294a4c29d21f6a8bba3104d36cb18f0f1f07450c67c1d06"
@@ -189,13 +254,13 @@
           "revision": 1
         }
       ],
-      "provenance_digest": "2c757edd07b756e924b60aacfe41722b2d9db0c28067df7b61b1eefff5263010",
+      "provenance_digest": "7f67f1f6fa00a1776b8056a7101df9d00bc969104189db94f2b6d7746fcb7b14",
       "publication": {
         "claim": {
           "attempt": 1,
-          "input_digest": "014ba3ef70dea55305c95440a6b8f5c59fb7c4b88c6d69cdd03f33005e0d49de",
+          "input_digest": "25964d37737a2f55d1fffb7ec1173efb71771142bffbbbe1cbedd9779e1ec6a7",
           "node": "S2",
-          "session_id": "/root/r5_verification"
+          "session_id": "/root/corrected_verification"
         },
         "decision": {
           "id": "D-VERIFY",
@@ -205,28 +270,47 @@
         "previous_revision": null,
         "revision": 1,
         "scenarios": [
+          "SC-STARTUP",
+          "SC-TASK-LIFECYCLE",
           "SC-VALIDATION",
+          "SC-INVALID-TASKS",
           "SC-QUERY",
           "SC-SEARCH-UNICODE",
           "SC-ORDERING",
+          "SC-PENDING-RESPONSIVENESS",
+          "SC-REJECTED-UNCERTAIN",
           "SC-BACKUP-EXPORT",
+          "SC-BACKUP-FRESH-PROFILE",
+          "SC-BACKUP-PROTECTED",
+          "SC-RESTORE-VALIDATION-CONSENT",
+          "SC-RESTORE-INVALID",
           "SC-RESTORE-REPLACEMENT",
+          "SC-RESTORE-EMPTY",
+          "SC-RESTORE-CHANGED-FILE",
+          "SC-RESTORE-STALE-CONSENT",
+          "SC-SINGLE-INSTANCE",
+          "SC-CAPACITY",
+          "SC-CAPACITY-REJECTION",
+          "SC-PROCESS-RECOVERY",
+          "SC-BACKWARD-CLOCK",
+          "SC-QUERY-REJECT",
+          "SC-NATIVE-INPUT",
+          "SC-TEXT-AS-DATA",
           "SC-JOINT-QUALIFICATION",
           "SC-PACKAGE-INSTALL",
-          "SC-CAPACITY",
+          "SC-OFFLINE-JOURNEYS",
+          "SC-NETWORK-PRIVACY",
+          "SC-ACCOUNT-PRIVACY",
+          "SC-SELECTED-PATH-SCOPE",
+          "SC-RUNTIME-RESTRICTIONS",
+          "SC-KEYBOARD",
+          "SC-VISUAL-ACCESSIBILITY",
           "SC-BENCH-P1",
           "SC-BENCH-P2",
           "SC-BENCH-P3",
-          "SC-PENDING-RESPONSIVENESS",
-          "SC-NETWORK-PRIVACY",
-          "SC-ACCOUNT-PRIVACY",
-          "SC-RUNTIME-RESTRICTIONS",
-          "SC-PROCESS-RECOVERY",
-          "SC-KEYBOARD",
-          "SC-VISUAL-ACCESSIBILITY",
           "SC-RELEASE-HANDOFF"
         ],
-        "sha256": "ee642e38a6ed6f21239ab4e82b5ab32925a7953aa45b4c09a82deca9649e7c48",
+        "sha256": "98daa2cbde1957ab4996e69bb4641dd15e1bb336ef9b470a4c536201800cea86",
         "text": "The selected acceptance environment is the current macOS 26.6.2 build 25G83 arm64 VM, VirtualMac2,1, with 32 GiB allocated guest RAM. The user observed SSD backing storage, physical-host AC power and normal performance mode on 2026-10-27; this is human attestation, not a machine measurement. Record WebView/tool/instrumentation identities and recheck window, host and storage conditions at each benchmark.\n\nDelivered app/DMG packages are exercised through external macOS Accessibility automation and identified human observations; they contain no test server, command mock, automation-only mutation interface or clock override. Separately identified builds of the same source revision may inject deterministic commit/failure checkpoints and boundary-time fixtures for correctness. Those builds cannot replace release installation, normal journeys, runtime restrictions or P1–P3. Qualify actual AX authorization, external monotonic timing and visible-result observation, window sizing, second-account access, offline isolation, process-attributed network observation and evidence transfer before claiming those routes ready.\n\nD1 uses the frozen nominal date 2026-10-27. Freeze its seed, bytes/digest and independent identity-set/order formulas. Delivered-package checks use actual local Today, observed externally; the frozen oracle parameterizes date-dependent expected sets by that observed date rather than calling application query logic. A date change during a sample is an independently recorded environmental invalidation, not permission to discard a slow valid sample. No OS-clock manipulation or retired FR-015 refresh exercise is required. Unicode 18 expectations come from frozen normative Unicode data/vectors, not this host Python Unicode 16 or the implementation library alone."
       },
       "requirements": [
@@ -261,23 +345,18 @@
           "sha256": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31"
         },
         {
-          "path": "docs/specs/intake.md",
-          "sha256": "f48404672d980a4059e385e86cdbb04d8e3ca53caeed8a4a81bc3ad5221a12cb",
-          "text": "The user delegated grill and routine interactive decisions; use truthful delegated provenance and requirements-consistent recommendations, retaining material questions/decisions/publication."
+          "path": ".rdd/baselines/R20261028T233423Z-a24545/previous/docs/specs/constraints.md",
+          "sha256": "fdc0308d7962d4d240dfffa3663fd76f2620d4540e58019fd87258f23db2730b",
+          "text": "The selected acceptance environment is the current macOS 26.6.2 build 25G83 arm64 VM, VirtualMac2,1, with 32 GiB allocated guest RAM. The user observed SSD backing storage, physical-host AC power and normal performance mode on 2026-10-27; this is human attestation, not a machine measurement. Record WebView/tool/instrumentation identities and recheck window, host and storage conditions at each benchmark.\n\nDelivered app/DMG packages are exercised through external macOS Accessibility automation and identified human observations; they contain no test server, command mock, automation-only mutation interface or clock override. Separately identified builds of the same source revision may inject deterministic commit/failure checkpoints and boundary-time fixtures for correctness. Those builds cannot replace release installation, normal journeys, runtime restrictions or P1–P3. Qualify actual AX authorization, external monotonic timing and visible-result observation, window sizing, second-account access, offline isolation, process-attributed network observation and evidence transfer before claiming those routes ready.\n\nD1 uses the frozen nominal date 2026-10-27. Freeze its seed, bytes/digest and independent identity-set/order formulas. Delivered-package checks use actual local Today, observed externally; the frozen oracle parameterizes date-dependent expected sets by that observed date rather than calling application query logic. A date change during a sample is an independently recorded environmental invalidation, not permission to discard a slow valid sample. No OS-clock manipulation or retired FR-015 refresh exercise is required. Unicode 18 expectations come from frozen normative Unicode data/vectors, not this host Python Unicode 16 or the implementation library alone."
         }
       ],
       "statement_digest": "7b8ce7227b876b72f11904969f97e44e3935df35a8a34a92d483771a7b8721ef"
     }
   ],
   "policy": "deb36be1c830be6920e22826c244cd89da07169c7c255e6c6f1a58b0161d760a",
-  "question_sources": [
-    {
-      "path": "requirements/requirements.md",
-      "sha256": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31"
-    }
-  ],
-  "questions_digest": "eb625a7d6ce902b1e1bf7315152a3930860d043a474b5e9d8a19c6fdd08f8531",
+  "question_sources": [],
+  "questions_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "requirements_digest": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31",
-  "run_id": "R20261028T021552Z-5f7dc8",
+  "run_id": "R20261028T233423Z-a24545",
   "schema_version": 1
 }

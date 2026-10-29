@@ -2,6 +2,8 @@
 
 Authority: requirements revision 5. This S2 allocation covers all 27 NFRs; S3 supplies assertions and S4 supplies benchmark details. No application acceptance is claimed.
 
+PREP-SPEC-001 requires an actual portable hosted preparation check with complete provisioned prerequisites and retained native qualification evidence. S5 qualifies routes; S6 binds commands, inputs and hosts. Hosted preparation proof cannot discharge native installation, packaged journeys, accessibility, privacy or benchmark obligations. Every check must have an executable route at its required stage; host labels alone prove nothing. Current free storage is approximately 9 GiB, below the 15 GiB benchmark minimum; prior observations establish no current benchmark readiness.
+
 ## Accepted verification direction (D-VERIFY revision 1)
 
 The selected acceptance environment is the current macOS 26.6.2 build 25G83 arm64 VM, VirtualMac2,1, with 32 GiB allocated guest RAM. The user observed SSD backing storage, physical-host AC power and normal performance mode on 2026-10-27; this is human attestation, not a machine measurement. Record WebView/tool/instrumentation identities and recheck window, host and storage conditions at each benchmark.

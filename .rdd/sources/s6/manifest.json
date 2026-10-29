@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "purpose": "Immutable replay inputs with exact S5 provenance; explicitly adapted carrier package names and candidate-crate consumption retain original and resulting identities.",
+  "purpose": "Immutable replay inputs retain exact historical S5 provenance and adapted source identities. Historical source paths resolve within the prior run documented by .rdd/sources/qualification.json; they are provenance, not current receipt claims. The portable checker consumes only its 13 declared fixture rows; native checks retain their complete inputs.",
   "copies": [
     {
       "path": ".rdd/sources/s6/carrier/Cargo.toml",

@@ -1,0 +1,26 @@
+syntax = "proto3";
+package todo.desktop.v1;
+
+enum ErrorCode { ERROR_CODE_UNSPECIFIED = 0; ERROR_CODE_UNAVAILABLE = 1; ERROR_CODE_SECONDARY = 2; ERROR_CODE_INVALID_INPUT = 3; }
+message Failure { ErrorCode code = 1; }
+message InstanceRequest {}
+message Instance { bool primary = 1; }
+enum EventKind { EVENT_KIND_UNSPECIFIED = 0; EVENT_KIND_ACTIVATED = 1; EVENT_KIND_CLOSE_REQUESTED = 2; EVENT_KIND_NONE = 3; }
+enum WindowAction { WINDOW_ACTION_UNSPECIFIED = 0; WINDOW_ACTION_POLL = 1; WINDOW_ACTION_ACTIVATE = 2; WINDOW_ACTION_CLOSE = 3; }
+message EventsRequest { WindowAction action = 1; }
+message Event { EventKind kind = 1; }
+message ResourcesRequest {}
+message Resources { string application_version = 1; string help_text = 2; }
+message PathsRequest {}
+message Paths { string data_label = 1; string diagnostic_label = 2; }
+message InstanceResponse { oneof outcome { Instance success = 1; Failure failure = 2; } }
+message EventsResponse { oneof outcome { Event success = 1; Failure failure = 2; } }
+message ResourcesResponse { oneof outcome { Resources success = 1; Failure failure = 2; } }
+message PathsResponse { oneof outcome { Paths success = 1; Failure failure = 2; } }
+
+service DesktopService {
+  rpc Instance(InstanceRequest) returns (InstanceResponse);
+  rpc Events(EventsRequest) returns (EventsResponse);
+  rpc Resources(ResourcesRequest) returns (ResourcesResponse);
+  rpc Paths(PathsRequest) returns (PathsResponse);
+}

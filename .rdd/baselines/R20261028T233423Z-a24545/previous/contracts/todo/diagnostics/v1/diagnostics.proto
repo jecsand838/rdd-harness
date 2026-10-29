@@ -1,0 +1,12 @@
+syntax = "proto3";
+package todo.diagnostics.v1;
+
+enum Severity { SEVERITY_UNSPECIFIED = 0; SEVERITY_INFO = 1; SEVERITY_WARNING = 2; SEVERITY_ERROR = 3; }
+enum Category { CATEGORY_UNSPECIFIED = 0; CATEGORY_STARTUP = 1; CATEGORY_STORAGE = 2; CATEGORY_BACKUP = 3; CATEGORY_RESTORE = 4; CATEGORY_MIGRATION = 5; }
+message EmitRequest { Severity severity = 1; Category category = 2; string correlation_id = 3; uint32 outcome_code = 4; }
+message Accepted {}
+message Failure { bool unavailable = 1; }
+message EmitResponse { oneof outcome { Accepted success = 1; Failure failure = 2; } }
+service DiagnosticsService {
+  rpc Emit(EmitRequest) returns (EmitResponse);
+}

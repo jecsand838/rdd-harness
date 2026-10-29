@@ -1,238 +1,226 @@
 {
   "schema_version": 1,
-  "run_id": "R20261028T021552Z-5f7dc8",
-  "owner_session": "/root/r5_qualification",
-  "claim_attempt": 3,
-  "claim_input_digest": "ab0d7b0c298e620ec432b32bee68ae520a81ceba6445c1c8807f03accad17af5",
+  "run_id": "R20261028T233423Z-a24545",
+  "owner_session": "/root/corrected_qualification",
+  "claim_attempt": 1,
+  "claim_input_digest": "b1fa86598b7902f0b9e6f27da170701b757a6b8ce8bd412af308f9461b898246",
+  "source_commit": "e379ff6793f4aee3b5ec762dac98e87a45e7bf75",
+  "source_digest_at_claim": "c41f5452c2e151f0f95642cd6bcc3729c58ec578987b6049b84338b48ad675e3",
   "requirements_digest": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31",
-  "decision": {
-    "id": "D-STACK",
-    "revision": 1,
-    "canonical": "docs/specs/dependencies.md#accepted-stack-d-stack-revision-1"
-  },
-  "qualification_status": "joint_and_native_mechanisms_qualified_for_recorded_scope",
+  "qualification_status": "fresh_portable_fixture_mechanism_passed_inherited_native_scope_verified_current_acceptance_pending",
   "application_acceptance_claimed": false,
-  "existing_host_clean_cargo_provisioning": true,
-  "clean_host_toolchain_installation_exercised": false,
-  "observed_tools": {
-    "rust": "1.99.0",
-    "cargo": "1.99.0",
-    "buf": "1.73.0",
-    "python": "3.14.7",
-    "clang": "21.0.0",
-    "sdk": "27.0",
-    "macos_deployment_target": "26.0",
-    "swift": "6.4",
-    "trunk": "0.22.1",
-    "wasm-bindgen": "0.2.129",
-    "cargo-tauri": "2.12.4"
+  "registered_acceptance_receipts_created_by_S5": [],
+  "decisions": [
+    {
+      "id": "D-STACK",
+      "revision": 1,
+      "canonical": "docs/specs/dependencies.md#accepted-stack-d-stack-revision-1",
+      "scope": "inherited unchanged selection"
+    },
+    {
+      "id": "D-PREP-ROUTE",
+      "revision": 1,
+      "canonical": "docs/specs/dependencies.md#portable-preparation-route-d-prep-route-revision-1",
+      "scope": "fresh portable fixture and tool readiness mechanism"
+    }
+  ],
+  "evidence_root": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5",
+  "current_evidence": {
+    "result": {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/result.json",
+      "sha256": "f6b7118a8fa1786b7162b703c89a2698a0879d8a3a9439b70d74fc9fc6bd3074",
+      "bytes": 4010
+    },
+    "claim": {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/inputs/claim.json",
+      "sha256": "ceec3f4e51c8b332ce136ccdc6482689149aeb71be38354a9d06bc7b6e72ff23",
+      "bytes": 4195
+    },
+    "host": {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/metadata/host.json",
+      "sha256": "05552b4e214d7b2fd7019813589f3182b57f8573e77114fe23ad59dee06f7b3a",
+      "bytes": 737
+    },
+    "inherited_identity_comparison": {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/metadata/inherited-scope.json",
+      "sha256": "153767f108ee1bb9d7602c528e62378250130a55f9e6b3a99bbb98fadb09c1e6",
+      "bytes": 39111
+    },
+    "guard_state": {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/state.json",
+      "sha256": "048e12cc24548d33d6ab2f21f665404bb170b38c3b050d7838ddd8ca44183038",
+      "bytes": 908
+    },
+    "experiment_source": {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/probe.py",
+      "sha256": "bf2e6168d5585d2de8df2b213102018000d99540a9c9d89bd070ae968da1cdcd",
+      "bytes": 8466
+    },
+    "source_snapshot": [
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/inputs/fixture-check.py",
+        "sha256": "9bcd29a3da191d1668dea48e8c3ddfac7a9fe02b8f31032488e941f7542cd78a",
+        "bytes": 3536
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/inputs/qualify.py",
+        "sha256": "c54fd28d4a4c60163a156644745788c0ab75cbff92796e7187f669e90ce86f30",
+        "bytes": 655
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/inputs/manifest.json",
+        "sha256": "544e2c0768da34a0e4ef3c15cc0700a204ea33832c65b1c34f7bb307e56b1b6e",
+        "bytes": 27809
+      }
+    ],
+    "guard_results": [
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/logs/01-capture.json",
+        "sha256": "9923f0522f948db886bc6a91a170c213475ac72dddd6d49b7b122e72a8733277",
+        "bytes": 1166
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/logs/02-sources.json",
+        "sha256": "a5c8e673101c72d50aeeffd4f2fdf455deda2fa640aa43072ad2716cdd41f0c2",
+        "bytes": 1167
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/logs/03-fixtures.json",
+        "sha256": "4c4702ae7e854e49db5ee6c344247ea03b5df6195bb8b4f6e51177b4f6aa7455",
+        "bytes": 1182
+      }
+    ],
+    "raw_commands": [
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/commands/old-head.json",
+        "sha256": "addf28ff8614a2e15d92a15afe91b24a1e4d25a13515777953b1a820023ac287",
+        "bytes": 979
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/commands/positive.json",
+        "sha256": "810d3514c699754fe864da9f9228c58a7bb6348e40244f5a3b7bc065c178836a",
+        "bytes": 1053
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/commands/repeat.json",
+        "sha256": "70498f0902bb81e5c0868de2c9671f46a9ada15d3c1d4f745a9d57d613665936",
+        "bytes": 1049
+      },
+      {
+        "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/commands/changed-byte.json",
+        "sha256": "24961c3fe63d45b1ad343184dead19805e3adac0de8daaa5515c0faa687016ae",
+        "bytes": 1151
+      }
+    ]
+  },
+  "current_measurements": {
+    "positive_runs": 2,
+    "variant_count": 2,
+    "tasks_per_run": 20000,
+    "normalization_rows": 20171,
+    "full_casefold_rows": 1606,
+    "input_file_count": 13,
+    "changed_byte_rejection_exit": 1,
+    "python_observation": {
+      "environment": "macos-portable",
+      "version": "3.14.7",
+      "observation": "Pinned Python reproduced both 10000-task D1 variants, their independent identity/order oracles and manifest byte-for-byte, hashed all 13 inputs, and inspected full normalization/casefold inputs. executable=/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14; machine=arm64"
+    },
+    "scope": "current provided-host Python and frozen independent fixture reproduction/rejection only; not hosted provisioning, native/package/AX/privacy/benchmark acceptance, transfer qualification or application behavior"
+  },
+  "current_provisioning": {
+    "provided_python_version": "3.14.7",
+    "fresh_python_install_exercised": false,
+    "hosted_provisioning_exercised": false,
+    "rust_or_native_build_executed": false,
+    "acquisition_documentation": "Pinned setup-python exact-version selection and published official macOS assets observed; actual hosted install still requires provisioning logs and measurement"
   },
   "primary_sources": [
     {
-      "id": "SRC-leptos-0.8.22",
-      "url": "https://crates.io/api/v1/crates/leptos/0.8.22",
-      "retrieved_utc": "2026-10-28T02:18:31.416177+00:00",
+      "id": "python-3.14.7",
+      "url": "https://www.python.org/downloads/release/python-3147/",
+      "section": "Python 3.14.7 release page",
+      "claim": "exact Python release exists; later releases do not alter this pin",
+      "retrieved_utc": "2026-10-28T23:47:53.853930+00:00",
       "status": 200,
-      "sha256": "1ae06216ebd98c5f317c6c651d6f2da9f8a682d8eacca7c8e6040afd44e8780f",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/leptos-0.8.22.raw",
-      "version_metadata": {
-        "num": "0.8.22",
-        "yanked": false,
-        "rust_version": "1.88",
-        "license": "MIT",
-        "checksum": "713ee6895e3d1126ea9781280d01414f5643f3f201a949b71efffac07d735f00"
-      }
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/sources/python-3.14.7.raw",
+      "bytes": 11288,
+      "sha256": "ddd8b3569ccf13a60f96c17a27d955638a84b67ce6a942d7ac2589f68e23cbfe"
     },
     {
-      "id": "SRC-trunk-0.22.1",
-      "url": "https://crates.io/api/v1/crates/trunk/0.22.1",
-      "retrieved_utc": "2026-10-28T02:18:31.428867+00:00",
+      "id": "setup-python",
+      "url": "https://raw.githubusercontent.com/actions/setup-python/5fda3b95a4ea91299a34e894583c3862153e4b97/README.md",
+      "section": "python-version and supported architectures",
+      "claim": "pinned setup action accepts exact versions; actual hosted install not executed in this probe",
+      "retrieved_utc": "2026-10-28T23:47:53.966521+00:00",
       "status": 200,
-      "sha256": "f62f5513e3bf9c28b7729920b00e1e3f0fb883859b487e348b3889ae5bbf6b7a",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/trunk-0.22.1.raw",
-      "version_metadata": {
-        "num": "0.22.1",
-        "yanked": false,
-        "rust_version": "1.96.1",
-        "license": "MIT/Apache-2.0",
-        "checksum": "5c78467f3bbfb1814616da5fb05cdff9b3c01afd4c08543b2ab51e29bf7a3a17"
-      }
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/sources/setup-python.raw",
+      "bytes": 7860,
+      "sha256": "d0a51dcaf89df5b8211d4bdbf74631c2cacf25879f95834c70bebef51e9ad1f9"
     },
     {
-      "id": "SRC-wasm-bindgen-0.2.129",
-      "url": "https://crates.io/api/v1/crates/wasm-bindgen/0.2.129",
-      "retrieved_utc": "2026-10-28T02:18:31.304635+00:00",
+      "id": "python-versions",
+      "url": "https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json",
+      "section": "3.14.7 macOS assets",
+      "claim": "observed published exact-version macOS acquisition candidates; hosted provisioning still needs actual evidence",
+      "retrieved_utc": "2026-10-28T23:47:54.136824+00:00",
       "status": 200,
-      "sha256": "02101a2c9a9b5e15a367d32b21a6a77a6544f46ecaf843045861ca62920b6c23",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/wasm-bindgen-0.2.129.raw",
-      "version_metadata": {
-        "num": "0.2.129",
-        "yanked": false,
-        "rust_version": "1.81",
-        "license": "MIT OR Apache-2.0",
-        "checksum": "9bb54f33acc68fd454578d9820b0bde1a1a3d17aa17bb7b6595806d02886d409"
-      }
-    },
-    {
-      "id": "SRC-wasm-bindgen-cli-0.2.129",
-      "url": "https://crates.io/api/v1/crates/wasm-bindgen-cli/0.2.129",
-      "retrieved_utc": "2026-10-28T02:18:31.431314+00:00",
-      "status": 200,
-      "sha256": "66c1bf9a86754a40cbad490fa4fcedf94c6e934390b9f93e81ebdac58a64d1e0",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/wasm-bindgen-cli-0.2.129.raw",
-      "version_metadata": {
-        "num": "0.2.129",
-        "yanked": false,
-        "rust_version": "1.86",
-        "license": "MIT OR Apache-2.0",
-        "checksum": "5fd044ed178958a277eeaf21f3d384287b0f4428d38c019141df01da9c03168c"
-      }
-    },
-    {
-      "id": "SRC-tauri-2.12.5",
-      "url": "https://crates.io/api/v1/crates/tauri/2.12.5",
-      "retrieved_utc": "2026-10-28T02:18:31.555755+00:00",
-      "status": 200,
-      "sha256": "375ab9b086f55d1dcfbf70ab4b4af4312ef2ba4c8d62ac91059451c7613bb06b",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/tauri-2.12.5.raw",
-      "version_metadata": {
-        "num": "2.12.5",
-        "yanked": false,
-        "rust_version": "1.90",
-        "license": "Apache-2.0 OR MIT",
-        "checksum": "5fb0244332cfb9cee7e2a568bf5da29a36ed8fdbd717f6f47a66b6b7b358c072"
-      }
-    },
-    {
-      "id": "SRC-tauri-cli-2.12.4",
-      "url": "https://crates.io/api/v1/crates/tauri-cli/2.12.4",
-      "retrieved_utc": "2026-10-28T02:18:31.656707+00:00",
-      "status": 200,
-      "sha256": "c6f2950a82026ffc97655af2efc7d7ff469531a2aa3f6c30a9921cebfb26312c",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/tauri-cli-2.12.4.raw",
-      "version_metadata": {
-        "num": "2.12.4",
-        "yanked": false,
-        "rust_version": "1.90",
-        "license": "Apache-2.0 OR MIT",
-        "checksum": "9966558da94fd1c9485d0d78f12233bea5fd4235826fb78e930fe7a26910b956"
-      }
-    },
-    {
-      "id": "SRC-tauri-build-2.7.4",
-      "url": "https://crates.io/api/v1/crates/tauri-build/2.7.4",
-      "retrieved_utc": "2026-10-28T02:18:31.545954+00:00",
-      "status": 200,
-      "sha256": "b8a13f2c2bbfc6ae9007de2e6fcd6998bbc34298d2218370b73881afb74d3b3d",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/tauri-build-2.7.4.raw",
-      "version_metadata": {
-        "num": "2.7.4",
-        "yanked": false,
-        "rust_version": "1.90",
-        "license": "Apache-2.0 OR MIT",
-        "checksum": "adddb0e648752aaac5da9c3c3c6a68e1e87cab55e3b757b18a9441ef8c3ac614"
-      }
-    },
-    {
-      "id": "SRC-turso-0.8.3",
-      "url": "https://crates.io/api/v1/crates/turso/0.8.3",
-      "retrieved_utc": "2026-10-28T02:18:31.675891+00:00",
-      "status": 200,
-      "sha256": "701147c048cbb62af7628376c5741105a859c6f4981a1a7a474c6ec1f56e6dae",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/turso-0.8.3.raw",
-      "version_metadata": {
-        "num": "0.8.3",
-        "yanked": false,
-        "rust_version": null,
-        "license": "MIT",
-        "checksum": "f1cf9c519a3a971e845a42c870930557cb53c2368c5737d4c78f8fbfd0444e98"
-      }
-    },
-    {
-      "id": "SRC-icu_casemap-2.4.0",
-      "url": "https://crates.io/api/v1/crates/icu_casemap/2.4.0",
-      "retrieved_utc": "2026-10-28T02:18:31.658319+00:00",
-      "status": 200,
-      "sha256": "d07ed06f16a16f19d002e8da47ec33d48cb5e45480c8caf9805c25ba1690b7d7",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/icu_casemap-2.4.0.raw",
-      "version_metadata": {
-        "num": "2.4.0",
-        "yanked": false,
-        "rust_version": "1.88",
-        "license": "Unicode-3.0",
-        "checksum": "1a6f143e9349267b80ae071a6ec25d4797c45756d8b2671a8b24b7b25b81ab94"
-      }
-    },
-    {
-      "id": "SRC-icu_normalizer-2.4.0",
-      "url": "https://crates.io/api/v1/crates/icu_normalizer/2.4.0",
-      "retrieved_utc": "2026-10-28T02:18:31.801186+00:00",
-      "status": 200,
-      "sha256": "ffd87da956994f045eed050383f0a3fa13010f2a642c069cd305bbf3e0a04287",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/icu_normalizer-2.4.0.raw",
-      "version_metadata": {
-        "num": "2.4.0",
-        "yanked": false,
-        "rust_version": "1.88",
-        "license": "Unicode-3.0",
-        "checksum": "404a3b8c486f205c87fe7f23ab6894d84a4ad76d6e4671ae1981ba7def87c599"
-      }
-    },
-    {
-      "id": "SRC-turso-quickstart",
-      "url": "https://docs.turso.tech/sdk/rust/quickstart",
-      "retrieved_utc": "2026-10-28T02:18:32.318020+00:00",
-      "status": 200,
-      "sha256": "d6f66654aa3938d9439a210aad2868f3d380a3f67f7c9a0e9d174ef451bc6117",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/turso-quickstart.raw",
-      "version_metadata": {}
-    },
-    {
-      "id": "SRC-turso-reference",
-      "url": "https://docs.turso.tech/sdk/rust/reference",
-      "retrieved_utc": "2026-10-28T02:18:32.213271+00:00",
-      "status": 200,
-      "sha256": "1cacd701aa5a77c75a295f6c7b95743aea3442214cc8aebe44b5f658da5550b0",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/turso-reference.raw",
-      "version_metadata": {}
-    },
-    {
-      "id": "SRC-tauri-leptos",
-      "url": "https://v2.tauri.app/start/frontend/leptos/",
-      "retrieved_utc": "2026-10-28T02:18:32.476968+00:00",
-      "status": 200,
-      "sha256": "432abbd48d69ab27b762a6e93c837fcd211601d8e065534a6ce4c6c8be27cfac",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/tauri-leptos.raw",
-      "version_metadata": {}
-    },
-    {
-      "id": "SRC-tauri-macos-dmg",
-      "url": "https://v2.tauri.app/distribute/dmg/",
-      "retrieved_utc": "2026-10-28T02:18:32.513359+00:00",
-      "status": 200,
-      "sha256": "fcf665dcd367c490ebd77004b3e93a939c10883b91f8b4dada0471dcc1558f79",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/tauri-macos-dmg.raw",
-      "version_metadata": {}
-    },
-    {
-      "id": "SRC-tauri-webdriver",
-      "url": "https://v2.tauri.app/develop/tests/webdriver/",
-      "retrieved_utc": "2026-10-28T02:19:59.011852+00:00",
-      "status": 200,
-      "sha256": "ba616d5552a040258013a610780e00722d7136b5fc2ec0880be0680f73214b54",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/tauri-webdriver.raw",
-      "version_metadata": {}
-    },
-    {
-      "id": "SRC-tauri-csp",
-      "url": "https://v2.tauri.app/security/csp/",
-      "retrieved_utc": "2026-10-28T02:19:59.321503+00:00",
-      "status": 200,
-      "sha256": "7e9b51cb33ae9ad0210aee895258cc8a15423c19592a9c5a1a253b40915eb713",
-      "raw_path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/preflight/qualification/sources/tauri-csp.raw",
-      "version_metadata": {}
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/sources/python-versions.raw",
+      "bytes": 823732,
+      "sha256": "fed4236f97902ffec4ba84618ad69dda292055eb0480d9441df2ae7ea8915509",
+      "macos_assets": [
+        {
+          "filename": "python-3.14.7-darwin-arm64-freethreaded.tar.gz",
+          "arch": "arm64-freethreaded",
+          "platform": "darwin",
+          "download_url": "https://github.com/actions/python-versions/releases/download/3.14.7-31064857500/python-3.14.7-darwin-arm64-freethreaded.tar.gz"
+        },
+        {
+          "filename": "python-3.14.7-darwin-arm64.tar.gz",
+          "arch": "arm64",
+          "platform": "darwin",
+          "download_url": "https://github.com/actions/python-versions/releases/download/3.14.7-31064857500/python-3.14.7-darwin-arm64.tar.gz"
+        },
+        {
+          "filename": "python-3.14.7-darwin-x64-freethreaded.tar.gz",
+          "arch": "x64-freethreaded",
+          "platform": "darwin",
+          "download_url": "https://github.com/actions/python-versions/releases/download/3.14.7-31064857500/python-3.14.7-darwin-x64-freethreaded.tar.gz"
+        },
+        {
+          "filename": "python-3.14.7-darwin-x64.tar.gz",
+          "arch": "x64",
+          "platform": "darwin",
+          "download_url": "https://github.com/actions/python-versions/releases/download/3.14.7-31064857500/python-3.14.7-darwin-x64.tar.gz"
+        }
+      ]
     }
   ],
+  "inherited_qualification": {
+    "run_id": "R20261028T021552Z-5f7dc8",
+    "retained_checkout": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness",
+    "retained_commit": "c087c96271283205a699b5fa8d0b568b9341435b",
+    "index_source_path": ".rdd/sources/qualification.json",
+    "index_source_sha256": "e65de6522dbc008db0ecb3bb0957e9725744c87cbd593c139510980741b69ced",
+    "unchanged_index_committed_at": "e379ff6793f4aee3b5ec762dac98e87a45e7bf75",
+    "retained_index_snapshot": {
+      "path": ".rdd/evidence/specification-rehearsal/R20261028T233423Z-a24545/S5/inputs/inherited-qualification.json",
+      "sha256": "e65de6522dbc008db0ecb3bb0957e9725744c87cbd593c139510980741b69ced",
+      "bytes": 39368
+    },
+    "evidence_roots": [
+      ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5",
+      ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2",
+      ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3"
+    ],
+    "source_files_compared": 81,
+    "only_changed_source": [
+      ".rdd/sources/s6/fixtures/check.py"
+    ],
+    "historical_tool_files_verified": 11,
+    "historical_evidence_files_verified": 15,
+    "scope": "Original joint/native/package/AX/facility/transfer measurements retain only their recorded source, tool, host and mechanism scope. Old raw bytes remain untouched; no historical receipt is current acceptance. Original failure/correction history and exact primary sources remain in the retained index."
+  },
   "direct_carrier_dependencies": {
     "native": {
       "tauri": {
@@ -271,6 +259,52 @@
       }
     }
   },
+  "native_mechanism_direct_pins": {
+    "objc2": "=0.6.5",
+    "objc2-app-kit": {
+      "version": "=0.3.2",
+      "default-features": false,
+      "features": [
+        "std",
+        "NSApplication",
+        "NSRunningApplication",
+        "NSWindow",
+        "NSPanel",
+        "NSResponder",
+        "NSView",
+        "NSGraphics",
+        "NSTextField",
+        "NSControl",
+        "NSCell",
+        "NSMenu",
+        "NSMenuItem",
+        "NSOpenPanel",
+        "NSSavePanel",
+        "block2"
+      ]
+    },
+    "objc2-foundation": {
+      "version": "=0.3.2",
+      "default-features": false,
+      "features": [
+        "std",
+        "NSObject",
+        "NSString",
+        "NSURL",
+        "NSArray",
+        "NSError",
+        "NSGeometry",
+        "NSTimer",
+        "NSRunLoop",
+        "NSDate",
+        "block2"
+      ]
+    },
+    "block2": "=0.6.2",
+    "libc": "=0.2.191",
+    "sha2": "=0.10.9",
+    "serde_json": "=1.0.154"
+  },
   "additional_purposes": {
     "js-sys": "Rust conversion of generated IPC bytes to/from JS values",
     "wasm-bindgen-futures": "Rust async invocation interop",
@@ -278,750 +312,149 @@
     "serde_json": "disposable independent-vector JSON input only",
     "Swift/ApplicationServices": "external observer test tooling only; no delivered app dependency"
   },
-  "proofs": {
-    "Q-TOOLS": [
-      "tools/acquisition.json",
-      "tools/trunk.identity.json",
-      "tools/wasm-bindgen.identity.json",
-      "tools/cargo-tauri.identity.json"
-    ],
-    "Q-CONTRACT": [
-      "logs/03-generate.command.json",
-      "proof-results.json",
-      "proof-wasm-results.json"
-    ],
-    "Q-STORE": [
-      "storage-runtime-results.json",
-      "storage-runtime-csp-results.json"
-    ],
-    "Q-PACKAGE": [
-      "binaries/09-package/inventory.json",
-      "binaries/14-csp-self/inventory.json",
-      "installed-identity.json",
-      "installed-csp-self-identity.json"
-    ],
-    "Q-UI": [
-      "sources/manual-cua-ui-observation.json",
-      "runtime-failure-initial.json",
-      "runtime-failure-foreground.json",
-      "csp-correction-result.json",
-      "sources/csp-correction.diff",
-      "logs/gui-independent-db-read.command.json"
-    ],
-    "Q-UNICODE": [
-      "logs/18-unicode-conformance.command.json",
-      "sources/unicode-vectors.json",
-      "sources/white-space-vectors.json"
-    ],
-    "Q-FACILITIES": [
-      "facilities/results.json",
-      "facilities/nobody-public-read.command.json"
-    ],
-    "Q-AX": [
-      "observer-identity.json",
-      "logs/23-ax-readonly-capability.command.json",
-      "logs/25-bundled-ax-readonly-capability.command.json",
-      "../S5-attempt2/observer-v6-identity.json",
-      "../S5-attempt2/logs/07-action.command.json",
-      "../S5-attempt2/logs/12-v3-action.command.json",
-      "../S5-attempt2/logs/33-window2-v6-action.command.json",
-      "../S5-attempt2/logs/31-v6-selector-selftest.command.json",
-      "../S5-attempt2/preservation-verification.json",
-      "../S5-attempt2/logs/22-window2-v4-action.command.json",
-      "../S5-attempt2/logs/28-window2-v5-action.command.json",
-      "../S5-attempt2/checkpoint-inventory-0405.json",
-      "../S5-attempt2/operation-window-2.json"
-    ],
-    "Q-TRANSFER": [
-      "transfer/results.json",
-      "transfer/payload-verification.json"
-    ],
-    "Q-SELECTED": [
-      "../S5-attempt3/mechanism-v2-results.json",
-      "../S5-attempt3/supplemental-results.json",
-      "../S5-attempt3/metadata/native-v3-identity.json",
-      "../S5-attempt3/mechanism-v3-results.json",
-      "../S5-attempt3/resume-ui-results.json"
-    ],
-    "Q-INSTANCE": [
-      "../S5-attempt3/mechanism-v2-results.json",
-      "../S5-attempt3/supplemental-results.json",
-      "../S5-attempt3/mechanism-v3-results.json",
-      "../S5-attempt3/resume-ui-results.json"
-    ],
-    "Q-PUBLICATION-COVERAGE": [
-      "../S5-attempt3/logs/26-publication.command.json",
-      "../S5-attempt3/logs/26-publication.stdout",
-      "../S5-attempt3/metadata/d-stack-coverage.json"
-    ]
-  },
-  "evidence_root": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5",
-  "immutable_input_snapshots": [
-    "snapshots/01-generator-inputs/inventory.json",
-    "snapshots/02-locked-carrier-inputs/inventory.json",
-    "snapshots/03-native-corrected-inputs/inventory.json",
-    "snapshots/04-proof-inputs/inventory.json",
-    "snapshots/05-corrected-proof-inputs/inventory.json",
-    "snapshots/06-csp-self-inputs/inventory.json",
-    "snapshots/07-locked-unicode-inputs/inventory.json"
-  ],
-  "replay_input_groups": {
-    "status": "retained_not_frozen_S6_must_publish_and_register",
-    "carrier": [
-      "Cargo.toml",
-      "Cargo.lock",
-      "src-tauri/Cargo.toml",
-      "src-tauri/build.rs",
-      "src-tauri/src/main.rs",
-      "src-tauri/tauri.conf.json",
-      "src-tauri/capabilities/probe-window.json",
-      "src-tauri/icons/",
-      "ui/Cargo.toml",
-      "ui/Trunk.toml",
-      "ui/index.html",
-      "ui/style.css",
-      "ui/src/main.rs"
-    ],
-    "contracts": [
-      "contracts/qualification/v1/probe.proto",
-      "buf.yaml",
-      "probe.binpb",
-      "generator/Cargo.toml",
-      "generator/Cargo.lock",
-      "generator/src/",
-      "gen/rust/Cargo.toml",
-      "gen/rust/Cargo.lock",
-      "gen/rust/src/",
-      "gen/rust/.rdd-generated.json"
-    ],
-    "proofs": [
-      "proofs/*/Cargo.toml",
-      "proofs/*/Cargo.lock",
-      "proofs/*/src/"
-    ],
-    "external_inputs": [
-      "sources/unicode-vectors.json",
-      "sources/PropList-18.0.0.txt",
-      "sources/white-space-vectors.json",
-      "sources/primary-pin-metadata.json",
-      "sources/turso-0.8.3.crate.raw",
-      "../S5-attempt2/sources/ax-observer-v6.swift"
-    ],
-    "runners": [
-      "scripts/run.py",
-      "scripts/acquire.py",
-      "scripts/proofs.py",
-      "scripts/proofs_wasm.py",
-      "scripts/storage_runtime_csp.py",
-      "scripts/retain_install_csp.py",
-      "scripts/gui_session_csp.py",
-      "scripts/transfer_probe.py",
-      "../S5-attempt2/sources/action_v6_window2.py",
-      "../S5-attempt2/sources/carrier_session_v6_window2.py"
-    ],
-    "actual_frontend_dist": "binaries/06-ui/dist",
-    "archive_and_executable_inputs": "tools/acquisition.json"
-  },
-  "proposed_stage_check_ids": [
-    "C-QUAL-JOINT",
-    "C-QUAL-CONTRACTS",
-    "C-QUAL-HOST",
-    "C-QUAL-TRANSFER"
-  ],
-  "stage_checks_registered_by_S5": false,
-  "remaining_execution_gaps": [
-    {
-      "id": "GAP-S7-EXACT",
-      "status": "requires_S6_inputs_and_registration",
-      "missing": [
-        "final application contracts exact native/WASM proofs",
-        "frozen replay input inventories and actual registered checks/receipts",
-        "actual receipt+raw-log import route for declared source/host",
-        "declared clean-checkout/tool acquisition prerequisites; no inference of clean-host Rust/Buf/CLT installation"
+  "proposed_registration": {
+    "environment": {
+      "id": "macos-portable",
+      "platform": "macos",
+      "host_profile": null
+    },
+    "contract_check": {
+      "id": "C-QUAL-FIXTURES",
+      "kind": "contract",
+      "argv": [
+        "{python}",
+        ".rdd/sources/s6/qualify.py",
+        "fixtures"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "platforms": [
+        "macos"
+      ],
+      "host_profile": null,
+      "environments": [
+        "macos-portable"
+      ],
+      "requires": [
+        "R-INPUTS",
+        "R-S6-qualify-py",
+        "R-S6-fixtures-check-py",
+        "R-FROZEN-42",
+        "R-FROZEN-43",
+        "R-FROZEN-44",
+        "R-FROZEN-45",
+        "R-FROZEN-46",
+        "R-FROZEN-47",
+        "R-FROZEN-48",
+        "R-FROZEN-49",
+        "R-FROZEN-50",
+        "R-FROZEN-51",
+        "R-FROZEN-52",
+        "R-FROZEN-53",
+        "R-FROZEN-54",
+        "R-PYTHON-PORTABLE"
+      ],
+      "scenario_ids": [],
+      "results_path": null,
+      "red_pattern": null,
+      "metrics": []
+    },
+    "tool_readiness_check": {
+      "id": "C-READY-FIXTURE-TOOLS",
+      "kind": "readiness",
+      "argv": [
+        "{python}",
+        ".rdd/sources/s6/qualify.py",
+        "fixtures"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 180,
+      "platforms": [
+        "macos"
+      ],
+      "host_profile": null,
+      "environments": [
+        "macos-portable"
+      ],
+      "requires": [
+        "R-INPUTS",
+        "R-S6-qualify-py",
+        "R-S6-fixtures-check-py",
+        "R-FROZEN-42",
+        "R-FROZEN-43",
+        "R-FROZEN-44",
+        "R-FROZEN-45",
+        "R-FROZEN-46",
+        "R-FROZEN-47",
+        "R-FROZEN-48",
+        "R-FROZEN-49",
+        "R-FROZEN-50",
+        "R-FROZEN-51",
+        "R-FROZEN-52",
+        "R-FROZEN-53",
+        "R-FROZEN-54",
+        "R-PYTHON-PORTABLE"
+      ],
+      "scenario_ids": [],
+      "results_path": null,
+      "red_pattern": null,
+      "metrics": []
+    },
+    "python_resource": {
+      "id": "R-PYTHON-PORTABLE",
+      "kind": "tool",
+      "path": "python3",
+      "version": "3.14.7",
+      "availability": "external",
+      "required_at": "specification",
+      "environments": [
+        "macos-portable"
+      ],
+      "probe_check_ids": [
+        "C-READY-FIXTURE-TOOLS"
       ]
     },
-    {
-      "id": "GAP-BENCHMARK-ORACLE",
-      "status": "product_runner_and_exact_candidate_pending",
-      "missing": [
-        "complete rendered/input-ready action-specific oracles",
-        "required benchmark sampling and all reference conditions",
-        "accuracy/overhead bounds beyond observed clock tick and AX marker upper bound"
-      ]
-    }
-  ],
-  "observer": {
-    "app_path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/binaries/RDD Bounded AX Observer v6.app",
-    "bundle_identifier": "com.rdd.qualification.axobserver.r20261028.v6",
-    "identities": [
-      {
-        "path": "sources/ax-observer-v6.swift",
-        "bytes": 11024,
-        "sha256": "95f52b6ac52f1a7deeaa2fa86d8118c48f6689ae96f7ec3e778df0661f49d0e0"
-      },
-      {
-        "path": "binaries/RDD Bounded AX Observer v6.app/Contents/MacOS/ax-observer",
-        "bytes": 176624,
-        "sha256": "9bf232ca84a66c345e7a2ec1b13520539f2cab1fd909a0f523db1000942a5eb2"
-      },
-      {
-        "path": "binaries/RDD Bounded AX Observer v6.app/Contents/Info.plist",
-        "bytes": 748,
-        "sha256": "6ab9829330970e496f8e74d4cdafde17e95bc30ce0dac4831e8f2ad3f00b4fbc"
-      }
+    "repository_resources_add_environment": [
+      "R-INPUTS",
+      "R-S6-qualify-py",
+      "R-S6-fixtures-check-py",
+      "R-FROZEN-42",
+      "R-FROZEN-43",
+      "R-FROZEN-44",
+      "R-FROZEN-45",
+      "R-FROZEN-46",
+      "R-FROZEN-47",
+      "R-FROZEN-48",
+      "R-FROZEN-49",
+      "R-FROZEN-50",
+      "R-FROZEN-51",
+      "R-FROZEN-52",
+      "R-FROZEN-53",
+      "R-FROZEN-54"
     ],
-    "evidence_root": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2",
-    "source_restricted_to_exact_carrier": true,
-    "observed_trust": true,
-    "permission_provenance": "API trusted=true observed after parent user-authorized grant; no inference about inherited TCC attribution"
+    "retain_native_environments_and_checks": true,
+    "registration_owner": "S6",
+    "registered_by_S5": false
   },
-  "identity_records": [
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/accepted-inputs.json",
-      "bytes": 544,
-      "sha256": "8c9f940fb43299172c3954a318c35549da8babb230641c0b544a0ff70e8c56f1"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/sources/manual-cua-ui-observation.json",
-      "bytes": 2014,
-      "sha256": "1cdb694c15ae50c5e08e172e80720728ed67efff527d7de0025eae0a160bf529"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/installed-csp-self-identity.json",
-      "bytes": 1362,
-      "sha256": "17f8effc9ea0d7b35ed94328fb1222cd4bfd1df16edede362ff24477126e1121"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/proof-results.json",
-      "bytes": 6241,
-      "sha256": "f9ec4a91f76edddad901120bebfaf3e0a77977cc01dd711e0f4a8c6fcdf68c80"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/proof-wasm-results.json",
-      "bytes": 6511,
-      "sha256": "fb3834c036229d078d289fd83ad7dd7ef8d47b6759c405e4e67cb7cfa4b49583"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/logs/18-unicode-conformance.stdout",
-      "bytes": 256,
-      "sha256": "8fb4a872e5cc543cad6626225806f4413dd08f68811fe107ea3e095c9106bb7b"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/transfer/results.json",
-      "bytes": 5170,
-      "sha256": "d00ca2d61a5f1288efab458d8293e9fc17a62de026b68772a5f83552306d426f"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/native-v3-identity.json",
-      "bytes": 881,
-      "sha256": "60b3427134e7bd94b9af3aece0f782ff625bb9f081bb74d8e696b8b8cd841ea2"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/mechanism-v3-results.json",
-      "bytes": 37974,
-      "sha256": "8fe967efb40fb5eb1478460b9b3d5f3ea03762a52753cb0d495e56b62d3880b2"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/supplemental-results.json",
-      "bytes": 39685,
-      "sha256": "da749e6a8b86944aa2935972e46d6ee12c7ab1f0c22dbe1ec7607a9a2e2c5d9f"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/native-archive-identities.json",
-      "bytes": 10456,
-      "sha256": "d67542661d3aca87cc29858fca34494e16374837319a06748a4aa0aae755503c"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/findings-notes.json",
-      "bytes": 2548,
-      "sha256": "e0994d01ab6d934bdae70592110a495b9cdaef401e7173433887ffcc289efd72"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/resume-ui-results.json",
-      "bytes": 10052,
-      "sha256": "55c4cb889ad1f32de717c05f6dd70d0eca0af0bbc64a3fb38af4008ba9adc4a9"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/parent-native-gui-observations.json",
-      "bytes": 3616,
-      "sha256": "49b3169e64f5da4eededfa70ca3618445a9b73527c4c4458e878d9dd26f58915"
-    },
-    {
-      "path": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3/metadata/resume-window-0538.json",
-      "bytes": 577,
-      "sha256": "b3d2c52eba09febb83dc64fd2f73bc893f928d262449e14ae620eb8416d005a0"
-    }
+  "remaining_execution_obligations": [
+    "S6 exact check/resource/environment/input registration and candidate reconciliation",
+    "Current committed-source registered qualification receipts for all required environments; no transfer of historical approvals",
+    "Actual hosted setup-python/Rust/Buf provisioning, fixture execution and check/raw-log transfer",
+    "Current exact-contract native/WASM and joint package qualification; provided host/observer binding and authorized current GUI observations",
+    "Product adapter adoption/bypass, delivered-package journeys, account/network privacy, accessibility, recovery and benchmarks remain separate"
   ],
-  "normative_dependency_document_words": 1191,
-  "corrects_finding": "R5-S5-001",
-  "supplemental_evidence_roots": [
-    ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2",
-    ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt3"
-  ],
-  "observer_history": [
-    {
-      "bundle_path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5/binaries/RDD Bounded AX Observer.app",
-      "bundle_identifier": "com.rdd.qualification.axobserver.r20261028",
-      "source_and_binary": [
-        {
-          "path": "sources/ax-observer-restricted.swift",
-          "bytes": 5409,
-          "sha256": "5f688c931a87b9e2e690b712b8f3ecb52d7d8123a94151299159710fa440a187"
-        },
-        {
-          "path": "binaries/ax-observer-restricted",
-          "bytes": 117016,
-          "sha256": "c07cbf6b223f7c1cf6fea54218423ff5a4aecf62bf23102403b7036317cfa924"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer.app/Contents/MacOS/ax-observer",
-          "bytes": 134496,
-          "sha256": "d158cc441dea8306d4c184b1089de18e4e9fb8416aeba8412fa74925bb07f4fd"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer.app/Contents/Info.plist",
-          "bytes": 739,
-          "sha256": "e19fc011a8bcb4d65dad74c778db9dbdbcc1dc2f604a51f7efd13c2af23ba342"
-        }
-      ],
-      "source_restricted_to_exact_carrier": true,
-      "permission_actions": "No prompt, request, grant, reset or settings change performed",
-      "known_operator_route": "Apple documents System Settings > Privacy & Security > Accessibility; exact standalone helper/CLI attribution in that settings UI has not been observed here.",
-      "official_source": "https://support.apple.com/guide/mac-help/mh43185/mac"
+  "resource_bounds": {
+    "per_command_timeout_seconds": 180,
+    "lease_shutdown_reserve_seconds": 180,
+    "aggregate_growth_limit_bytes": 157286400,
+    "minimum_free_bytes": 2684354560,
+    "operational_reserve_bytes": 2147483648,
+    "actual_allocated_kib_at_probe_completion": {
+      "S5": 24384,
+      "runtime_s6": 36000
     },
-    {
-      "app_path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/binaries/RDD Bounded AX Observer v2.app",
-      "bundle_identifier": "com.rdd.qualification.axobserver.r20261028.v2",
-      "identities": [
-        {
-          "path": "sources/ax-observer-v2.swift",
-          "bytes": 8171,
-          "sha256": "d187260bfd431305961b1cdcc0987ceebe99775f3f1789ca323c5c699830a326"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v2.app/Contents/MacOS/ax-observer",
-          "bytes": 155552,
-          "sha256": "eb26cd93eb2b2bf482a6f7c217eb870eacf311bd626423fbba166ae8f0e3c9d8"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v2.app/Contents/Info.plist",
-          "bytes": 748,
-          "sha256": "fa33b99a8a828359f36ec7ac4737d2a4dcce0d1efca19bf20ea95c35153c7e65"
-        }
-      ],
-      "prior_bundle_untouched": true,
-      "evidence_root": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2"
-    },
-    {
-      "app_path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/binaries/RDD Bounded AX Observer v3.app",
-      "bundle_identifier": "com.rdd.qualification.axobserver.r20261028.v3",
-      "identities": [
-        {
-          "path": "sources/ax-observer-v3.swift",
-          "bytes": 9015,
-          "sha256": "2120f9bf893aaec13f899033f3fbe4fd58eb6776d2770ccbc5fe66ab9f47fffc"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v3.app/Contents/MacOS/ax-observer",
-          "bytes": 155712,
-          "sha256": "05fbfec9b8bccf08555a7e91a2f384efa4763ee7ea1eee8715c6f7fc0b318813"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v3.app/Contents/Info.plist",
-          "bytes": 748,
-          "sha256": "98f412474ea672b3ef064d80226767fbbc9db808a5b57b491208972e26bacf5e"
-        }
-      ],
-      "evidence_root": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2"
-    },
-    {
-      "app_path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/binaries/RDD Bounded AX Observer v4.app",
-      "bundle_identifier": "com.rdd.qualification.axobserver.r20261028.v4",
-      "identities": [
-        {
-          "path": "sources/ax-observer-v4.swift",
-          "bytes": 9607,
-          "sha256": "dfff35e97909f94b2ef2ba33a08c57ce3079e8fbd8b2f077cfe2ae5fb5f8a6e3"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v4.app/Contents/MacOS/ax-observer",
-          "bytes": 156064,
-          "sha256": "9d0aad84e9bd5eca01e5c3200fb8fdaa2f9082120fe34ef6a7088a53d5f42c9c"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v4.app/Contents/Info.plist",
-          "bytes": 748,
-          "sha256": "f65f4fd84e1be7c2451afc7e1a9c4bf18072a63c41ae8ab2137f33abd0245c6c"
-        }
-      ],
-      "evidence_root": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2"
-    },
-    {
-      "app_path": "/Users/connorsanders/.codex/worktrees/retire-fr015/rdd-harness/.rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2/binaries/RDD Bounded AX Observer v5.app",
-      "bundle_identifier": "com.rdd.qualification.axobserver.r20261028.v5",
-      "identities": [
-        {
-          "path": "sources/ax-observer-v5.swift",
-          "bytes": 10247,
-          "sha256": "75d93b3e5774f6803d46483eb38ab1ccec9f307f6932bfee2d5a694c097b18de"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v5.app/Contents/MacOS/ax-observer",
-          "bytes": 156208,
-          "sha256": "4ca2a4b5bc68e8ddb851957d365ce8cba80ca5ee2bc2cbe466d9665f4a9069c1"
-        },
-        {
-          "path": "binaries/RDD Bounded AX Observer v5.app/Contents/Info.plist",
-          "bytes": 748,
-          "sha256": "5f8935edcc02f3da2c4d0f878d46af512207d7981696f820d40e198118787e49"
-        }
-      ],
-      "evidence_root": ".rdd/evidence/specification-rehearsal/R20261028T021552Z-5f7dc8/S5-attempt2"
-    }
-  ],
-  "bounded_ax_observation": {
-    "action_start_ns": 9324217319250,
-    "actual_window_size_points": {
-      "height": 720,
-      "width": 1280
-    },
-    "clock": "DispatchTime.uptimeNanoseconds",
-    "clock_unit": "ns",
-    "enumerated_windows": [
-      {
-        "identifier": "_NS:8",
-        "index": 0,
-        "position_points": {
-          "x": 550,
-          "y": 147
-        },
-        "role": "AXWindow",
-        "size_points": {
-          "height": 20,
-          "width": 66
-        },
-        "subrole": "AXDialog",
-        "title": "Window"
-      },
-      {
-        "identifier": "absent",
-        "index": 1,
-        "position_points": {
-          "x": 544,
-          "y": 141
-        },
-        "role": "AXWindow",
-        "size_points": {
-          "height": 480,
-          "width": 640
-        },
-        "subrole": "AXStandardWindow",
-        "title": "RDD Qualification Carrier"
-      }
-    ],
-    "final_position_condition": "stable and full window frame inside one observed visible screen; window-manager reposition allowed",
-    "first_observed_visible_ns": 9324288668333,
-    "geometry_finished_ns": 9324158884125,
-    "geometry_poll_sleep_us": 20000,
-    "geometry_started_ns": 9324108592291,
-    "last_observed_absent_ns": 9324250852916,
-    "matching_window_indices": [
-      1
-    ],
-    "minimum_observed_positive_delta_ns": 84,
-    "observed_clock_samples": 10000,
-    "observed_latency_ms": 71.349083,
-    "observer_bundle_identifier": "com.rdd.qualification.axobserver.r20261028.v6",
-    "poll_sleep_us": 1000,
-    "polls": 2,
-    "position_preparation_samples": [
-      {
-        "observed_ns": 9323993031125,
-        "position_points": {
-          "x": 16,
-          "y": 40
-        }
-      },
-      {
-        "observed_ns": 9324015000291,
-        "position_points": {
-          "x": 16,
-          "y": 40
-        }
-      },
-      {
-        "observed_ns": 9324040451125,
-        "position_points": {
-          "x": 16,
-          "y": 40
-        }
-      }
-    ],
-    "position_readback_points": {
-      "x": 16,
-      "y": 40
-    },
-    "precondition_observed_absent_ns": 9324217317166,
-    "press_return_ns": 9324217580958,
-    "press_status": 0,
-    "requested_position_points": {
-      "x": 16,
-      "y": 40
-    },
-    "scope": "single carrier marker mechanism; not product performance, input-ready detection or clock accuracy",
-    "selected_window_index": 1,
-    "set_position_status": 0,
-    "set_size_status": 0,
-    "stable_geometry_samples": 3,
-    "stable_position_samples": 3,
-    "target_bundle_identifier": "com.rdd.qualification.r20261028",
-    "target_path": "/Users/connorsanders/Applications/RDD Qualification Carrier-R20261028T021552Z-CSP.app/Contents/MacOS/qualification-carrier",
-    "target_pid": 15226,
-    "target_sha256": "6f7bf88dd53153287ae2c137694ab1b7c0c91193bca9b4f9fae63946b4d35bb9",
-    "trusted": true,
-    "ui_actions_requested": true,
-    "visible_screen_bounds_ax_points": [
-      {
-        "height": 924,
-        "width": 1728,
-        "x": 0,
-        "y": 30
-      }
-    ],
-    "web_area_size_points": {
-      "height": 581,
-      "width": 993
-    },
-    "window_selector": "exact title RDD Qualification Carrier; role AXWindow; subrole AXStandardWindow; require exactly one",
-    "window_size_semantics": "AX window frame points; WebArea content points recorded separately when exposed",
-    "final_geometry_sample": {
-      "height": 720,
-      "observed_ns": 9324158621166,
-      "position_points": {
-        "x": 110,
-        "y": 58
-      },
-      "width": 1280
-    }
-  },
-  "corrects_findings": [
-    "R5-S5-002",
-    "R5-S5-003",
-    "R5-S5-004"
-  ],
-  "prior_correction_preserved": "R5-S5-001",
-  "native_mechanisms": {
-    "status": "CLI_and_native_GUI_qualified_recorded_scope",
-    "direct_pins": {
-      "direct": {
-        "objc2": "=0.6.5",
-        "objc2-app-kit": {
-          "version": "=0.3.2",
-          "default-features": false,
-          "features": [
-            "std",
-            "NSApplication",
-            "NSRunningApplication",
-            "NSWindow",
-            "NSPanel",
-            "NSResponder",
-            "NSView",
-            "NSGraphics",
-            "NSTextField",
-            "NSControl",
-            "NSCell",
-            "NSMenu",
-            "NSMenuItem",
-            "NSOpenPanel",
-            "NSSavePanel",
-            "block2"
-          ]
-        },
-        "objc2-foundation": {
-          "version": "=0.3.2",
-          "default-features": false,
-          "features": [
-            "std",
-            "NSObject",
-            "NSString",
-            "NSURL",
-            "NSArray",
-            "NSError",
-            "NSGeometry",
-            "NSTimer",
-            "NSRunLoop",
-            "NSDate",
-            "block2"
-          ]
-        },
-        "block2": "=0.6.2",
-        "libc": "=0.2.191",
-        "sha2": "=0.10.9",
-        "serde_json": "=1.0.154"
-      },
-      "resolved": [
-        {
-          "name": "block2",
-          "version": "0.6.2",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "checksum": "cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5",
-          "dependencies": [
-            "objc2"
-          ]
-        },
-        {
-          "name": "libc",
-          "version": "0.2.191",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "checksum": "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
-        },
-        {
-          "name": "objc2",
-          "version": "0.6.5",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "checksum": "08849bbd4767dfae9457696856ae1c84fe4e0281bbe4a7abff2d0e06fb7981f8",
-          "dependencies": [
-            "objc2-encode"
-          ]
-        },
-        {
-          "name": "objc2-app-kit",
-          "version": "0.3.2",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "checksum": "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c",
-          "dependencies": [
-            "bitflags",
-            "block2",
-            "objc2",
-            "objc2-foundation"
-          ]
-        },
-        {
-          "name": "objc2-foundation",
-          "version": "0.3.2",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "checksum": "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272",
-          "dependencies": [
-            "bitflags",
-            "block2",
-            "objc2",
-            "objc2-core-foundation"
-          ]
-        },
-        {
-          "name": "serde_json",
-          "version": "1.0.154",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "checksum": "e7e9cc8b1b85264074fbcc02a88680c4096b1e47df8f739dceb03bf482f04bd6",
-          "dependencies": [
-            "itoa",
-            "memchr",
-            "serde",
-            "serde_core",
-            "zmij"
-          ]
-        },
-        {
-          "name": "sha2",
-          "version": "0.10.9",
-          "source": "registry+https://github.com/rust-lang/crates.io-index",
-          "checksum": "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283",
-          "dependencies": [
-            "cfg-if",
-            "cpufeatures",
-            "digest"
-          ]
-        }
-      ],
-      "purposes": {
-        "objc2": "Rust Objective-C ownership/main-thread interop",
-        "objc2-app-kit": "native file panels, window and activation",
-        "objc2-foundation": "file URLs and run-loop timer",
-        "block2": "native sheet/timer completion blocks",
-        "libc": "filesystem identity, relative atomic rename and retained advisory lock",
-        "sha2": "complete publication and reconciliation digests",
-        "serde_json": "disposable command receipts and publication-intent representation; no qualified product parser"
-      }
-    },
-    "scope": "standalone non-Todo Rust AppKit/POSIX mechanism; prior joint Tauri proof and future exact-candidate binding remain separate",
-    "cache_mode": "copied retained index/archive seed into new owned Cargo home; no clean provisioning claim",
-    "provisioning_evidence": "../S6/provision/result.json",
-    "initial_gui_environment": "locked screen; no actual selection or cancellation counted",
-    "reviewer_corrections": [
-      "enforce canonical owned probe root",
-      "bounded framed activation read",
-      "consume resolved journal before safe retry"
-    ],
-    "actual_counts": {
-      "v2_core": {
-        "commands": 32,
-        "expected_nonzero": 10
-      },
-      "v3_supplemental": {
-        "commands": 44,
-        "expected_nonzero": 18
-      },
-      "v3_final_core": {
-        "commands": 32,
-        "expected_nonzero": 10
-      },
-      "native_GUI": {
-        "primary_sessions": 6,
-        "secondary_processes": 1,
-        "normal_exit_zero": 7,
-        "watchdog_timeouts": 0
-      }
-    },
-    "identity_record": "../S5-attempt3/metadata/native-v3-identity.json",
-    "synthetic_storage_marker": "admission ordering surrogate only; separate original pinned Turso integration proof remains authoritative for engine behavior",
-    "supports_future_scenarios": [
-      "SC-BACKUP-PUBLICATION",
-      "SC-BACKUP-FAILURES",
-      "SC-BACKUP-PROTECTED",
-      "SC-SELECTED-PATH-SCOPE",
-      "SC-SINGLE-INSTANCE"
-    ],
-    "replay_inputs": [
-      "../S5-attempt3/sources/qualified-v3/",
-      "../S5-attempt3/sources/probe_suite_v3.py",
-      "../S5-attempt3/sources/supplemental_probes.py",
-      "../S5-attempt3/sources/gui_watch_v3.py",
-      "../S5-attempt3/metadata/native-pins.json",
-      "../S5-attempt3/metadata/native-archive-identities.json"
-    ],
-    "finding_status": {
-      "R5-S5-002": "unchanged decision publication revision4 records six accepted scenario IDs",
-      "R5-S5-003": "native selection/grant/publication and interruption/reconciliation mechanism proofs recorded",
-      "R5-S5-004": "CLI admission/framing plus actual inactive-window activation and edited-value retention proofs recorded"
-    },
-    "publication_receipt": "../S5-attempt3/logs/26-publication.stdout",
-    "native_GUI_result": "../S5-attempt3/resume-ui-results.json",
-    "GUI_scope": "six actual native GUI sessions and one secondary process, normal exits; not full Todo or actual engine ownership",
-    "independent_resolution_authority": "controller live-review records; this index reports measured artifacts"
-  },
-  "publication_scenarios": [
-    "SC-JOINT-QUALIFICATION",
-    "SC-CONTRACT-BOUNDARIES",
-    "SC-PRODUCTION-SCOPE",
-    "SC-PACKAGE-INSTALL",
-    "SC-RUNTIME-RESTRICTIONS",
-    "SC-RELEASE-HANDOFF"
-  ],
-  "execution_gap_history": [
-    {
-      "prior_gap": {
-        "id": "GAP-NATIVE-GUI",
-        "status": "environment_screen_locked",
-        "missing": [
-          "actual native panel selection/cancellation and overwrite consent",
-          "actual existing-window activation and edited synthetic-value preservation"
-        ],
-        "claim_attempt": 3,
-        "claim_expiry": 1793167377.3254871,
-        "no_GUI_action_counted": true
-      },
-      "resolution_evidence": "../S5-attempt3/resume-ui-results.json",
-      "resolved_measured_scope": "native mechanism only after actual user unlock"
-    }
-  ]
+    "benchmark_minimum_free_bytes": 16106127360,
+    "benchmark_precondition_met": false,
+    "heavy_builds_executed": false
+  }
 }

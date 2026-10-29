@@ -1,0 +1,30 @@
+syntax = "proto3";
+package todo.storage.v1;
+
+enum ErrorCode { ERROR_CODE_UNSPECIFIED = 0; ERROR_CODE_INACCESSIBLE = 1; ERROR_CODE_CORRUPT = 2; ERROR_CODE_FUTURE_FORMAT = 3; ERROR_CODE_REJECTED = 4; ERROR_CODE_UNCERTAIN = 5; ERROR_CODE_REVISION_CHANGED = 6; }
+message Failure { ErrorCode code = 1; string correlation_id = 2; }
+message Row { string identity = 1; string title = 2; string notes = 3; optional string due_date = 4; int32 status = 5; sint64 created_seconds = 6; uint32 created_nanos = 7; sint64 updated_seconds = 8; uint32 updated_nanos = 9; optional sint64 completed_seconds = 10; optional uint32 completed_nanos = 11; }
+message Snapshot { uint64 revision = 1; repeated Row rows = 2; }
+message Receipt { string operation_id = 1; uint64 revision = 2; }
+message OpenRequest {}
+message ReadRequest {}
+message Put { Row row = 1; }
+message Remove { string identity = 1; }
+message Replace { repeated Row rows = 1; }
+message RecordNoop {}
+message CommitRequest { string operation_id = 1; uint64 expected_revision = 2; oneof change { Put put = 3; Remove remove = 4; Replace replace = 5; RecordNoop no_change = 6; } }
+message OutcomeRequest { string operation_id = 1; }
+message Pending {}
+message Absent {}
+message Resolution { oneof state { Receipt committed = 1; Absent absent = 2; Pending pending = 3; } }
+message OpenResponse { oneof outcome { Snapshot success = 1; Failure failure = 2; } }
+message ReadResponse { oneof outcome { Snapshot success = 1; Failure failure = 2; } }
+message CommitResponse { oneof outcome { Receipt success = 1; Failure failure = 2; } }
+message OutcomeResponse { oneof outcome { Resolution success = 1; Failure failure = 2; } }
+
+service StorageService {
+  rpc Open(OpenRequest) returns (OpenResponse);
+  rpc Read(ReadRequest) returns (ReadResponse);
+  rpc Commit(CommitRequest) returns (CommitResponse);
+  rpc Outcome(OutcomeRequest) returns (OutcomeResponse);
+}

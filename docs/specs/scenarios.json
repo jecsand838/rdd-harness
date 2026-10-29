@@ -280,7 +280,7 @@
     "preconditions": "Unicode18 vectors fixed independently of implementation library and host Python16.",
     "fixture": "Normative unicode.org/Public/18.0.0/ucd inputs SHA256: CaseFolding a004797658a457bec4dc11683e39f69249ea3b595b752dbea6721c4c9f587b0d; UnicodeData 0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950; NormalizationTest 25a50d816764b04abfb4a646d3eb2b2a803284c3873d9a06757b94fe4513dde3; PropList f438f532e8737bb8a2702126cdf9c4af5e357c58c7acf9d9eb2fc7c1a1d955d6; CompositionExclusions c759b100e9ae8960ae6b50fc5765950a7581fd9f30d4ef95f68f25a6d97e818e. Records1..10 contain respectively Café, Straße, Σςσ, U+A7CE, U+1DF95, notes-only [x]*, a  b, I, İ, ı; only record6 matches via notes.",
     "stimulus": "Search decomposed cafe+U0301, STRASSE, σ, U+A7CF, ss, [x]*, a b, cafe, i, İ, ı, whitespace-only and outer-White_Space STRASSE queries.",
-    "verification_method": "Run normative normalization/default C/F folding vectors plus fixed match assertions through native and packaged search; hash downloaded inputs before fixture generation."
+    "verification_method": "Run retained normative normalization/default C/F folding vectors in .rdd/sources/s6/fixtures/unicode/ plus fixed match assertions through native and packaged search; verify source hashes before fixture generation."
   },
   {
     "id": "SC-ORDERING",
@@ -1510,7 +1510,7 @@
       "Support.Build",
       "BL.Verify"
     ],
-    "preconditions": "Qualified selected reference host and release package; benchmark.md protocol P1.",
+    "preconditions": "Qualified selected reference host and release package; benchmarks.md protocol P1.",
     "fixture": "Frozen D1; active1280×720 window, AC/normal,≥15GiB free same localSSD, no concurrent build/benchmark.",
     "stimulus": "Five warm-up launches then30 measured, fully exit between; OS cache retained.",
     "verification_method": "External monotonic process-creation→correct-rendered-input-ready measurement and frozen independent D1 oracle; no instrumented-package substitution."
@@ -1530,7 +1530,7 @@
       "Support.Build",
       "BL.Verify"
     ],
-    "preconditions": "Qualified release/reference host and benchmark.md P2.",
+    "preconditions": "Qualified release/reference host and benchmarks.md P2.",
     "fixture": "D1-derived9999 create baseline; real changes/valid starting statuses; reset outside timing; exact independent result sets/order.",
     "stimulus": "For each create/edit/complete/reopen/delete/search/status-filter/date-filter/order:10 warm-ups then100 measured.",
     "verification_method": "External UI observer; all raw timings/errors/warm-ups/reset identities retained, threshold failures cannot be invalidated as outliers."
@@ -1550,7 +1550,7 @@
       "Support.Build",
       "BL.Verify"
     ],
-    "preconditions": "Qualified release/reference host and benchmark.md P3.",
+    "preconditions": "Qualified release/reference host and benchmarks.md P3.",
     "fixture": "Distinct frozen D1A/D1B IDs/content, both10000 with required distributions; localSSD destinations.",
     "stimulus": "Three warm-ups each, then30 measured exports and30 restores; alternate A→B→A with reset outside timing.",
     "verification_method": "External timing and independent parse/round-trip/result oracle for every cycle; no-op restore, omitted validation or pooled export/restore samples fail."

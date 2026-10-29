@@ -1,0 +1,2287 @@
+{
+  "contract_index": {
+    "binding_files": [
+      "gen/rust/src/generated/todo.backup.v1.rs",
+      "gen/rust/src/generated/todo.collection.v1.rs",
+      "gen/rust/src/generated/todo.desktop.v1.rs",
+      "gen/rust/src/generated/todo.diagnostics.v1.rs",
+      "gen/rust/src/generated/todo.native_api.v1.rs",
+      "gen/rust/src/generated/todo.query.v1.rs",
+      "gen/rust/src/generated/todo.selected_files.v1.rs",
+      "gen/rust/src/generated/todo.storage.v1.rs",
+      "gen/rust/src/generated/todo.workspace.v1.rs"
+    ],
+    "binding_sources": {
+      "gen/rust/src/generated/todo.backup.v1.rs": [
+        "contracts/todo/backup/v1/backup.proto"
+      ],
+      "gen/rust/src/generated/todo.collection.v1.rs": [
+        "contracts/todo/collection/v1/collection.proto"
+      ],
+      "gen/rust/src/generated/todo.desktop.v1.rs": [
+        "contracts/todo/desktop/v1/desktop.proto"
+      ],
+      "gen/rust/src/generated/todo.diagnostics.v1.rs": [
+        "contracts/todo/diagnostics/v1/diagnostics.proto"
+      ],
+      "gen/rust/src/generated/todo.native_api.v1.rs": [
+        "contracts/todo/native_api/v1/native_api.proto"
+      ],
+      "gen/rust/src/generated/todo.query.v1.rs": [
+        "contracts/todo/query/v1/query.proto"
+      ],
+      "gen/rust/src/generated/todo.selected_files.v1.rs": [
+        "contracts/todo/selected_files/v1/selected_files.proto"
+      ],
+      "gen/rust/src/generated/todo.storage.v1.rs": [
+        "contracts/todo/storage/v1/storage.proto"
+      ],
+      "gen/rust/src/generated/todo.workspace.v1.rs": [
+        "contracts/todo/workspace/v1/workspace.proto"
+      ]
+    },
+    "descriptor_dependencies": [],
+    "descriptor_sources": [
+      "todo/backup/v1/backup.proto",
+      "todo/collection/v1/collection.proto",
+      "todo/desktop/v1/desktop.proto",
+      "todo/diagnostics/v1/diagnostics.proto",
+      "todo/native_api/v1/native_api.proto",
+      "todo/query/v1/query.proto",
+      "todo/selected_files/v1/selected_files.proto",
+      "todo/storage/v1/storage.proto",
+      "todo/workspace/v1/workspace.proto"
+    ],
+    "schema_version": 1,
+    "services": [
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "operations": [
+          {
+            "input": "todo.backup.v1.BeginExportRequest",
+            "output": "todo.backup.v1.BeginExportResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::backup::v1::BeginExportRequest",
+            "rust_method": "begin_export",
+            "rust_output": "rdd_contracts::todo::backup::v1::BeginExportResponse",
+            "symbol": "todo.backup.v1.BackupService.BeginExport"
+          },
+          {
+            "input": "todo.backup.v1.FinishExportRequest",
+            "output": "todo.backup.v1.FinishExportResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::backup::v1::FinishExportRequest",
+            "rust_method": "finish_export",
+            "rust_output": "rdd_contracts::todo::backup::v1::FinishExportResponse",
+            "symbol": "todo.backup.v1.BackupService.FinishExport"
+          },
+          {
+            "input": "todo.backup.v1.ResolveExportRequest",
+            "output": "todo.backup.v1.ResolveExportResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::backup::v1::ResolveExportRequest",
+            "rust_method": "resolve_export",
+            "rust_output": "rdd_contracts::todo::backup::v1::ResolveExportResponse",
+            "symbol": "todo.backup.v1.BackupService.ResolveExport"
+          },
+          {
+            "input": "todo.backup.v1.BeginRestoreRequest",
+            "output": "todo.backup.v1.BeginRestoreResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::backup::v1::BeginRestoreRequest",
+            "rust_method": "begin_restore",
+            "rust_output": "rdd_contracts::todo::backup::v1::BeginRestoreResponse",
+            "symbol": "todo.backup.v1.BackupService.BeginRestore"
+          },
+          {
+            "input": "todo.backup.v1.FinishRestoreRequest",
+            "output": "todo.backup.v1.FinishRestoreResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::backup::v1::FinishRestoreRequest",
+            "rust_method": "finish_restore",
+            "rust_output": "rdd_contracts::todo::backup::v1::FinishRestoreResponse",
+            "symbol": "todo.backup.v1.BackupService.FinishRestore"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::backup::v1::BackupService",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.BackupService"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "operations": [
+          {
+            "input": "todo.collection.v1.OpenRequest",
+            "output": "todo.collection.v1.OpenResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::OpenRequest",
+            "rust_method": "open",
+            "rust_output": "rdd_contracts::todo::collection::v1::OpenResponse",
+            "symbol": "todo.collection.v1.CollectionService.Open"
+          },
+          {
+            "input": "todo.collection.v1.CreateRequest",
+            "output": "todo.collection.v1.CreateResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::CreateRequest",
+            "rust_method": "create",
+            "rust_output": "rdd_contracts::todo::collection::v1::CreateResponse",
+            "symbol": "todo.collection.v1.CollectionService.Create"
+          },
+          {
+            "input": "todo.collection.v1.EditRequest",
+            "output": "todo.collection.v1.EditResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::EditRequest",
+            "rust_method": "edit",
+            "rust_output": "rdd_contracts::todo::collection::v1::EditResponse",
+            "symbol": "todo.collection.v1.CollectionService.Edit"
+          },
+          {
+            "input": "todo.collection.v1.SetStatusRequest",
+            "output": "todo.collection.v1.SetStatusResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::SetStatusRequest",
+            "rust_method": "set_status",
+            "rust_output": "rdd_contracts::todo::collection::v1::SetStatusResponse",
+            "symbol": "todo.collection.v1.CollectionService.SetStatus"
+          },
+          {
+            "input": "todo.collection.v1.DeleteRequest",
+            "output": "todo.collection.v1.DeleteResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::DeleteRequest",
+            "rust_method": "delete",
+            "rust_output": "rdd_contracts::todo::collection::v1::DeleteResponse",
+            "symbol": "todo.collection.v1.CollectionService.Delete"
+          },
+          {
+            "input": "todo.collection.v1.ReadSnapshotRequest",
+            "output": "todo.collection.v1.ReadSnapshotResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::ReadSnapshotRequest",
+            "rust_method": "read_snapshot",
+            "rust_output": "rdd_contracts::todo::collection::v1::ReadSnapshotResponse",
+            "symbol": "todo.collection.v1.CollectionService.ReadSnapshot"
+          },
+          {
+            "input": "todo.collection.v1.ValidateImportRequest",
+            "output": "todo.collection.v1.ValidateImportResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::ValidateImportRequest",
+            "rust_method": "validate_import",
+            "rust_output": "rdd_contracts::todo::collection::v1::ValidateImportResponse",
+            "symbol": "todo.collection.v1.CollectionService.ValidateImport"
+          },
+          {
+            "input": "todo.collection.v1.ReplaceRequest",
+            "output": "todo.collection.v1.ReplaceResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::ReplaceRequest",
+            "rust_method": "replace",
+            "rust_output": "rdd_contracts::todo::collection::v1::ReplaceResponse",
+            "symbol": "todo.collection.v1.CollectionService.Replace"
+          },
+          {
+            "input": "todo.collection.v1.ResolveOutcomeRequest",
+            "output": "todo.collection.v1.ResolveOutcomeResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::collection::v1::ResolveOutcomeRequest",
+            "rust_method": "resolve_outcome",
+            "rust_output": "rdd_contracts::todo::collection::v1::ResolveOutcomeResponse",
+            "symbol": "todo.collection.v1.CollectionService.ResolveOutcome"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::collection::v1::CollectionService",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.CollectionService"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "operations": [
+          {
+            "input": "todo.desktop.v1.InstanceRequest",
+            "output": "todo.desktop.v1.InstanceResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::desktop::v1::InstanceRequest",
+            "rust_method": "instance",
+            "rust_output": "rdd_contracts::todo::desktop::v1::InstanceResponse",
+            "symbol": "todo.desktop.v1.DesktopService.Instance"
+          },
+          {
+            "input": "todo.desktop.v1.EventsRequest",
+            "output": "todo.desktop.v1.EventsResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::desktop::v1::EventsRequest",
+            "rust_method": "events",
+            "rust_output": "rdd_contracts::todo::desktop::v1::EventsResponse",
+            "symbol": "todo.desktop.v1.DesktopService.Events"
+          },
+          {
+            "input": "todo.desktop.v1.ResourcesRequest",
+            "output": "todo.desktop.v1.ResourcesResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::desktop::v1::ResourcesRequest",
+            "rust_method": "resources",
+            "rust_output": "rdd_contracts::todo::desktop::v1::ResourcesResponse",
+            "symbol": "todo.desktop.v1.DesktopService.Resources"
+          },
+          {
+            "input": "todo.desktop.v1.PathsRequest",
+            "output": "todo.desktop.v1.PathsResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::desktop::v1::PathsRequest",
+            "rust_method": "paths",
+            "rust_output": "rdd_contracts::todo::desktop::v1::PathsResponse",
+            "symbol": "todo.desktop.v1.DesktopService.Paths"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::desktop::v1::DesktopService",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.DesktopService"
+      },
+      {
+        "descriptor_source": "todo/diagnostics/v1/diagnostics.proto",
+        "generated_path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+        "operations": [
+          {
+            "input": "todo.diagnostics.v1.EmitRequest",
+            "output": "todo.diagnostics.v1.EmitResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::diagnostics::v1::EmitRequest",
+            "rust_method": "emit",
+            "rust_output": "rdd_contracts::todo::diagnostics::v1::EmitResponse",
+            "symbol": "todo.diagnostics.v1.DiagnosticsService.Emit"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::diagnostics::v1::DiagnosticsService",
+        "source": "contracts/todo/diagnostics/v1/diagnostics.proto",
+        "symbol": "todo.diagnostics.v1.DiagnosticsService"
+      },
+      {
+        "descriptor_source": "todo/native_api/v1/native_api.proto",
+        "generated_path": "gen/rust/src/generated/todo.native_api.v1.rs",
+        "operations": [
+          {
+            "input": "todo.native_api.v1.InvokeRequest",
+            "output": "todo.native_api.v1.InvokeResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::native_api::v1::InvokeRequest",
+            "rust_method": "invoke",
+            "rust_output": "rdd_contracts::todo::native_api::v1::InvokeResponse",
+            "symbol": "todo.native_api.v1.NativeApiService.Invoke"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::native_api::v1::NativeApiService",
+        "source": "contracts/todo/native_api/v1/native_api.proto",
+        "symbol": "todo.native_api.v1.NativeApiService"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "operations": [
+          {
+            "input": "todo.query.v1.EvaluateRequest",
+            "output": "todo.query.v1.EvaluateResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::query::v1::EvaluateRequest",
+            "rust_method": "evaluate",
+            "rust_output": "rdd_contracts::todo::query::v1::EvaluateResponse",
+            "symbol": "todo.query.v1.QueryService.Evaluate"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::query::v1::QueryService",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.QueryService"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "operations": [
+          {
+            "input": "todo.selected_files.v1.SelectRequest",
+            "output": "todo.selected_files.v1.SelectResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::selected_files::v1::SelectRequest",
+            "rust_method": "select",
+            "rust_output": "rdd_contracts::todo::selected_files::v1::SelectResponse",
+            "symbol": "todo.selected_files.v1.SelectedFilesService.Select"
+          },
+          {
+            "input": "todo.selected_files.v1.ReadRequest",
+            "output": "todo.selected_files.v1.ReadResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::selected_files::v1::ReadRequest",
+            "rust_method": "read",
+            "rust_output": "rdd_contracts::todo::selected_files::v1::ReadResponse",
+            "symbol": "todo.selected_files.v1.SelectedFilesService.Read"
+          },
+          {
+            "input": "todo.selected_files.v1.ProbeRequest",
+            "output": "todo.selected_files.v1.ProbeResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::selected_files::v1::ProbeRequest",
+            "rust_method": "probe",
+            "rust_output": "rdd_contracts::todo::selected_files::v1::ProbeResponse",
+            "symbol": "todo.selected_files.v1.SelectedFilesService.Probe"
+          },
+          {
+            "input": "todo.selected_files.v1.PublishRequest",
+            "output": "todo.selected_files.v1.PublishResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::selected_files::v1::PublishRequest",
+            "rust_method": "publish",
+            "rust_output": "rdd_contracts::todo::selected_files::v1::PublishResponse",
+            "symbol": "todo.selected_files.v1.SelectedFilesService.Publish"
+          },
+          {
+            "input": "todo.selected_files.v1.ResolveRequest",
+            "output": "todo.selected_files.v1.ResolveResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::selected_files::v1::ResolveRequest",
+            "rust_method": "resolve",
+            "rust_output": "rdd_contracts::todo::selected_files::v1::ResolveResponse",
+            "symbol": "todo.selected_files.v1.SelectedFilesService.Resolve"
+          },
+          {
+            "input": "todo.selected_files.v1.CleanupRequest",
+            "output": "todo.selected_files.v1.CleanupResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::selected_files::v1::CleanupRequest",
+            "rust_method": "cleanup",
+            "rust_output": "rdd_contracts::todo::selected_files::v1::CleanupResponse",
+            "symbol": "todo.selected_files.v1.SelectedFilesService.Cleanup"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::selected_files::v1::SelectedFilesService",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.SelectedFilesService"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "operations": [
+          {
+            "input": "todo.storage.v1.OpenRequest",
+            "output": "todo.storage.v1.OpenResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::storage::v1::OpenRequest",
+            "rust_method": "open",
+            "rust_output": "rdd_contracts::todo::storage::v1::OpenResponse",
+            "symbol": "todo.storage.v1.StorageService.Open"
+          },
+          {
+            "input": "todo.storage.v1.ReadRequest",
+            "output": "todo.storage.v1.ReadResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::storage::v1::ReadRequest",
+            "rust_method": "read",
+            "rust_output": "rdd_contracts::todo::storage::v1::ReadResponse",
+            "symbol": "todo.storage.v1.StorageService.Read"
+          },
+          {
+            "input": "todo.storage.v1.CommitRequest",
+            "output": "todo.storage.v1.CommitResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::storage::v1::CommitRequest",
+            "rust_method": "commit",
+            "rust_output": "rdd_contracts::todo::storage::v1::CommitResponse",
+            "symbol": "todo.storage.v1.StorageService.Commit"
+          },
+          {
+            "input": "todo.storage.v1.OutcomeRequest",
+            "output": "todo.storage.v1.OutcomeResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::storage::v1::OutcomeRequest",
+            "rust_method": "outcome",
+            "rust_output": "rdd_contracts::todo::storage::v1::OutcomeResponse",
+            "symbol": "todo.storage.v1.StorageService.Outcome"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::storage::v1::StorageService",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.StorageService"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "operations": [
+          {
+            "input": "todo.workspace.v1.OpenRequest",
+            "output": "todo.workspace.v1.OpenResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::OpenRequest",
+            "rust_method": "open",
+            "rust_output": "rdd_contracts::todo::workspace::v1::OpenResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.Open"
+          },
+          {
+            "input": "todo.workspace.v1.UpdateDraftRequest",
+            "output": "todo.workspace.v1.UpdateDraftResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::UpdateDraftRequest",
+            "rust_method": "update_draft",
+            "rust_output": "rdd_contracts::todo::workspace::v1::UpdateDraftResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.UpdateDraft"
+          },
+          {
+            "input": "todo.workspace.v1.NavigateRequest",
+            "output": "todo.workspace.v1.NavigateResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::NavigateRequest",
+            "rust_method": "navigate",
+            "rust_output": "rdd_contracts::todo::workspace::v1::NavigateResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.Navigate"
+          },
+          {
+            "input": "todo.workspace.v1.DecideIntentRequest",
+            "output": "todo.workspace.v1.DecideIntentResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::DecideIntentRequest",
+            "rust_method": "decide_intent",
+            "rust_output": "rdd_contracts::todo::workspace::v1::DecideIntentResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.DecideIntent"
+          },
+          {
+            "input": "todo.workspace.v1.SubmitRequest",
+            "output": "todo.workspace.v1.SubmitResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::SubmitRequest",
+            "rust_method": "submit",
+            "rust_output": "rdd_contracts::todo::workspace::v1::SubmitResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.Submit"
+          },
+          {
+            "input": "todo.workspace.v1.ReadStateRequest",
+            "output": "todo.workspace.v1.ReadStateResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::ReadStateRequest",
+            "rust_method": "read_state",
+            "rust_output": "rdd_contracts::todo::workspace::v1::ReadStateResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.ReadState"
+          },
+          {
+            "input": "todo.workspace.v1.EvaluateViewRequest",
+            "output": "todo.workspace.v1.EvaluateViewResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::EvaluateViewRequest",
+            "rust_method": "evaluate_view",
+            "rust_output": "rdd_contracts::todo::workspace::v1::EvaluateViewResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.EvaluateView"
+          },
+          {
+            "input": "todo.workspace.v1.TransferRequest",
+            "output": "todo.workspace.v1.TransferResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::TransferRequest",
+            "rust_method": "transfer",
+            "rust_output": "rdd_contracts::todo::workspace::v1::TransferResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.Transfer"
+          },
+          {
+            "input": "todo.workspace.v1.ReadHelpRequest",
+            "output": "todo.workspace.v1.ReadHelpResponse",
+            "response_oneofs": [
+              {
+                "fields": [
+                  "success",
+                  "failure"
+                ],
+                "name": "outcome"
+              }
+            ],
+            "rust_input": "rdd_contracts::todo::workspace::v1::ReadHelpRequest",
+            "rust_method": "read_help",
+            "rust_output": "rdd_contracts::todo::workspace::v1::ReadHelpResponse",
+            "symbol": "todo.workspace.v1.WorkspaceService.ReadHelp"
+          }
+        ],
+        "rust_trait": "rdd_contracts::todo::workspace::v1::WorkspaceService",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.WorkspaceService"
+      }
+    ],
+    "source_hashes": {
+      "contracts/todo/backup/v1/backup.proto": "b6f7a8c1d8180fc60e11d7c50a7fd6fe7eb16dd9ebda7edefc77e9f01673868a",
+      "contracts/todo/collection/v1/collection.proto": "81f1ba1c5d3d6250e0004fa17d8fc320b191add9b1793edf01a652ef40e88b0e",
+      "contracts/todo/desktop/v1/desktop.proto": "bd16a21dfce5ed0cc31294d484bff7e4142982f362b81d137722e8b851b893c3",
+      "contracts/todo/diagnostics/v1/diagnostics.proto": "cf525c5306993ef7050ee9a9781d5acd36aa3d023c0bb99bd4d30f0c2bb195cd",
+      "contracts/todo/native_api/v1/native_api.proto": "f57f5f0d09b13e42b2ba94f17374cd5350fd0b7d98268a3345600a67f22644b1",
+      "contracts/todo/query/v1/query.proto": "fe6bd132e4d7dc14f31a2bdf80bd8883fa956c3bef9fb352e3fd9fd844a92cdf",
+      "contracts/todo/selected_files/v1/selected_files.proto": "31d4743ecae1386a6fa2d1c3866a73c617645028d3b417d91bb37257136ae8b6",
+      "contracts/todo/storage/v1/storage.proto": "6ae06e06d2534f9540f364d9b98151882ff50786ea4d91f35ec6358618a2dcc5",
+      "contracts/todo/workspace/v1/workspace.proto": "f7d5837f726264a9b963609c42be84e523d0becdb85df8c63254348ca3cb03c9"
+    },
+    "support_files": [
+      "gen/rust/.rdd-generated.json",
+      "gen/rust/Cargo.lock",
+      "gen/rust/Cargo.toml",
+      "gen/rust/src/lib.rs"
+    ],
+    "types": [
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::BeginExportRequest",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.BeginExportRequest"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::BeginExportResponse",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.BeginExportResponse"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::BeginRestoreRequest",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.BeginRestoreRequest"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::BeginRestoreResponse",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.BeginRestoreResponse"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::Cancelled",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.Cancelled"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "enum",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::Decision",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.Decision"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "enum",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::ErrorCode",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.ErrorCode"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::ExportOffer",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.ExportOffer"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::ExportResult",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.ExportResult"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::Failure",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::FinishExportRequest",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.FinishExportRequest"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::FinishExportResponse",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.FinishExportResponse"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::FinishRestoreRequest",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.FinishRestoreRequest"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::FinishRestoreResponse",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.FinishRestoreResponse"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::Pending",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.Pending"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::Published",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.Published"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::ResolveExportRequest",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.ResolveExportRequest"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::ResolveExportResponse",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.ResolveExportResponse"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::RestoreOffer",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.RestoreOffer"
+      },
+      {
+        "descriptor_source": "todo/backup/v1/backup.proto",
+        "generated_path": "gen/rust/src/generated/todo.backup.v1.rs",
+        "kind": "message",
+        "package": "todo.backup.v1",
+        "rust_type": "rdd_contracts::todo::backup::v1::RestoreResult",
+        "source": "contracts/todo/backup/v1/backup.proto",
+        "symbol": "todo.backup.v1.RestoreResult"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::CreateRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.CreateRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::CreateResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.CreateResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Date",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Date"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::DeleteRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.DeleteRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::DeleteResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.DeleteResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Draft",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Draft"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::EditRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.EditRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::EditResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.EditResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "enum",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ErrorCode",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ErrorCode"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Failure",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Instant",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Instant"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::OpenRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.OpenRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::OpenResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.OpenResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Pending",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Pending"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ReadSnapshotRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ReadSnapshotRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ReadSnapshotResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ReadSnapshotResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Receipt",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Receipt"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "enum",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Recovery",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Recovery"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ReplaceRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ReplaceRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ReplaceResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ReplaceResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Resolution",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Resolution"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ResolveOutcomeRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ResolveOutcomeRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ResolveOutcomeResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ResolveOutcomeResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::SetStatusRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.SetStatusRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::SetStatusResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.SetStatusResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Snapshot",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Snapshot"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "enum",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Status",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Status"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::Task",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.Task"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ValidateImportRequest",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ValidateImportRequest"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ValidateImportResponse",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ValidateImportResponse"
+      },
+      {
+        "descriptor_source": "todo/collection/v1/collection.proto",
+        "generated_path": "gen/rust/src/generated/todo.collection.v1.rs",
+        "kind": "message",
+        "package": "todo.collection.v1",
+        "rust_type": "rdd_contracts::todo::collection::v1::ValidatedImport",
+        "source": "contracts/todo/collection/v1/collection.proto",
+        "symbol": "todo.collection.v1.ValidatedImport"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "enum",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::ErrorCode",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.ErrorCode"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::Event",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.Event"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "enum",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::EventKind",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.EventKind"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::EventsRequest",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.EventsRequest"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::EventsResponse",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.EventsResponse"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::Failure",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::Instance",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.Instance"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::InstanceRequest",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.InstanceRequest"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::InstanceResponse",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.InstanceResponse"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::Paths",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.Paths"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::PathsRequest",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.PathsRequest"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::PathsResponse",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.PathsResponse"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::Resources",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.Resources"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::ResourcesRequest",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.ResourcesRequest"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "message",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::ResourcesResponse",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.ResourcesResponse"
+      },
+      {
+        "descriptor_source": "todo/desktop/v1/desktop.proto",
+        "generated_path": "gen/rust/src/generated/todo.desktop.v1.rs",
+        "kind": "enum",
+        "package": "todo.desktop.v1",
+        "rust_type": "rdd_contracts::todo::desktop::v1::WindowAction",
+        "source": "contracts/todo/desktop/v1/desktop.proto",
+        "symbol": "todo.desktop.v1.WindowAction"
+      },
+      {
+        "descriptor_source": "todo/diagnostics/v1/diagnostics.proto",
+        "generated_path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+        "kind": "message",
+        "package": "todo.diagnostics.v1",
+        "rust_type": "rdd_contracts::todo::diagnostics::v1::Accepted",
+        "source": "contracts/todo/diagnostics/v1/diagnostics.proto",
+        "symbol": "todo.diagnostics.v1.Accepted"
+      },
+      {
+        "descriptor_source": "todo/diagnostics/v1/diagnostics.proto",
+        "generated_path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+        "kind": "enum",
+        "package": "todo.diagnostics.v1",
+        "rust_type": "rdd_contracts::todo::diagnostics::v1::Category",
+        "source": "contracts/todo/diagnostics/v1/diagnostics.proto",
+        "symbol": "todo.diagnostics.v1.Category"
+      },
+      {
+        "descriptor_source": "todo/diagnostics/v1/diagnostics.proto",
+        "generated_path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+        "kind": "message",
+        "package": "todo.diagnostics.v1",
+        "rust_type": "rdd_contracts::todo::diagnostics::v1::EmitRequest",
+        "source": "contracts/todo/diagnostics/v1/diagnostics.proto",
+        "symbol": "todo.diagnostics.v1.EmitRequest"
+      },
+      {
+        "descriptor_source": "todo/diagnostics/v1/diagnostics.proto",
+        "generated_path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+        "kind": "message",
+        "package": "todo.diagnostics.v1",
+        "rust_type": "rdd_contracts::todo::diagnostics::v1::EmitResponse",
+        "source": "contracts/todo/diagnostics/v1/diagnostics.proto",
+        "symbol": "todo.diagnostics.v1.EmitResponse"
+      },
+      {
+        "descriptor_source": "todo/diagnostics/v1/diagnostics.proto",
+        "generated_path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+        "kind": "message",
+        "package": "todo.diagnostics.v1",
+        "rust_type": "rdd_contracts::todo::diagnostics::v1::Failure",
+        "source": "contracts/todo/diagnostics/v1/diagnostics.proto",
+        "symbol": "todo.diagnostics.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/diagnostics/v1/diagnostics.proto",
+        "generated_path": "gen/rust/src/generated/todo.diagnostics.v1.rs",
+        "kind": "enum",
+        "package": "todo.diagnostics.v1",
+        "rust_type": "rdd_contracts::todo::diagnostics::v1::Severity",
+        "source": "contracts/todo/diagnostics/v1/diagnostics.proto",
+        "symbol": "todo.diagnostics.v1.Severity"
+      },
+      {
+        "descriptor_source": "todo/native_api/v1/native_api.proto",
+        "generated_path": "gen/rust/src/generated/todo.native_api.v1.rs",
+        "kind": "enum",
+        "package": "todo.native_api.v1",
+        "rust_type": "rdd_contracts::todo::native_api::v1::ErrorCode",
+        "source": "contracts/todo/native_api/v1/native_api.proto",
+        "symbol": "todo.native_api.v1.ErrorCode"
+      },
+      {
+        "descriptor_source": "todo/native_api/v1/native_api.proto",
+        "generated_path": "gen/rust/src/generated/todo.native_api.v1.rs",
+        "kind": "message",
+        "package": "todo.native_api.v1",
+        "rust_type": "rdd_contracts::todo::native_api::v1::Failure",
+        "source": "contracts/todo/native_api/v1/native_api.proto",
+        "symbol": "todo.native_api.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/native_api/v1/native_api.proto",
+        "generated_path": "gen/rust/src/generated/todo.native_api.v1.rs",
+        "kind": "message",
+        "package": "todo.native_api.v1",
+        "rust_type": "rdd_contracts::todo::native_api::v1::InvokeRequest",
+        "source": "contracts/todo/native_api/v1/native_api.proto",
+        "symbol": "todo.native_api.v1.InvokeRequest"
+      },
+      {
+        "descriptor_source": "todo/native_api/v1/native_api.proto",
+        "generated_path": "gen/rust/src/generated/todo.native_api.v1.rs",
+        "kind": "message",
+        "package": "todo.native_api.v1",
+        "rust_type": "rdd_contracts::todo::native_api::v1::InvokeResponse",
+        "source": "contracts/todo/native_api/v1/native_api.proto",
+        "symbol": "todo.native_api.v1.InvokeResponse"
+      },
+      {
+        "descriptor_source": "todo/native_api/v1/native_api.proto",
+        "generated_path": "gen/rust/src/generated/todo.native_api.v1.rs",
+        "kind": "message",
+        "package": "todo.native_api.v1",
+        "rust_type": "rdd_contracts::todo::native_api::v1::Reply",
+        "source": "contracts/todo/native_api/v1/native_api.proto",
+        "symbol": "todo.native_api.v1.Reply"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "enum",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::DateFilter",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.DateFilter"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "message",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::EvaluateRequest",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.EvaluateRequest"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "message",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::EvaluateResponse",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.EvaluateResponse"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "message",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::Failure",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "enum",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::Ordering",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.Ordering"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "message",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::Result",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.Result"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "message",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::Selection",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.Selection"
+      },
+      {
+        "descriptor_source": "todo/query/v1/query.proto",
+        "generated_path": "gen/rust/src/generated/todo.query.v1.rs",
+        "kind": "enum",
+        "package": "todo.query.v1",
+        "rust_type": "rdd_contracts::todo::query::v1::StatusView",
+        "source": "contracts/todo/query/v1/query.proto",
+        "symbol": "todo.query.v1.StatusView"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Append",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Append"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Begin",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Begin"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Chunk",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Chunk"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Cleaned",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Cleaned"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::CleanupRequest",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.CleanupRequest"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::CleanupResponse",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.CleanupResponse"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "enum",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::ErrorCode",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.ErrorCode"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Failure",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Finish",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Finish"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Grant",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Grant"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "enum",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Mode",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Mode"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Probe",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Probe"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::ProbeRequest",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.ProbeRequest"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::ProbeResponse",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.ProbeResponse"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::Publication",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.Publication"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::PublishRequest",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.PublishRequest"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::PublishResponse",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.PublishResponse"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::ReadRequest",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.ReadRequest"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::ReadResponse",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.ReadResponse"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::ResolveRequest",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.ResolveRequest"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::ResolveResponse",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.ResolveResponse"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::SelectRequest",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.SelectRequest"
+      },
+      {
+        "descriptor_source": "todo/selected_files/v1/selected_files.proto",
+        "generated_path": "gen/rust/src/generated/todo.selected_files.v1.rs",
+        "kind": "message",
+        "package": "todo.selected_files.v1",
+        "rust_type": "rdd_contracts::todo::selected_files::v1::SelectResponse",
+        "source": "contracts/todo/selected_files/v1/selected_files.proto",
+        "symbol": "todo.selected_files.v1.SelectResponse"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Absent",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Absent"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::CommitRequest",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.CommitRequest"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::CommitResponse",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.CommitResponse"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "enum",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::ErrorCode",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.ErrorCode"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Failure",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::OpenRequest",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.OpenRequest"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::OpenResponse",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.OpenResponse"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::OutcomeRequest",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.OutcomeRequest"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::OutcomeResponse",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.OutcomeResponse"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Pending",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Pending"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Put",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Put"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::ReadRequest",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.ReadRequest"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::ReadResponse",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.ReadResponse"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Receipt",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Receipt"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::RecordNoop",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.RecordNoop"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Remove",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Remove"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Replace",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Replace"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Resolution",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Resolution"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Row",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Row"
+      },
+      {
+        "descriptor_source": "todo/storage/v1/storage.proto",
+        "generated_path": "gen/rust/src/generated/todo.storage.v1.rs",
+        "kind": "message",
+        "package": "todo.storage.v1",
+        "rust_type": "rdd_contracts::todo::storage::v1::Snapshot",
+        "source": "contracts/todo/storage/v1/storage.proto",
+        "symbol": "todo.storage.v1.Snapshot"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::Create",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.Create"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::DecideIntentRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.DecideIntentRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::DecideIntentResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.DecideIntentResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::Delete",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.Delete"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::Edit",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.Edit"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "enum",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::ErrorCode",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.ErrorCode"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::EvaluateViewRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.EvaluateViewRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::EvaluateViewResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.EvaluateViewResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::Failure",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.Failure"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::Help",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.Help"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::Intent",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.Intent"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "enum",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::IntentDecision",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.IntentDecision"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::NavigateRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.NavigateRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::NavigateResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.NavigateResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "enum",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::Navigation",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.Navigation"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::OpenRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.OpenRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::OpenResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.OpenResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "enum",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::PendingState",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.PendingState"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::ReadHelpRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.ReadHelpRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::ReadHelpResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.ReadHelpResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::ReadStateRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.ReadStateRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::ReadStateResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.ReadStateResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::SetStatus",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.SetStatus"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::State",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.State"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::SubmitRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.SubmitRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::SubmitResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.SubmitResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::TransferRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.TransferRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::TransferResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.TransferResponse"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::UpdateDraftRequest",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.UpdateDraftRequest"
+      },
+      {
+        "descriptor_source": "todo/workspace/v1/workspace.proto",
+        "generated_path": "gen/rust/src/generated/todo.workspace.v1.rs",
+        "kind": "message",
+        "package": "todo.workspace.v1",
+        "rust_type": "rdd_contracts::todo::workspace::v1::UpdateDraftResponse",
+        "source": "contracts/todo/workspace/v1/workspace.proto",
+        "symbol": "todo.workspace.v1.UpdateDraftResponse"
+      }
+    ]
+  },
+  "descriptor_sha256": "543117de19de331cea4c7781a6a62632c74d0d732fba81181a91c63536041207",
+  "files": {
+    "Cargo.lock": "2e479a616de5b523737b5a728b10f098eed3b58b2954f0469322c407653da335",
+    "Cargo.toml": "f760f99abe1e5ef96384034c3876e7cb84d20a59a6569e31fb05c77e30f7fdd8",
+    "src/generated/todo.backup.v1.rs": "17dea1f9e66c83ee17d84c700c8929d328dfbf4fb09d27a8ec2acf06df155573",
+    "src/generated/todo.collection.v1.rs": "79cf4115e404308eb9a0c5f271ad62a5d9bec48a7e5e640eec0f4992250666ae",
+    "src/generated/todo.desktop.v1.rs": "60031fd89c82350723e15bc449deb9d3642028eda67489b6229935d3f4d8efe1",
+    "src/generated/todo.diagnostics.v1.rs": "8b5d7393e25edc8c7edb741cbe905a4378babdc2a6b239cfe17af3f1953f385a",
+    "src/generated/todo.native_api.v1.rs": "d97b8d3f4b465b9c5680c73e200adc0c5f5195d01a77685aac948b2c5323cb1c",
+    "src/generated/todo.query.v1.rs": "a060dbb633892d6498d499491e3366e6b65fe8d912ec10c7dbd4019e0a8cf972",
+    "src/generated/todo.selected_files.v1.rs": "f318594ddadd97e698a45521f4f19ee1bf7556413dbdd892f4cca01987666632",
+    "src/generated/todo.storage.v1.rs": "82b0e4d9e84e71b51a7ad778c1e4f2172dae0739ada7a0e9e7963ddce3646ba8",
+    "src/generated/todo.workspace.v1.rs": "61e700ebbdc0bf95c74e25862d09db3d5c5d7f031b569cd87d2214df9e83befe",
+    "src/lib.rs": "d0e21b39508394d80b446c9ef8596fa73695d5db3f2efc5fed533c1c7b5c425d"
+  },
+  "generator": "rdd-proto-codegen/0.1.0",
+  "prost_version": "0.14.4"
+}

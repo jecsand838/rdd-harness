@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
-  "id": "R20261028T021552Z-5f7dc8",
+  "id": "R20261028T233423Z-a24545",
   "requirements_digest": "db0652bcfb3d241ba21c59574eb09b483fab041550d36ad0fb3d33a0fcff9d31",
-  "mode": "regenerate",
-  "parent_spec_digest": null,
-  "change_summary": "Reconcile accepted revision-5 ownership, scenarios, constraints and qualification into exact local generated interfaces and executable verification inputs.",
+  "mode": "amend",
+  "parent_spec_digest": "984e58a046a4a5e20a3e3affb67582dd0d269d9c935100e56d6ad193e9f31592",
+  "change_summary": "Correct PREP-SPEC-001 with an executable portable macOS fixture lane; reconcile fresh S1-S5 handoffs, retained exact contracts and complete future implementation impact without changing revision-5 product semantics.",
   "documents": [
     "docs/specs/intake.md",
     "docs/specs/domain-inventory.json",
@@ -1707,7 +1707,7 @@
       "preconditions": "Unicode18 vectors fixed independently of implementation library and host Python16.",
       "fixture": "Normative unicode.org/Public/18.0.0/ucd inputs SHA256: CaseFolding a004797658a457bec4dc11683e39f69249ea3b595b752dbea6721c4c9f587b0d; UnicodeData 0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950; NormalizationTest 25a50d816764b04abfb4a646d3eb2b2a803284c3873d9a06757b94fe4513dde3; PropList f438f532e8737bb8a2702126cdf9c4af5e357c58c7acf9d9eb2fc7c1a1d955d6; CompositionExclusions c759b100e9ae8960ae6b50fc5765950a7581fd9f30d4ef95f68f25a6d97e818e. Records1..10 contain respectively Caf\u00e9, Stra\u00dfe, \u03a3\u03c2\u03c3, U+A7CE, U+1DF95, notes-only [x]*, a  b, I, \u0130, \u0131; only record6 matches via notes.",
       "stimulus": "Search decomposed cafe+U0301, STRASSE, \u03c3, U+A7CF, ss, [x]*, a b, cafe, i, \u0130, \u0131, whitespace-only and outer-White_Space STRASSE queries.",
-      "verification_method": "Run normative normalization/default C/F folding vectors plus fixed match assertions through native and packaged search; hash downloaded inputs before fixture generation."
+      "verification_method": "Run retained normative normalization/default C/F folding vectors in .rdd/sources/s6/fixtures/unicode/ plus fixed match assertions through native and packaged search; verify source hashes before fixture generation."
     },
     {
       "id": "SC-ORDERING",
@@ -2937,7 +2937,7 @@
         "Support.Build",
         "BL.Verify"
       ],
-      "preconditions": "Qualified selected reference host and release package; benchmark.md protocol P1.",
+      "preconditions": "Qualified selected reference host and release package; benchmarks.md protocol P1.",
       "fixture": "Frozen D1; active1280\u00d7720 window, AC/normal,\u226515GiB free same localSSD, no concurrent build/benchmark.",
       "stimulus": "Five warm-up launches then30 measured, fully exit between; OS cache retained.",
       "verification_method": "External monotonic process-creation\u2192correct-rendered-input-ready measurement and frozen independent D1 oracle; no instrumented-package substitution."
@@ -2957,7 +2957,7 @@
         "Support.Build",
         "BL.Verify"
       ],
-      "preconditions": "Qualified release/reference host and benchmark.md P2.",
+      "preconditions": "Qualified release/reference host and benchmarks.md P2.",
       "fixture": "D1-derived9999 create baseline; real changes/valid starting statuses; reset outside timing; exact independent result sets/order.",
       "stimulus": "For each create/edit/complete/reopen/delete/search/status-filter/date-filter/order:10 warm-ups then100 measured.",
       "verification_method": "External UI observer; all raw timings/errors/warm-ups/reset identities retained, threshold failures cannot be invalidated as outliers."
@@ -2977,7 +2977,7 @@
         "Support.Build",
         "BL.Verify"
       ],
-      "preconditions": "Qualified release/reference host and benchmark.md P3.",
+      "preconditions": "Qualified release/reference host and benchmarks.md P3.",
       "fixture": "Distinct frozen D1A/D1B IDs/content, both10000 with required distributions; localSSD destinations.",
       "stimulus": "Three warm-ups each, then30 measured exports and30 restores; alternate A\u2192B\u2192A with reset outside timing.",
       "verification_method": "External timing and independent parse/round-trip/result oracle for every cycle; no-op restore, omitted validation or pooled export/restore samples fail."
@@ -3438,66 +3438,14 @@
       ],
       "red_pattern": null,
       "metrics": [],
-      "host_profile": "todo-macos26-arm64-reference",
+      "host_profile": null,
       "environments": [
-        "macos-reference"
+        "macos-portable"
       ],
       "requires": [
         "R-INPUTS",
-        "R-S6-guard-py",
-        "R-S6-provision-py",
         "R-S6-qualify-py",
-        "R-S6-boundary-py",
-        "R-S6-host-py",
-        "R-S6-transfer-py",
-        "R-S6-joint-py",
-        "R-S6-tools-json",
-        "R-S6-tool-acquisition-json",
-        "R-S6-observer-fresh_identity-py",
         "R-S6-fixtures-check-py",
-        "R-S6-benchmarks-evaluate-py",
-        "R-FROZEN-0",
-        "R-FROZEN-1",
-        "R-FROZEN-2",
-        "R-FROZEN-3",
-        "R-FROZEN-4",
-        "R-FROZEN-5",
-        "R-FROZEN-6",
-        "R-FROZEN-7",
-        "R-FROZEN-8",
-        "R-FROZEN-9",
-        "R-FROZEN-10",
-        "R-FROZEN-11",
-        "R-FROZEN-12",
-        "R-FROZEN-13",
-        "R-FROZEN-14",
-        "R-FROZEN-15",
-        "R-FROZEN-16",
-        "R-FROZEN-17",
-        "R-FROZEN-18",
-        "R-FROZEN-19",
-        "R-FROZEN-20",
-        "R-FROZEN-21",
-        "R-FROZEN-22",
-        "R-FROZEN-23",
-        "R-FROZEN-24",
-        "R-FROZEN-25",
-        "R-FROZEN-26",
-        "R-FROZEN-27",
-        "R-FROZEN-28",
-        "R-FROZEN-29",
-        "R-FROZEN-30",
-        "R-FROZEN-31",
-        "R-FROZEN-32",
-        "R-FROZEN-33",
-        "R-FROZEN-34",
-        "R-FROZEN-35",
-        "R-FROZEN-36",
-        "R-FROZEN-37",
-        "R-FROZEN-38",
-        "R-FROZEN-39",
-        "R-FROZEN-40",
-        "R-FROZEN-41",
         "R-FROZEN-42",
         "R-FROZEN-43",
         "R-FROZEN-44",
@@ -3511,54 +3459,48 @@
         "R-FROZEN-52",
         "R-FROZEN-53",
         "R-FROZEN-54",
-        "R-FROZEN-55",
-        "R-FROZEN-56",
-        "R-FROZEN-57",
-        "R-FROZEN-58",
-        "R-GENERATOR",
-        "R-GENERATOR-LOCK",
-        "R-PROTO-DRIVER",
-        "R-RUST-PIN",
-        "R-BUF-CONFIG",
-        "R-PROTO-collection",
-        "R-PROTO-query",
-        "R-PROTO-backup",
-        "R-PROTO-workspace",
-        "R-PROTO-native_api",
-        "R-PROTO-storage",
-        "R-PROTO-selected_files",
-        "R-PROTO-desktop",
-        "R-PROTO-diagnostics",
-        "R-GENERATED-0",
-        "R-GENERATED-1",
-        "R-GENERATED-2",
-        "R-GENERATED-3",
-        "R-GENERATED-4",
-        "R-GENERATED-5",
-        "R-GENERATED-6",
-        "R-GENERATED-7",
-        "R-GENERATED-8",
-        "R-GENERATED-9",
-        "R-GENERATED-10",
-        "R-GENERATED-11",
-        "R-GENERATED-12",
-        "R-RUST",
-        "R-CARGO",
-        "R-BUF",
-        "R-PYTHON",
-        "R-TRUNK",
-        "R-TAURI",
-        "R-WASM-BINDGEN",
-        "R-NATIVE-Cargo-lock",
-        "R-NATIVE-Cargo-toml",
-        "R-NATIVE-Info-plist",
-        "R-NATIVE-archives-json",
-        "R-NATIVE-gui_watch-py",
-        "R-NATIVE-pins-json",
-        "R-NATIVE-probe_suite-py",
-        "R-NATIVE-replay-py",
-        "R-NATIVE-src-main-rs",
-        "R-NATIVE-supplemental-py"
+        "R-PYTHON-PORTABLE"
+      ],
+      "scenario_ids": [],
+      "results_path": null
+    },
+    {
+      "id": "C-READY-FIXTURE-TOOLS",
+      "kind": "readiness",
+      "argv": [
+        "{python}",
+        ".rdd/sources/s6/qualify.py",
+        "fixtures"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 1800,
+      "platforms": [
+        "macos"
+      ],
+      "red_pattern": null,
+      "metrics": [],
+      "host_profile": null,
+      "environments": [
+        "macos-portable"
+      ],
+      "requires": [
+        "R-INPUTS",
+        "R-S6-qualify-py",
+        "R-S6-fixtures-check-py",
+        "R-FROZEN-42",
+        "R-FROZEN-43",
+        "R-FROZEN-44",
+        "R-FROZEN-45",
+        "R-FROZEN-46",
+        "R-FROZEN-47",
+        "R-FROZEN-48",
+        "R-FROZEN-49",
+        "R-FROZEN-50",
+        "R-FROZEN-51",
+        "R-FROZEN-52",
+        "R-FROZEN-53",
+        "R-FROZEN-54",
+        "R-PYTHON-PORTABLE"
       ],
       "scenario_ids": [],
       "results_path": null
@@ -8978,16 +8920,81 @@
     }
   ],
   "amendment": {
-    "requirements": [],
-    "paths": [],
-    "rationale": ""
+    "requirements": [
+      "NFR-TECH-004",
+      "NFR-QUAL-001",
+      "NFR-QUAL-002"
+    ],
+    "paths": [
+      ".cargo/config.toml",
+      ".rdd/sources/qualification.json",
+      ".rdd/sources/s6/fixtures/check.py",
+      ".rdd/sources/s6/manifest.json",
+      ".rdd/spec.json",
+      "Cargo.lock",
+      "Cargo.toml",
+      "apps/native/Cargo.toml",
+      "apps/native/build.rs",
+      "apps/native/capabilities/main.json",
+      "apps/native/icons/icon.icns",
+      "apps/native/icons/icon.png",
+      "apps/native/src/backup/",
+      "apps/native/src/backup/mod.rs",
+      "apps/native/src/collection/",
+      "apps/native/src/collection/mod.rs",
+      "apps/native/src/desktop/",
+      "apps/native/src/desktop/mod.rs",
+      "apps/native/src/diagnostics/",
+      "apps/native/src/diagnostics/mod.rs",
+      "apps/native/src/lib.rs",
+      "apps/native/src/main.rs",
+      "apps/native/src/native_api/",
+      "apps/native/src/native_api/mod.rs",
+      "apps/native/src/query/",
+      "apps/native/src/query/mod.rs",
+      "apps/native/src/selected_files/",
+      "apps/native/src/selected_files/mod.rs",
+      "apps/native/src/storage/",
+      "apps/native/src/storage/mod.rs",
+      "apps/native/src/storage/schema.sql",
+      "apps/native/src/workspace/",
+      "apps/native/src/workspace/help.txt",
+      "apps/native/src/workspace/mod.rs",
+      "apps/native/tauri.conf.json",
+      "apps/ui/Cargo.toml",
+      "apps/ui/Trunk.toml",
+      "apps/ui/index.html",
+      "apps/ui/src/",
+      "apps/ui/src/lib.rs",
+      "apps/ui/style.css",
+      "benchmarks/evaluate.py",
+      "benchmarks/run.py",
+      "docs/compatibility.md",
+      "docs/development.md",
+      "docs/specs/benchmarks.md",
+      "docs/specs/constraints.md",
+      "docs/specs/dependencies.md",
+      "docs/specs/domain-model.md",
+      "docs/specs/intake.md",
+      "docs/specs/refinement.json",
+      "docs/specs/scenarios.json",
+      "docs/specs/solution.md",
+      "docs/user-guide.md",
+      "tests/fixtures/initial_backup.json",
+      "tests/fixtures/initial_storage.json",
+      "tests/fixtures/max_capacity.py",
+      "tests/runners/check.py",
+      "tests/runners/instrumented.rs",
+      "tests/runners/packaged.swift"
+    ],
+    "rationale": "Requirements revision 5 is unchanged. PREP-SPEC-001 requires a portable preparation check and exact prerequisite closure while preserving all native reference-host obligations. Reconcile new owner handoffs and current refinement provenance; retain unchanged domain and contract identities. No implementation task was accepted or executed, so regenerate downstream planning for every future add/modify/delete target rather than limiting impact to changed qualification prose. Prior baseline, findings and evidence remain preserved."
   },
   "author_sessions": [
     "/root",
-    "/root/r5_domain",
-    "/root/r5_verification",
-    "/root/r5_qualification",
-    "/root/r5_architecture"
+    "/root/corrected_domain",
+    "/root/corrected_verification",
+    "/root/corrected_qualification",
+    "/root/corrected_architecture"
   ],
   "solution_elements": [
     {
@@ -13013,7 +13020,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13049,7 +13057,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13145,7 +13154,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13673,7 +13683,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13685,7 +13696,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13697,7 +13709,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13709,7 +13722,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13721,7 +13735,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13733,7 +13748,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13745,7 +13761,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13757,7 +13774,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13769,7 +13787,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13781,7 +13800,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13793,7 +13813,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13805,7 +13826,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -13817,7 +13839,8 @@
       "version": null,
       "probe_check_ids": [],
       "environments": [
-        "macos-reference"
+        "macos-reference",
+        "macos-portable"
       ],
       "availability": "baseline",
       "required_at": "specification"
@@ -14909,6 +14932,20 @@
       ],
       "availability": "baseline",
       "required_at": "specification"
+    },
+    {
+      "id": "R-PYTHON-PORTABLE",
+      "kind": "tool",
+      "path": "python3",
+      "version": "3.14.7",
+      "probe_check_ids": [
+        "C-READY-FIXTURE-TOOLS"
+      ],
+      "environments": [
+        "macos-portable"
+      ],
+      "availability": "external",
+      "required_at": "specification"
     }
   ],
   "environments": [
@@ -14916,6 +14953,11 @@
       "id": "macos-reference",
       "platform": "macos",
       "host_profile": "todo-macos26-arm64-reference"
+    },
+    {
+      "id": "macos-portable",
+      "platform": "macos",
+      "host_profile": null
     }
   ],
   "contract_index_path": "gen/rust/.rdd-generated.json",
@@ -14940,7 +14982,7 @@
   "domain_inventory": {
     "path": "docs/specs/domain-inventory.json",
     "sha256": "3ff1c297a5ef8f41691191f388c08b80f7951223523e74dd539a07aad96c4964",
-    "s1_output_digest": "b04aa1536dc7b2f3a8c530049a9893d49916734ed39c6e6994f74b37d90f2771"
+    "s1_output_digest": "fabcd22bad8cdfa4d348829883d88544d0059cd725dcbb3a546093e2ab71bbde"
   },
   "boundary_bindings": [
     {

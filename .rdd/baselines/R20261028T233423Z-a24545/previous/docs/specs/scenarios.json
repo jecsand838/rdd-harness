@@ -1,0 +1,1580 @@
+[
+  {
+    "id": "SC-STARTUP",
+    "requirements": [
+      "FR-001",
+      "FR-002",
+      "FR-010"
+    ],
+    "kind": "golden",
+    "description": "Initialize absent data and reopen acknowledged fields with launch defaults.",
+    "expected": "First view is empty with enabled Create and no credentials. Reopened identity/field map equals ledger. Both launches show Open, empty search, Any date, newest-created; existing storage is reused.",
+    "check_ids": [
+      "C-TURSO",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.Initialize",
+      "C.Load",
+      "D.Workspace",
+      "W.Startup",
+      "WI.DefaultView",
+      "Support.Storage",
+      "ST.Open",
+      "ST.Read",
+      "Support.Desktop",
+      "Support.Composition",
+      "CP.Lifecycle",
+      "Support.UI",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Isolated account profile, network blocked; no pending operation on normal exit.",
+    "fixture": "Initially absent managed data. Then store one Open and one Completed task; independent ledger contains every required field. Before exit set Completed/search/date/order controls nondefault.",
+    "stimulus": "Launch, exit/relaunch empty; populate through API, exit and relaunch.",
+    "verification_method": "All catalog checks are planned, not executed. Real Turso integration plus delivered package/external AX on selected Mac; exact per-scenario results and revision/package identity required."
+  },
+  {
+    "id": "SC-TASK-LIFECYCLE",
+    "requirements": [
+      "FR-003",
+      "FR-004",
+      "FR-005",
+      "FR-007",
+      "FR-008"
+    ],
+    "kind": "golden",
+    "description": "Create identical content with distinct identities; edit, complete and reopen only the selected task.",
+    "expected": "Exactly two lowercase UUIDv4 identities differ. Initial normalized title is A  B, notes x-LF-y-LF-z, Open, created=updated=T0, completed absent. Each selected change preserves identity/created; completion sets updated=completed=T2; Completed edit retains completed=T2; reopen clears it and updates=T4. Other task and restarted fields equal ledger.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-TURSO",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.Create",
+      "C.Edit",
+      "C.Complete",
+      "C.Reopen",
+      "CI.Identity",
+      "CI.Text",
+      "CI.Date",
+      "CI.StatusHistory",
+      "CI.Timestamps",
+      "Support.NativeAPI",
+      "API.Dispatch",
+      "Support.UI"
+    ],
+    "preconditions": "Empty collection; native correctness clock supplies T0..T4; release observations bracket actual UTC.",
+    "fixture": "T0=(1700000000,11); later Ti=(1700000000+i,11). Submit title U+2003,A,two spaces,B,U+00A0; notes x-CRLF-y-CR-z; due 0001-01-01.",
+    "stimulus": "Create twice; edit first to Changed/new/9999-12-31 at T1; complete T2; edit Completed clearing notes/date T3; reopen T4; restart.",
+    "verification_method": "Independent field ledger after each acknowledgment; real provider/storage and packaged journeys, with no release clock override."
+  },
+  {
+    "id": "SC-NORMALIZED-NOOP",
+    "requirements": [
+      "FR-005",
+      "FR-007",
+      "FR-008"
+    ],
+    "kind": "golden",
+    "description": "Normalized no-op edits and repeated target statuses preserve every field.",
+    "expected": "Both task maps, including updated/completed times and identities, are byte-for-byte equivalent to their preoperation semantic ledger; no extra identity or history effect.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-TURSO"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.Noop",
+      "CI.Noop",
+      "CI.Timestamps",
+      "CI.Identity",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Open A and Completed B acknowledged at distinct fixed instants.",
+    "fixture": "A title alpha, notes x-LF-y; B has recorded completed instant. Save A with outer Unicode spaces and CRLF-equivalent notes.",
+    "stimulus": "Save equivalent values; set A Open again and B Completed again; restart.",
+    "verification_method": "Inject a different next clock instant so accidental restamping fails; compare actual persisted fields, not application equality helper."
+  },
+  {
+    "id": "SC-VALIDATION",
+    "requirements": [
+      "FR-004"
+    ],
+    "kind": "golden",
+    "description": "Accept scalar/date/normalization boundaries consistently for create, edit and restore.",
+    "expected": "All valid cases succeed without truncation. Scalar counts, internal text and date meaning equal independently constructed values; Open has no completed time, Completed retains its supplied instant. Candidate validation alone changes neither collection nor selected bytes.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.ValidLimits",
+      "CI.Text",
+      "CI.Date",
+      "CI.StatusHistory",
+      "CI.Capacity",
+      "C.ValidateImport",
+      "D.Backup",
+      "B.ValidateCandidate",
+      "Support.UI",
+      "UI.EditorFeedback",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Isolated valid collection below capacity; original file hash recorded.",
+    "fixture": "Titles of 1 and 200 scalars; notes 0 and 10000 scalars including four-byte emoji, valid paired-surrogate JSON escapes and combining sequences; all Unicode18 White_Space edges; internal whitespace preserved. Dates absent, 0001-01-01, 2000-02-29, 9999-12-31. UTC seconds include signed64 endpoints, nanos0/999999999; no chronological restriction.",
+    "stimulus": "Exercise each boundary by create, selected edit and valid candidate validation/confirmed restore; normalize CRLF/CR notes to LF.",
+    "verification_method": "Independent scalar/codepoint vectors and semantic file comparison; direct native bypass of UI validation plus actual editor acceptance."
+  },
+  {
+    "id": "SC-INVALID-TASKS",
+    "requirements": [
+      "FR-004"
+    ],
+    "kind": "negative",
+    "description": "Reject each invalid task field while retaining correction input.",
+    "expected": "Field-specific safe rejection, exact prior committed map and identities unchanged; raw entered editor values remain available. No silent truncation, repair or invented timestamp ordering.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.RejectField",
+      "CI.Text",
+      "CI.Date",
+      "CI.StatusHistory",
+      "Support.UI",
+      "UI.EditorFeedback"
+    ],
+    "preconditions": "Known committed collection and dirty create/edit forms.",
+    "fixture": "Each independently: whitespace-only/201-scalar title, each of seven line breaks inside x+break+y, NUL title/notes, 10001-scalar notes, 0000/10000 years, 1900-02-29, invalid month/day, unknown status, invalid nanos, Open with completed time, Completed without it.",
+    "stimulus": "Submit each invalid create/edit through native boundary and editor.",
+    "verification_method": "Per-variant assertions and pre/post export comparison; date fixtures are static validation, not retired clock-refresh exercises."
+  },
+  {
+    "id": "SC-DRAFT-PROTECTION",
+    "requirements": [
+      "FR-006"
+    ],
+    "kind": "golden",
+    "description": "Protect raw changed input for every discard-triggering action.",
+    "expected": "Retain cancels attempted action and preserves exact draft/focus context. Discard permits intended navigation/close without committing draft; all stored tasks equal original map. Protection precedes restore selection/replacement.",
+    "check_ids": [
+      "C-WORKSPACE",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Workspace",
+      "W.DraftProtection",
+      "W.RetainDraft",
+      "W.DiscardDraft",
+      "WI.Draft",
+      "Support.UI",
+      "UI.EditorFeedback",
+      "Support.Desktop",
+      "DT.Events",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Committed A/B; editor contains unsaved invalid and normalization-equivalent changes in separate runs.",
+    "fixture": "For each: switch task, new Create, Cancel edited form, initiate Restore, normal window close. Record original committed map and exact draft.",
+    "stimulus": "Try each action; choose Retain, then repeat and explicitly Discard.",
+    "verification_method": "Every action×choice asserted independently through real workspace and delivered keyboard/AX journey; crash draft recovery is outside scope."
+  },
+  {
+    "id": "SC-DELETE-CONSENT",
+    "requirements": [
+      "FR-009"
+    ],
+    "kind": "golden",
+    "description": "Cancel or confirm permanent deletion by identity.",
+    "expected": "Dialog identifies A and permanence. Cancel changes nothing. Confirm removes only A from all views, count and new backup after restart; B survives unchanged. Prior backup may still contain A.",
+    "check_ids": [
+      "C-WORKSPACE",
+      "C-TURSO",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.Delete",
+      "CI.Identity",
+      "D.Workspace",
+      "W.DeleteConsent",
+      "W.CancelDelete",
+      "WI.DestructiveIntent",
+      "Support.UI",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Two committed tasks have identical title/content and distinct identities.",
+    "fixture": "A selected, B unselected; independent snapshot and previous backup retained.",
+    "stimulus": "Open deletion dialog, cancel; repeat and confirm; inspect every status/query view, export and restart.",
+    "verification_method": "Assert identity maps rather than title counts; delivered dialog observation plus persisted/exported data comparison."
+  },
+  {
+    "id": "SC-QUERY",
+    "requirements": [
+      "FR-010",
+      "FR-011",
+      "FR-012",
+      "FR-014"
+    ],
+    "kind": "golden",
+    "description": "Combine all status/date/text constraints with exact sets and counts.",
+    "expected": "Open={1,3,4,6}, Completed={2,5}, All={1..6}; Today={2,4}, Overdue={1}, No date={3,5}, Any={1..6}. Intersect selected sets with literal title-or-notes matches. Open+needle={1,3}; Completed+Today+BETA={2}; Completed+Overdue={}. Every count equals set size; rows expose title/status/present date and notes access. No task changes.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.ReadSnapshot",
+      "D.Query",
+      "Q.StatusViews",
+      "Q.DateFilters",
+      "QI.And",
+      "QI.Calendar",
+      "Q.CountAndEmptyStates",
+      "QI.Count",
+      "D.Workspace",
+      "Support.UI",
+      "UI.Render",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Boundary Today=2026-10-27; release uses externally observed Today and same independent predicates.",
+    "fixture": "Q6: IDs U(i)=00000000-0000-4000-8000- + i as 12 lowercase hex digits. i=1..6: status O,C,O,O,C,O; title Café Alpha,BETA,gamma,delta,echo,foxtrot; notes needle [x]*,notes-only,needle,empty,empty,empty; due 26,27,null,27,null,28 October2026; created seconds 20,20,10,20,30,30/nanos0; updated=created except Completed updated=completed=(40,0).",
+    "stimulus": "Cross all three status and four date choices with empty/needle/BETA queries; inspect notes through edit action.",
+    "verification_method": "Expected sets computed from these constants and external Gregorian date comparison, never production query code; assert all combinations individually."
+  },
+  {
+    "id": "SC-SEARCH-UNICODE",
+    "requirements": [
+      "FR-012"
+    ],
+    "kind": "golden",
+    "description": "Literal NFC/full-default-fold substring search preserves stored text.",
+    "expected": "Exact sets respectively {1},{2},{3},{4},{2,5},{6},{},{},{8,9},{9},{10},{1..10},{2}. NFC then C/F full default folding includes A7CE→A7CF, 1DF95→ss, İ→i+U0307; no Turkic tailoring. Empty query also returns all. Punctuation is literal, internal spaces/diacritics significant; preserve every stored scalar.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Query",
+      "Q.Search",
+      "Q.BlankSearch",
+      "Q.ReadOnly",
+      "QI.And",
+      "QI.Comparison",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Unicode18 vectors fixed independently of implementation library and host Python16.",
+    "fixture": "Normative unicode.org/Public/18.0.0/ucd inputs SHA256: CaseFolding a004797658a457bec4dc11683e39f69249ea3b595b752dbea6721c4c9f587b0d; UnicodeData 0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950; NormalizationTest 25a50d816764b04abfb4a646d3eb2b2a803284c3873d9a06757b94fe4513dde3; PropList f438f532e8737bb8a2702126cdf9c4af5e357c58c7acf9d9eb2fc7c1a1d955d6; CompositionExclusions c759b100e9ae8960ae6b50fc5765950a7581fd9f30d4ef95f68f25a6d97e818e. Records1..10 contain respectively Café, Straße, Σςσ, U+A7CE, U+1DF95, notes-only [x]*, a  b, I, İ, ı; only record6 matches via notes.",
+    "stimulus": "Search decomposed cafe+U0301, STRASSE, σ, U+A7CF, ss, [x]*, a b, cafe, i, İ, ı, whitespace-only and outer-White_Space STRASSE queries.",
+    "verification_method": "Run normative normalization/default C/F folding vectors plus fixed match assertions through native and packaged search; hash downloaded inputs before fixture generation."
+  },
+  {
+    "id": "SC-ORDERING",
+    "requirements": [
+      "FR-013"
+    ],
+    "kind": "golden",
+    "description": "All three comparators resolve ties by canonical identity bytes.",
+    "expected": "Newest=[5,6,1,2,4,3]; oldest=[3,1,2,4,5,6]; earliest due=[1,2,4,6,5,3]. Filtered output is the exact subsequence of each list. Null due dates stay last; ties use required created direction then identity.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Query",
+      "Q.OrderChoices",
+      "QI.Order",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Q6 from SC-QUERY with tied created times and due dates.",
+    "fixture": "Canonical U(1)..U(6) identities compare as ascending unsigned 16-byte values.",
+    "stimulus": "Select each order in All/Any/empty search and repeat on filtered subsets.",
+    "verification_method": "Compare complete ordered ID vectors, including across restart/default reset; do not reuse application comparator."
+  },
+  {
+    "id": "SC-EMPTY-STATES",
+    "requirements": [
+      "FR-014"
+    ],
+    "kind": "golden",
+    "description": "Distinguish empty collection from filtered no results and recover controls.",
+    "expected": "Empty collection shows count0 and Create. Nonempty no-results shows count0 and clear action, not empty-collection message. Clear empties search and selects Any date; displayed identities/count equal the independent selected-status set. Every successful mutation recomputes count from current committed identities.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Query",
+      "Q.CountAndEmptyStates",
+      "QI.Count",
+      "D.Workspace",
+      "W.ClearConstraints",
+      "Support.UI",
+      "UI.Render",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Run with empty collection, then Q6 nonempty collection.",
+    "fixture": "Nonempty branch uses Completed, query impossible, date Overdue.",
+    "stimulus": "Observe state/count; activate clear-search-and-filters action; create/delete/complete/reopen under active queries.",
+    "verification_method": "Assert immediate labels, controls and exact set/count; source query defaults govern ordering separately."
+  },
+  {
+    "id": "SC-MUTATION-OUTCOMES",
+    "requirements": [
+      "FR-016",
+      "FR-017",
+      "FR-018"
+    ],
+    "kind": "golden",
+    "description": "Only committed outcomes acknowledge success; reconciliation precedes risky retry.",
+    "expected": "Pending shows no saved claim, repeated handle produces one effect and conflicts are blocked. Commit acknowledgment matches new persisted map. Reconciliation distinguishes committed/absent outcome without reexecution; safe retry of absent outcome creates exactly one effect. Deliberate later identical Create gets a fresh identity.",
+    "check_ids": [
+      "C-WORKSPACE",
+      "C-TURSO"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.ResolveOutcome",
+      "CI.AtomicCommittedHistory",
+      "D.Workspace",
+      "W.Submit",
+      "W.Pending",
+      "W.Committed",
+      "W.Resolve",
+      "WI.MutationSlot",
+      "WI.Acknowledgment",
+      "WI.Retry",
+      "Support.Storage",
+      "ST.Commit",
+      "ST.Outcome",
+      "Support.UI",
+      "UI.Pending",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Independent committed ledger and one submitted operation correlation handle.",
+    "fixture": "Each task mutation and restore: pause before commit; separately reject before commit, lose acknowledgment after commit, or resolve terminal unacknowledged operation absent.",
+    "stimulus": "Repeat activation while pending; attempt conflicting mutation; resolve through actual stored state; retry only after resolution.",
+    "verification_method": "Deterministic same-revision instrumentation with real Turso; correlate UI/native state, durable ledger and reopened storage, never infer success from return timing alone."
+  },
+  {
+    "id": "SC-PENDING-RESPONSIVENESS",
+    "requirements": [
+      "FR-016",
+      "FR-018",
+      "NFR-PERF-005"
+    ],
+    "kind": "golden",
+    "description": "Delayed storage keeps viewing interactive and reports accessible pending state.",
+    "expected": "Accessible busy indication appears within500ms. Search/view remains available; focus/window responses each≤250ms. No success before commit and no second mutation. After acknowledgment current query/count reflect committed change and conflicting controls recover.",
+    "check_ids": [
+      "C-PENDING"
+    ],
+    "solution_elements": [
+      "D.Workspace",
+      "W.Pending",
+      "W.ViewPending",
+      "WI.MutationSlot",
+      "WI.Acknowledgment",
+      "Support.UI",
+      "UI.Pending",
+      "Support.NativeAPI",
+      "API.Dispatch",
+      "Support.Build",
+      "BL.Verify"
+    ],
+    "preconditions": "Same-source instrumented package; external monotonic observer authorized.",
+    "fixture": "Q6; pause a real mutation commit for 1500ms; no concurrent mutation.",
+    "stimulus": "Activate Save repeatedly, change search/view, move keyboard focus and interact with window while commit paused; release checkpoint.",
+    "verification_method": "Record raw timing/action/AX observations and actual commit checkpoint; instrumentation identity differs from delivered release benchmarks."
+  },
+  {
+    "id": "SC-CLOSE-PENDING",
+    "requirements": [
+      "FR-018"
+    ],
+    "kind": "golden",
+    "description": "Normal close waits for submitted operation outcome.",
+    "expected": "Window stays responsive with waiting state and no draft-discard substitution. Success/reconciled-committed proceeds to close; rejection cancels close and retains input; uncertainty keeps waiting and blocks risky retry. Reopen reflects acknowledged ledger.",
+    "check_ids": [
+      "C-WORKSPACE",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Workspace",
+      "W.ClosePending",
+      "W.Resolve",
+      "WI.Lifecycle",
+      "WI.MutationSlot",
+      "Support.Desktop",
+      "DT.Events",
+      "Support.UI"
+    ],
+    "preconditions": "Submitted input exists; it is not an unsubmitted draft.",
+    "fixture": "Separate delayed success, confirmed rejection and uncertain outcome branches.",
+    "stimulus": "Request normal window close while pending; resolve each branch.",
+    "verification_method": "Instrumented scheduling plus delivered normal-close journey; force termination is covered by SC-PROCESS-RECOVERY."
+  },
+  {
+    "id": "SC-REJECTED-UNCERTAIN",
+    "requirements": [
+      "FR-016",
+      "FR-017",
+      "FR-023"
+    ],
+    "kind": "failure",
+    "description": "Rejected and unknown outcomes remain distinguishable and actionable.",
+    "expected": "Rejection preserves prior map and allows corrected retry; unknown is neither success nor confirmed failure and prevents duplicate/overwrite retry until resolved. Earlier unrelated commits survive. Available raw input remains; messages give recovery without SQL/stack traces.",
+    "check_ids": [
+      "C-WORKSPACE",
+      "C-TURSO"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.CommitFailure",
+      "D.Workspace",
+      "W.Rejected",
+      "W.Uncertain",
+      "WI.Retry",
+      "Support.UI",
+      "UI.EditorFeedback",
+      "Support.NativeAPI",
+      "API.SafeErrors"
+    ],
+    "preconditions": "Prior unrelated operation already committed.",
+    "fixture": "Inject definite transaction rejection and post-dispatch unknown outcome for task save and restore.",
+    "stimulus": "Observe failure, retain editor, attempt retry before and after reconciliation.",
+    "verification_method": "Assert each error category, control availability and persisted state against independent ledger."
+  },
+  {
+    "id": "SC-INVALID-HANDLES",
+    "requirements": [
+      "FR-017",
+      "FR-018"
+    ],
+    "kind": "negative",
+    "description": "Reject stale or foreign mutation handles without effects.",
+    "expected": "Typed safe error and unchanged committed map; no reexecution, acknowledgment forgery or mutation-slot bypass.",
+    "check_ids": [
+      "C-SECURITY"
+    ],
+    "solution_elements": [
+      "D.Workspace",
+      "W.InvalidHandle",
+      "WI.Retry",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Two independently issued operation contexts; known stored map.",
+    "fixture": "Canceled, completed and unknown correlation handles; malformed direct operation requests.",
+    "stimulus": "Replay or cross-use handles and attempt reconciliation/retry.",
+    "verification_method": "Direct actual native API tests; compare storage/export and invocation ledger."
+  },
+  {
+    "id": "SC-BACKUP-EXPORT",
+    "requirements": [
+      "FR-019"
+    ],
+    "kind": "golden",
+    "description": "Export one complete committed snapshot independently of filters and drafts.",
+    "expected": "Backup has exactly v1 document/task fields and all Q6 identities/fields, excluding draft and pending change. Empty exports tasks=[]. No Today/Overdue authoritative fields. Snapshot is wholly one committed revision and UI identifies unencrypted task data.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.ReadSnapshot",
+      "D.Backup",
+      "B.SnapshotExport",
+      "BI.Format",
+      "BI.Snapshot",
+      "D.Workspace",
+      "Support.SelectedFiles",
+      "FS.Select",
+      "Support.UI",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Q6 committed; selected destination is local SSD; source hashes recorded.",
+    "fixture": "Active Completed/impossible/Overdue filters, unsubmitted draft, and separately a mutation paused before commit. Also empty collection branch.",
+    "stimulus": "Select export and inspect unencrypted warning; export while mutation is pending; parse published bytes independently.",
+    "verification_method": "Independent strict JSON/field comparison and real native snapshot/publication; observe delivered selection/warning, with no filter-based expected source."
+  },
+  {
+    "id": "SC-BACKUP-FRESH-PROFILE",
+    "requirements": [
+      "FR-019",
+      "FR-023"
+    ],
+    "kind": "golden",
+    "description": "Restore exported data independently of source database into a fresh profile.",
+    "expected": "Fresh profile contains exactly exported identities and every required normalized field, including original Completed history; source database is unnecessary. Due dates remain date-only; Today/Overdue derive from externally observed local date. No merge, restamping, omitted notes or status loss.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Backup",
+      "BI.RoundTrip",
+      "D.Collection",
+      "C.Replace",
+      "CI.Identity",
+      "CI.Timestamps",
+      "CI.StatusHistory",
+      "Support.SelectedFiles",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Delivered source app exited; independent complete exported semantic map retained.",
+    "fixture": "Mixed Open/Completed source with duplicate titles, Unicode, date bounds and non-monotonic timestamps; source data directory made unavailable after export.",
+    "stimulus": "Select backup in fresh application-data profile on selected Mac, validate/confirm replacement, inspect/export and restart.",
+    "verification_method": "Independent strict backup parser/map comparison and actual fresh-profile packaged restore; no source-engine query supplies expected data."
+  },
+  {
+    "id": "SC-BACKUP-PUBLICATION",
+    "requirements": [
+      "FR-020"
+    ],
+    "kind": "golden",
+    "description": "Protect existing backup and reconcile publication before retry.",
+    "expected": "Without explicit overwrite confirmation old bytes remain. Confirmed success publishes complete valid new backup and identifies saved location. Uncertain branch reports uncertainty until file comparison establishes complete old or new version; retry cannot duplicate an unresolved publication. Scoped temporaries are cleaned without deleting destination.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Backup",
+      "B.DestinationConsent",
+      "B.CancelExport",
+      "B.Publish",
+      "B.ResolvePublication",
+      "BI.Destination",
+      "D.Workspace",
+      "Support.SelectedFiles",
+      "FS.Probe",
+      "FS.Publish",
+      "FS.Resolve",
+      "FS.Cleanup",
+      "Support.UI",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Existing selected file has recorded old bytes; valid new snapshot differs.",
+    "fixture": "Fresh overwrite-cancel, overwrite-confirm and uncertain-publication branches; same supported local SSD.",
+    "stimulus": "Cancel replacement, then confirm replacement; interrupt publication and resolve before retry.",
+    "verification_method": "Independent file hashes/strict parse plus actual publication mechanism; every cancel/resolve/success branch asserted."
+  },
+  {
+    "id": "SC-BACKUP-FAILURES",
+    "requirements": [
+      "FR-020"
+    ],
+    "kind": "failure",
+    "description": "Publication failures and interruptions never leave partial replacement.",
+    "expected": "Confirmed prepublication failure preserves old file. Interruption permits only complete old/new bytes, never mixture/truncation. Incomplete new file is not reported completed. Unknown outcome remains unknown until reconciled; user-selected source data is preserved.",
+    "check_ids": [
+      "C-BACKUP"
+    ],
+    "solution_elements": [
+      "D.Backup",
+      "B.RejectPublication",
+      "B.UncertainPublication",
+      "BI.Destination",
+      "Support.SelectedFiles",
+      "FS.Publish",
+      "FS.Resolve",
+      "FS.Cleanup"
+    ],
+    "preconditions": "Old destination and new snapshot have distinct independently known bytes.",
+    "fixture": "Failure before temp write, during write, before replace; process termination around publication; absent-destination variants.",
+    "stimulus": "Inject each fault through native export; restart/reconcile and inspect destination/temp files.",
+    "verification_method": "Real filesystem/process-failure trials on functioning local filesystem; preserve stage logs/hashes, with no power-loss claim."
+  },
+  {
+    "id": "SC-BACKUP-PROTECTED",
+    "requirements": [
+      "FR-020",
+      "NFR-PRIV-002"
+    ],
+    "kind": "negative",
+    "description": "Reject managed-file aliases and unsupported overwrite guarantees before change.",
+    "expected": "Reject before modifying any managed file or existing destination; file hashes and identities remain intact. Selection grants no unrestricted directory access. Error names actionable category without diagnostic absolute path leakage.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-SECURITY"
+    ],
+    "solution_elements": [
+      "D.Backup",
+      "B.ProtectedDestination",
+      "B.UnsupportedDestination",
+      "BI.Destination",
+      "Support.SelectedFiles",
+      "FS.Probe",
+      "Support.Desktop",
+      "DT.Paths"
+    ],
+    "preconditions": "Managed database/recovery/migration/diagnostic files have recorded bytes/identities.",
+    "fixture": "Direct destination, resolved symlink, hardlink to each managed file; storage whose atomic replacement guarantee is unsupported.",
+    "stimulus": "Select each export destination and confirm if prompted.",
+    "verification_method": "Actual identity/path checks and unsupported-mechanism failure fixture; no fake successful filesystem proof."
+  },
+  {
+    "id": "SC-RESTORE-VALIDATION-CONSENT",
+    "requirements": [
+      "FR-004",
+      "FR-021",
+      "FR-022"
+    ],
+    "kind": "golden",
+    "description": "Entire valid candidate is read/validated before replacement consent.",
+    "expected": "Validation alone never changes collection/file. Confirmation identifies selected file, counts6/2 and replacement rather than merge. Cancel disposes candidate/consent, preserves Q6/file and cleans scoped temporaries; reused canceled handle fails. Draft protection occurs before discard.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.ValidateImport",
+      "D.Backup",
+      "B.ValidateCandidate",
+      "B.RestoreConsent",
+      "B.CancelRestore",
+      "B.CandidateLifecycle",
+      "BI.Format",
+      "BI.RetainedCandidate",
+      "BI.Consent",
+      "D.Workspace",
+      "Support.SelectedFiles",
+      "FS.Select",
+      "FS.Read",
+      "FS.Cleanup",
+      "Support.UI",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Q6 current; distinct valid B with two tasks; selected file bytes immutable in this branch.",
+    "fixture": "B contains valid Open/Completed records, preserved timestamps and normalized text. Independent old/current and replacement counts6/2.",
+    "stimulus": "Select B, inspect confirmation, cancel; retry selection and proceed to confirmation.",
+    "verification_method": "Native full-document evaluator plus delivered dialog assertions; count/identity oracle independent of candidate parser."
+  },
+  {
+    "id": "SC-RESTORE-INVALID",
+    "requirements": [
+      "FR-004",
+      "FR-021"
+    ],
+    "kind": "negative",
+    "description": "Reject invalid documents before consent without changing file or collection.",
+    "expected": "No replacement confirmation or write. Error identifies record/field or document/capacity condition without requiring file editing. Exact old collection and selected file bytes survive; no partial import or truncation.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-SECURITY"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.RejectImport",
+      "C.RejectField",
+      "C.RejectCapacity",
+      "D.Backup",
+      "B.RejectDocument",
+      "BI.Format",
+      "Support.SelectedFiles",
+      "FS.Read"
+    ],
+    "preconditions": "Q6 persisted; each selected file has independently recorded hash.",
+    "fixture": "Separate malformed UTF-8/JSON, lone high-surrogate and lone low-surrogate JSON escapes in title and notes each, missing/unknown/duplicate document/task keys, wrong types/version, duplicate UUIDs, invalid title/notes/date/status/nanos and seconds outside signed64, inconsistent completed presence and 10001-task cases; invalid record occurs last.",
+    "stimulus": "Select each candidate through real restore boundary.",
+    "verification_method": "Assert every variant including late invalid record; strict independent byte hashes and reopened maps."
+  },
+  {
+    "id": "SC-RESTORE-REPLACEMENT",
+    "requirements": [
+      "FR-021",
+      "FR-022",
+      "FR-023"
+    ],
+    "kind": "golden",
+    "description": "Restore distinct populated replacement and immediately reset every view/editor control.",
+    "expected": "Persisted map equals all and only B, preserving every field/history. Immediately Open/empty search/Any/newest are selected; old selection/editor/draft cleared. Rendered ordered IDs/count equal B Open subset, without A details. Restart/export still equal B; no no-op or merge can pass.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.Replace",
+      "CI.Identity",
+      "CI.StatusHistory",
+      "CI.Timestamps",
+      "CI.AtomicCommittedHistory",
+      "D.Backup",
+      "B.ApplyCandidate",
+      "BI.RetainedCandidate",
+      "BI.Consent",
+      "BI.RoundTrip",
+      "D.Workspace",
+      "W.DefaultAfterRestore",
+      "WI.DefaultView",
+      "Support.Storage",
+      "ST.Commit",
+      "Support.UI",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Q6 A committed; B has disjoint identities/content and both statuses; no shared A/B records.",
+    "fixture": "Before restore select A task, open changed editor, set Completed/search impossible/No-date/oldest. B ledger records exact fields including original Completed instant.",
+    "stimulus": "Protect/discard draft explicitly, validate B, confirm counts/replacement, commit; inspect immediately before any restart, then restart/export.",
+    "verification_method": "Real atomic replacement plus delivered AX/control assertions and independent B field/order ledger."
+  },
+  {
+    "id": "SC-RESTORE-EMPTY",
+    "requirements": [
+      "FR-021",
+      "FR-022",
+      "FR-023"
+    ],
+    "kind": "golden",
+    "description": "Restore valid empty candidate with immediate complete default reset.",
+    "expected": "Collection is empty; Open/empty search/Any/newest immediately selected, old editor/selection gone, count0 and empty-collection/Create state present. Restart remains empty. Cancellation variant preserves Q6 and controls.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.Replace",
+      "CI.AtomicCommittedHistory",
+      "D.Backup",
+      "B.ValidateCandidate",
+      "B.ApplyCandidate",
+      "BI.Consent",
+      "D.Workspace",
+      "W.DefaultAfterRestore",
+      "WI.DefaultView",
+      "Support.UI",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Nonempty Q6 with selected task/editor and all controls nondefault.",
+    "fixture": "Validated v1 tasks=[]; confirmation counts6/0; starting Completed/impossible/No-date/oldest.",
+    "stimulus": "Protect/discard draft, cancel empty replacement once; revalidate/reconfirm it, then inspect before restart.",
+    "verification_method": "Actual restore/renderer plus exact before/after control snapshots; empty branch is separate from populated replacement."
+  },
+  {
+    "id": "SC-RESTORE-CHANGED-FILE",
+    "requirements": [
+      "FR-021",
+      "FR-022",
+      "FR-023"
+    ],
+    "kind": "golden",
+    "description": "Apply exactly the validated candidate associated with consent.",
+    "expected": "Original confirmation applies B exactly, never C. Reselection validates C and requires new counts/confirmation. The UI/file association remains the retained validated selection; original/current task fields and source bytes are never silently substituted.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Backup",
+      "B.ValidateCandidate",
+      "B.ApplyCandidate",
+      "BI.RetainedCandidate",
+      "BI.Consent",
+      "D.Workspace",
+      "Support.NativeAPI",
+      "API.Dispatch",
+      "Support.SelectedFiles"
+    ],
+    "preconditions": "Current A, candidate B and replacement file contents C are pairwise distinct.",
+    "fixture": "B validated and retained with selected-file identity/label, count and current collection revision.",
+    "stimulus": "After validation change selected file bytes to C; confirm original B candidate; separately cancel and reselect changed file.",
+    "verification_method": "Actual retained-candidate boundary with independent A/B/C maps; file modification is a consent fixture, not a database-fault extension."
+  },
+  {
+    "id": "SC-RESTORE-STALE-CONSENT",
+    "requirements": [
+      "FR-022",
+      "FR-023"
+    ],
+    "kind": "negative",
+    "description": "Renew consent after current collection revision changes; reject dead handles.",
+    "expected": "Old consent cannot replace r+1. Renewed confirmation shows current/replacement counts and binds B/revision; cancel preserves r+1. Invalid handles yield safe errors without mutation or unrelated file access.",
+    "check_ids": [
+      "C-BACKUP",
+      "C-SECURITY"
+    ],
+    "solution_elements": [
+      "D.Backup",
+      "B.StaleConsent",
+      "B.CandidateLifecycle",
+      "BI.Consent",
+      "D.Workspace",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Candidate B validated against revision r and counts shown.",
+    "fixture": "One successful task mutation changes current collection to revision r+1; separate canceled/stale/foreign candidate handles.",
+    "stimulus": "Attempt old confirmation and direct candidate reuse.",
+    "verification_method": "Native candidate API with real collection revision, actual persisted map and per-handle negative assertions."
+  },
+  {
+    "id": "SC-SINGLE-INSTANCE",
+    "requirements": [
+      "FR-001",
+      "FR-002",
+      "FR-010",
+      "FR-018",
+      "FR-024"
+    ],
+    "kind": "golden",
+    "description": "Sequential and simultaneous launches preserve one writer and existing draft.",
+    "expected": "Exactly one usable collection window and at most one database-owning process. New instance activates existing window and exits before second writer acquisition. Dirty input and pending-operation state survive; collection remains usable with expected launch defaults only for fresh startup.",
+    "check_ids": [
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Workspace",
+      "W.Startup",
+      "W.InstanceActivation",
+      "WI.Lifecycle",
+      "Support.Desktop",
+      "DT.Instance",
+      "DT.Events",
+      "Support.Composition",
+      "CP.Lifecycle",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Same OS account/data location, delivered app; process/window observer available.",
+    "fixture": "Existing window with exact dirty draft; separate simultaneous launch from stopped state.",
+    "stimulus": "Launch another instance sequentially and simultaneous pair; interact with surviving window.",
+    "verification_method": "External process/file-owner and AX observations, not merely instance-lock unit tests; record both schedules."
+  },
+  {
+    "id": "SC-OFFLINE-HELP",
+    "requirements": [
+      "FR-025",
+      "NFR-OFF-001"
+    ],
+    "kind": "golden",
+    "description": "All required help and installed release identity are available offline.",
+    "expected": "Help covers task operations, date semantics, data/backup locations, whole-collection replacement, permanent deletion without built-in undo, and backups retaining previously deleted tasks. Displayed version equals installed release evidence; no remote resource dependency.",
+    "check_ids": [
+      "C-PACKAGED",
+      "C-OFFLINE"
+    ],
+    "solution_elements": [
+      "D.Workspace",
+      "W.Help",
+      "WI.HelpIdentity",
+      "Support.UI",
+      "UI.LocalHelp",
+      "Support.Desktop",
+      "DT.Resources",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Delivered package installed; runtime network blocked.",
+    "fixture": "Independent required-topic list and release version/digest evidence.",
+    "stimulus": "Use keyboard to open local help/version and inspect all topics.",
+    "verification_method": "Identified native observer plus packaged keyboard journey; compare actual text/topics/version, not menu existence alone."
+  },
+  {
+    "id": "SC-CAPACITY",
+    "requirements": [
+      "FR-004",
+      "NFR-PERF-001"
+    ],
+    "kind": "golden",
+    "description": "Correctly store/restore supported capacity with maximum UTF-8 scalar content.",
+    "expected": "All10000 identities and every maximal field round-trip without byte/scalar confusion or arbitrary file-size rejection. Delete releases capacity; new create succeeds. Independent semantic digest matches after restart.",
+    "check_ids": [
+      "C-CAPACITY"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.ValidLimits",
+      "CI.Capacity",
+      "CI.Text",
+      "D.Backup",
+      "B.ValidateCandidate",
+      "Support.Storage",
+      "Support.Build",
+      "BL.Verify"
+    ],
+    "preconditions": "Isolated real Turso; sufficient actual disk/memory; no performance claim for maximum-length fixture.",
+    "fixture": "9999 then10000 tasks; each title200 and notes10000 four-byte scalars, varied valid dates/statuses and distinct UUIDs; independent field/map digest. Include equivalent JSON escaping/outer whitespace variants.",
+    "stimulus": "Create tenth-thousandth, export/restore whole maximum collection, restart, delete one and create again.",
+    "verification_method": "Actual maximum-data integration/backup check, generated during implementation from frozen rule; no heavy fixture is claimed executed during specification."
+  },
+  {
+    "id": "SC-CAPACITY-REJECTION",
+    "requirements": [
+      "FR-004",
+      "FR-021",
+      "NFR-PERF-001"
+    ],
+    "kind": "boundary",
+    "description": "Reject count10001 without losing the count10000 state.",
+    "expected": "Capacity-specific error; all old identities/fields unchanged, raw create values retained, restore file unchanged and no replacement consent. After deletion, equivalent create succeeds.",
+    "check_ids": [
+      "C-CAPACITY",
+      "C-BACKUP"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.RejectCapacity",
+      "C.RejectImport",
+      "D.Backup",
+      "B.RejectDocument"
+    ],
+    "preconditions": "Valid10000-task collection and independent digest.",
+    "fixture": "One valid create submission and separately valid10001-record restore file.",
+    "stimulus": "Attempt create and entire restore candidate validation.",
+    "verification_method": "Boundary/real-Turso assertions and independent before/after map/file digests."
+  },
+  {
+    "id": "SC-PROCESS-RECOVERY",
+    "requirements": [
+      "FR-016",
+      "FR-017",
+      "FR-023",
+      "NFR-DATA-001",
+      "NFR-DATA-002"
+    ],
+    "kind": "failure",
+    "description": "All process-failure cut points satisfy independent sequential durable history.",
+    "expected": "Every acknowledgment appears in application-order history subject to later superseding effects. Only terminal unacknowledged operation may be wholly present/absent. No mixed fields/collections, missing acknowledgment or rollback of unrelated prior commit. Retry cannot duplicate resolved operation.",
+    "check_ids": [
+      "C-RECOVERY"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "CI.AtomicCommittedHistory",
+      "C.ResolveOutcome",
+      "D.Workspace",
+      "WI.Acknowledgment",
+      "WI.Retry",
+      "Support.Storage",
+      "ST.Commit",
+      "ST.Outcome"
+    ],
+    "preconditions": "Functioning OS/local filesystem/device; same-source instrumented app and independent acknowledgment ledger.",
+    "fixture": "Create/edit/complete/reopen/delete/whole restore; prior acknowledged operations differ; restore A/B disjoint. Three deterministic cuts: before commit, commit pending, after acknowledgment. Twenty trials per class/cut on selected Mac =360.",
+    "stimulus": "Force-terminate at checkpoint, reopen actual Turso and compare complete map; reconcile terminal outcome before retry.",
+    "verification_method": "Retain checkpoint/ack/kill/reopen logs and every trial outcome; no power/OS/hardware-failure claim and no aggregate pass over omitted trials."
+  },
+  {
+    "id": "SC-BACKWARD-CLOCK",
+    "requirements": [
+      "FR-004",
+      "FR-005",
+      "FR-007",
+      "FR-008",
+      "FR-021",
+      "FR-023",
+      "FR-011"
+    ],
+    "kind": "boundary",
+    "description": "Preserve valid non-monotonic task history and date-only values.",
+    "expected": "Updated=(50,2) may precede completed=(200,1); both survive round-trip. Reopen clears completed without rejecting ordering. Due date/identity/created remain unchanged. Overdue uses current local calendar date and Open status only.",
+    "check_ids": [
+      "C-DOMAIN",
+      "C-BACKUP"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "CI.Timestamps",
+      "CI.StatusHistory",
+      "CI.Date",
+      "D.Query",
+      "QI.Calendar",
+      "D.Backup",
+      "B.ValidateCandidate"
+    ],
+    "preconditions": "Boundary-injected instants, never host-clock manipulation.",
+    "fixture": "Created=(100,9), complete=(200,1), later Completed edit=(50,2); due2000-02-29. A reopened branch has absent completed time.",
+    "stimulus": "Edit Completed, export, validate/restore and reopen task.",
+    "verification_method": "Fixed independent history/date vectors across actual validators/storage; no retired live-refresh timing exercise."
+  },
+  {
+    "id": "SC-QUERY-REJECT",
+    "requirements": [
+      "FR-010",
+      "FR-011",
+      "FR-013"
+    ],
+    "kind": "negative",
+    "description": "Reject undeclared selectors without data effects.",
+    "expected": "Typed selector error, unchanged committed data and no arbitrary SQL execution; no silent reinterpretation as another supported query.",
+    "check_ids": [
+      "C-SECURITY"
+    ],
+    "solution_elements": [
+      "D.Query",
+      "Q.RejectQuery",
+      "Support.NativeAPI",
+      "API.Dispatch"
+    ],
+    "preconditions": "Q6 committed and valid previous query.",
+    "fixture": "Unknown status/date/order enum values and malformed direct messages.",
+    "stimulus": "Invoke approved query boundary directly with each invalid selector.",
+    "verification_method": "Actual provider/native boundary tests with independent snapshot comparison."
+  },
+  {
+    "id": "SC-STORAGE-PRESERVATION",
+    "requirements": [
+      "FR-001",
+      "FR-002",
+      "NFR-DATA-003"
+    ],
+    "kind": "failure",
+    "description": "Preserve inaccessible/corrupt/newer data instead of initializing empty.",
+    "expected": "Normal modifications stop. Original available files retain bytes; no delete/empty replacement/downgrade. Actionable error offers retry/exit. Retry after permission correction reloads acknowledged fields; genuinely absent data alone initializes.",
+    "check_ids": [
+      "C-STORAGE",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.StorageUnavailable",
+      "CI.InaccessiblePreservation",
+      "Support.Storage",
+      "ST.Preserve",
+      "Support.Composition",
+      "CP.InitFailure"
+    ],
+    "preconditions": "Existing managed dataset with all original files hashed.",
+    "fixture": "Read-only, missing-permission, invalid-file and unsupported-newer-format fixtures; absent-data control separately.",
+    "stimulus": "Launch or retry normal access; choose Retry/Exit after safe error.",
+    "verification_method": "Real filesystem/account/engine failures; preserve originals as evidence and verify actual installed error journey."
+  },
+  {
+    "id": "SC-INITIAL-FORMAT",
+    "requirements": [
+      "FR-001",
+      "FR-002",
+      "FR-021",
+      "NFR-DATA-004"
+    ],
+    "kind": "boundary",
+    "description": "Establish release-one storage/backup compatibility fixtures and future-version rejection.",
+    "expected": "Known initial format preserves identities/field meaning. Unknown future formats reject without replacement/downgrade; original dataset/file remains recoverable. Prior-release upgrade/interruption/failure is explicitly inapplicable only to release one, not counted as an executed migration pass.",
+    "check_ids": [
+      "C-STORAGE",
+      "C-BACKUP"
+    ],
+    "solution_elements": [
+      "D.Collection",
+      "C.FormatPolicy",
+      "D.Backup",
+      "B.RejectDocument",
+      "Support.Storage",
+      "ST.Version"
+    ],
+    "preconditions": "No previous application release exists.",
+    "fixture": "Initial released storage/backup fixtures with exact schema version and task-map digest; independently unknown future version.",
+    "stimulus": "Initialize/reopen v1; validate v1 backup; attempt future storage/backup.",
+    "verification_method": "Actual initial/future-format tests plus compatibility documentation review; later release must add immediately previous released fixtures."
+  },
+  {
+    "id": "SC-NATIVE-INPUT",
+    "requirements": [
+      "FR-004",
+      "FR-012",
+      "FR-021",
+      "NFR-SEC-001"
+    ],
+    "kind": "security",
+    "description": "Validate untrusted inputs independently of UI checks.",
+    "expected": "Typed validation rejection before persistence for invalid values; SQL-shaped valid text is literal data and cannot alter tables/query structure. No bypass of collection validation; old data survives rejected requests.",
+    "check_ids": [
+      "C-SECURITY"
+    ],
+    "solution_elements": [
+      "Support.NativeAPI",
+      "API.RejectShape",
+      "API.Dispatch",
+      "D.Collection",
+      "C.RejectField",
+      "C.RejectImport",
+      "D.Query",
+      "D.Backup",
+      "B.RejectDocument",
+      "Q.ReadOnly",
+      "Support.Storage"
+    ],
+    "preconditions": "Real generated/native handlers; UI validation deliberately bypassed.",
+    "fixture": "Malformed protobuf, unknown enum, invalid field/date/status/nanos/handle, malformed backup, SQL-shaped title/query; independent old map.",
+    "stimulus": "Call each approved boundary directly with hostile values.",
+    "verification_method": "Real native/API and Turso tests, with SQL-shaped positive text checked against fixed expected identity sets."
+  },
+  {
+    "id": "SC-TEXT-AS-DATA",
+    "requirements": [
+      "FR-003",
+      "FR-012",
+      "NFR-SEC-001"
+    ],
+    "kind": "security",
+    "description": "Markup/search text never executes code or native commands.",
+    "expected": "Literal text is displayed/searchable unchanged. No script/event execution, navigation, outbound request, shell/native action or data loss; production query remains read-only.",
+    "check_ids": [
+      "C-SECURITY",
+      "C-PACKAGED"
+    ],
+    "solution_elements": [
+      "Support.UI",
+      "UI.TextSafe",
+      "Support.NativeAPI",
+      "API.Dispatch",
+      "D.Query",
+      "Q.ReadOnly"
+    ],
+    "preconditions": "Delivered resource restrictions active; network/process/native-operation observation available.",
+    "fixture": "Title/notes contain script/img/event-handler markup and SQL metacharacters; search includes literal [x]* and quotes.",
+    "stimulus": "Create, view notes and search hostile text.",
+    "verification_method": "Packaged visual/AX and observed side effects plus boundary tests; do not infer inertness solely from string escaping unit tests."
+  },
+  {
+    "id": "SC-CONTRACT-BOUNDARIES",
+    "requirements": [
+      "NFR-ARCH-001",
+      "NFR-ARCH-002"
+    ],
+    "kind": "architecture",
+    "description": "Enforce generated interface data/signatures and actual approved call paths.",
+    "expected": "Exact bytes/symbols match; genuine adapters use generated request/response-only signatures. Negative bypasses fail. UI cannot directly read database or arbitrary files/SQL. Composition only constructs/registers declared providers, owns no business rule and gains no storage/business-call right.",
+    "check_ids": [
+      "C-ARCHITECTURE",
+      "C-CONTRACT"
+    ],
+    "solution_elements": [
+      "Support.NativeAPI",
+      "API.Dispatch",
+      "API.RestrictCapabilities",
+      "Support.UI",
+      "UI.NoBypass",
+      "Support.Composition",
+      "CP.Register",
+      "Support.Build",
+      "BL.Scope"
+    ],
+    "preconditions": "Frozen exact contract/generated inventories and accepted ownership graph.",
+    "fixture": "All declared provider/consumer/composition/type-only edges; deliberate direct-storage/SQL/filesystem bypasses and altered generated inventory/signatures.",
+    "stimulus": "Regenerate disposable comparison; compile real adapters/providers/consumers; run negative signature and dependency/import/bypass checks.",
+    "verification_method": "Independent source/dependency checks plus real provider/consumer semantics; seed/disposable proofs alone cannot prove product adoption."
+  },
+  {
+    "id": "SC-PRODUCTION-SCOPE",
+    "requirements": [
+      "NFR-MAINT-001",
+      "NFR-TECH-001"
+    ],
+    "kind": "architecture",
+    "description": "Every production owner/dependency is justified and rules have one authority.",
+    "expected": "Every production item has accepted purpose; no speculative/unused dependency or duplicate business authority. Rust owns all first-party behavior. Repeated UI validation is feedback only, agrees with native vectors, and cannot authorize invalid data.",
+    "check_ids": [
+      "C-ARCHITECTURE"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Scope",
+      "BL.Reproduce",
+      "Support.Composition",
+      "Support.UI"
+    ],
+    "preconditions": "Complete production source/direct-dependency inventory for delivered revision.",
+    "fixture": "Accepted requirement/owner allocations, public symbols and generated mapping exceptions.",
+    "stimulus": "Trace every module/dependency/export and search for duplicate authoritative implementations; inspect UI validation consistency.",
+    "verification_method": "Independent inventory/source review with explicit findings; generated boundary mappings remain justified rather than treated as duplicate rules."
+  },
+  {
+    "id": "SC-JOINT-QUALIFICATION",
+    "requirements": [
+      "NFR-TECH-001",
+      "NFR-TECH-002",
+      "NFR-TECH-003",
+      "NFR-TECH-004"
+    ],
+    "kind": "architecture",
+    "description": "Qualify pinned native/UI/database/generated contracts together.",
+    "expected": "Every required component builds/runs together; actual package persists acknowledged data using turso, all first-party state/behavior is Rust and exact tools/dependencies reproduce. No in-memory/mock/browser-only substitution.",
+    "check_ids": [
+      "C-QUALIFICATION"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Reproduce",
+      "BL.Package",
+      "Support.Storage",
+      "ST.Open",
+      "Support.Composition",
+      "CP.Lifecycle",
+      "Support.NativeAPI"
+    ],
+    "preconditions": "Clean provisioned build inputs, compatible exact pins/locks; selected native/WASM toolchain.",
+    "fixture": "Candidate source/locks/tool hashes, real Tauri2+Rust UI+embedded turso+generated API/package; no cloud account/token or development server.",
+    "stimulus": "Clean-build native and UI, make real UI→IPC→provider→persistent-engine call, package/install, exit/reopen and compare.",
+    "verification_method": "S5/S7 mechanism/exact-candidate proof and later clean product build; retain actual executable/package/log bytes and explicit unproved facilities."
+  },
+  {
+    "id": "SC-PACKAGE-INSTALL",
+    "requirements": [
+      "FR-001",
+      "FR-002",
+      "NFR-PLAT-001",
+      "NFR-TECH-002",
+      "NFR-TECH-003"
+    ],
+    "kind": "golden",
+    "description": "Install and execute delivered package without development runtime dependencies.",
+    "expected": "Usable native Tauri2 window, persistent actual Turso state and no credentials/admin requirement for normal operations. Executed identity matches delivered bytes; installed resources are bundled.",
+    "check_ids": [
+      "C-INSTALL"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Package",
+      "Support.Desktop",
+      "Support.Composition",
+      "CP.Lifecycle",
+      "Support.Storage",
+      "ST.Open"
+    ],
+    "preconditions": "Selected macOS26.x arm64 environment meets RAM/SSD matrix; clean local account/profile.",
+    "fixture": "Delivered app/DMG digests; application process lacks Rust/build tools, dev server, Turso CLI and database service.",
+    "stimulus": "Install as normal user, launch offline, create/exit/reopen; inspect actual process/resource identities.",
+    "verification_method": "Actual installation/native observations, distinct from instrumented builds and source-build success."
+  },
+  {
+    "id": "SC-OFFLINE-JOURNEYS",
+    "requirements": [
+      "FR-003",
+      "FR-005",
+      "FR-007",
+      "FR-008",
+      "FR-009",
+      "FR-012",
+      "FR-019",
+      "FR-023",
+      "FR-025",
+      "NFR-OFF-001",
+      "NFR-A11Y-001",
+      "NFR-A11Y-003"
+    ],
+    "kind": "golden",
+    "description": "Every in-scope operation works with runtime networking unavailable.",
+    "expected": "Every journey passes its catalog assertions and local persistent results; no operation depends on credentials, remote assets, server or another app. Backup remains independently restorable. Focus is visible/logical/unobscured, no keyboard trap; active modals contain focus and return it meaningfully. Normal text≥4.5:1, large text≥3:1, meaningful boundaries/states≥3:1 under listed WCAG exceptions; no essential clipping or unreachable action at200%.",
+    "check_ids": [
+      "C-OFFLINE",
+      "C-KEYBOARD",
+      "C-VISUAL"
+    ],
+    "solution_elements": [
+      "Support.NativeAPI",
+      "API.Dispatch",
+      "Support.Build",
+      "BL.Package",
+      "Support.Desktop",
+      "DT.Resources",
+      "Support.UI",
+      "UI.Accessible"
+    ],
+    "preconditions": "Delivered package installed; process network access externally blocked.",
+    "fixture": "Independent lifecycle/query/backup/restore/help inputs from catalog; local SSD selected files. Active1280×720 logical window; execute at normal and200% text size.",
+    "stimulus": "Create/edit/complete/reopen/delete/search/filter/order/export/restore/help keyboard-only at both text sizes; traverse dialogs/focus and measure text/control/state contrast.",
+    "verification_method": "Complete packaged workload under recorded isolation, with each linked journey actually executed; blocking alone does not establish no outbound attempts. C-KEYBOARD/C-VISUAL independently observe these same FR-linked golden journeys and retain focus/color/geometry evidence; dedicated accessibility scenarios remain required."
+  },
+  {
+    "id": "SC-NETWORK-PRIVACY",
+    "requirements": [
+      "NFR-PRIV-001"
+    ],
+    "kind": "security",
+    "description": "Observe zero application-initiated outbound connections for full workload.",
+    "expected": "No app-initiated outbound connection, telemetry, upload, remote font/update/resource or local HTTP server. Bundled URLs/internal IPC are permitted only without network connection. OS traffic is separately attributed, never silently filtered as app traffic.",
+    "check_ids": [
+      "C-PRIVACY"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Package",
+      "Support.Desktop",
+      "DT.Resources",
+      "Support.UI"
+    ],
+    "preconditions": "Delivered package and process-attributed observer qualified; egress available so attempts are observable.",
+    "fixture": "Complete acceptance journeys, startup/idle/failure/help/hostile-text/backup/restore; main and attributable WebView/helper processes.",
+    "stimulus": "Observe network during entire workload and resource loading; classify OS traffic separately.",
+    "verification_method": "Actual process-attributed raw observation with identified evaluator; unqualified/missing capture cannot pass."
+  },
+  {
+    "id": "SC-ACCOUNT-PRIVACY",
+    "requirements": [
+      "NFR-PRIV-002"
+    ],
+    "kind": "security",
+    "description": "Another unprivileged account cannot read application-managed data/diagnostics.",
+    "expected": "Database/diagnostics reside in current-account application-data locations and reads are denied to other unprivileged account; administrators remain permitted. Backup exception is user-selected destination. No same-user malicious-process protection is claimed.",
+    "check_ids": [
+      "C-ACCOUNT"
+    ],
+    "solution_elements": [
+      "Support.Storage",
+      "ST.AccountScope",
+      "Support.Desktop",
+      "DT.Paths",
+      "Support.Diagnostics"
+    ],
+    "preconditions": "Actual second unprivileged account and observing operator available.",
+    "fixture": "Current-account database/diagnostics populated with synthetic markers; recorded modes/ACLs and locations.",
+    "stimulus": "Attempt reads from second account, then verify owning-account normal operation.",
+    "verification_method": "Real separate-account access attempts and permission evidence; mode inspection alone is insufficient."
+  },
+  {
+    "id": "SC-SELECTED-PATH-SCOPE",
+    "requirements": [
+      "FR-019",
+      "FR-021",
+      "NFR-PRIV-002",
+      "NFR-ARCH-002"
+    ],
+    "kind": "security",
+    "description": "Selection grants only required files and narrow safe temporaries.",
+    "expected": "Only selected import/export, managed paths and necessary scoped temporary operations succeed. Selecting file never grants containing directory unrestricted access; rejected access leaves all unrelated bytes unchanged.",
+    "check_ids": [
+      "C-SECURITY",
+      "C-ACCOUNT"
+    ],
+    "solution_elements": [
+      "Support.SelectedFiles",
+      "FS.Select",
+      "FS.Read",
+      "FS.Cleanup",
+      "Support.Desktop",
+      "DT.Paths",
+      "Support.NativeAPI",
+      "API.RestrictCapabilities"
+    ],
+    "preconditions": "Approved import/export selection mechanism and native runtime caps.",
+    "fixture": "Chosen file plus adjacent unrelated file/directory and managed-path escapes/symlinks.",
+    "stimulus": "Attempt adjacent-directory enumeration/read/write, arbitrary path injection and canceled-grant reuse.",
+    "verification_method": "Actual capability/native boundary denied-operation tests; installed-resource/OS-library reads remain permitted."
+  },
+  {
+    "id": "SC-RUNTIME-RESTRICTIONS",
+    "requirements": [
+      "NFR-SEC-002",
+      "NFR-ARCH-002"
+    ],
+    "kind": "security",
+    "description": "Delivered runtime exposes only accepted bundled content/capabilities.",
+    "expected": "Remote/shell/arbitrary access and undeclared commands denied; only required feature capabilities remain. No developer command mocks, automation-only mutation interfaces, clock override or test server in release. Required WASM executes from bundled resources.",
+    "check_ids": [
+      "C-SECURITY",
+      "C-INSTALL"
+    ],
+    "solution_elements": [
+      "Support.NativeAPI",
+      "API.RestrictCapabilities",
+      "Support.UI",
+      "UI.NoBypass",
+      "Support.Desktop",
+      "DT.Resources",
+      "Support.Build",
+      "BL.Package",
+      "Support.Composition"
+    ],
+    "preconditions": "Delivered release package, exact command/capability/CSP inventory.",
+    "fixture": "Negative requests for remote executable content, shell, unrestricted filesystem, arbitrary SQL and undeclared command; package symbol/resource inspection.",
+    "stimulus": "Run denied operations and inspect packaged native/UI resources and process behavior.",
+    "verification_method": "Permission/CSP/source/package inspection plus actual negative runtime tests; instrumented permissions do not prove delivered restrictions."
+  },
+  {
+    "id": "SC-DIAGNOSTICS",
+    "requirements": [
+      "NFR-OBS-001"
+    ],
+    "kind": "security",
+    "description": "Diagnostics are useful, redacted and bounded.",
+    "expected": "Each event has timestamp/severity/app-version/category/correlation/outcome-code. No sensitive marker or user-selected absolute path appears. Total retained diagnostic files≤10MiB; startup/storage/backup/restore and applicable migration outcomes are present with safe codes.",
+    "check_ids": [
+      "C-DIAGNOSTICS"
+    ],
+    "solution_elements": [
+      "Support.Diagnostics",
+      "DG.Emit",
+      "DG.Redact",
+      "DG.Retention",
+      "Support.NativeAPI",
+      "API.RecordOutcome"
+    ],
+    "preconditions": "Production logging path; synthetic distinctive sensitive markers.",
+    "fixture": "Title/notes/due/search/backup-content/absolute-selected-path markers; startup, storage failure, export/restore and applicable format outcomes; >10MiB event pressure.",
+    "stimulus": "Run events and rotation; inspect all retained diagnostic bytes.",
+    "verification_method": "Independent byte scan and metadata/retention evaluator, including error paths and rotated files."
+  },
+  {
+    "id": "SC-DIAGNOSTIC-FAILURE",
+    "requirements": [
+      "NFR-OBS-001"
+    ],
+    "kind": "failure",
+    "description": "Diagnostic-write failure cannot damage or block valid operations.",
+    "expected": "Valid operations still commit/publish and report their actual outcomes; stored map matches ledger, no corruption or unbounded retained diagnostic growth. Failure does not reveal sensitive input in fallback output.",
+    "check_ids": [
+      "C-DIAGNOSTICS"
+    ],
+    "solution_elements": [
+      "Support.Diagnostics",
+      "DG.Nonblocking",
+      "DG.Emit",
+      "Support.NativeAPI",
+      "API.RecordOutcome"
+    ],
+    "preconditions": "Real store and known acknowledgment ledger.",
+    "fixture": "Diagnostic path permission/full-write/rotation failure, independent of healthy task store.",
+    "stimulus": "Create/edit/backup/restore while logger fails.",
+    "verification_method": "Deterministic logger failure with actual engine/files, observing operation completion and all fallback channels."
+  },
+  {
+    "id": "SC-KEYBOARD",
+    "requirements": [
+      "NFR-A11Y-001"
+    ],
+    "kind": "accessibility",
+    "description": "Complete every functional journey by keyboard with correct focus.",
+    "expected": "Every operation reachable; focus visible, logical and unobscured; no trap. Modal contains active focus and dismissal returns meaningfully. Required WCAG2.2 criteria2.1.1/2.1.2/2.4.3/2.4.7/2.4.11 pass.",
+    "check_ids": [
+      "C-KEYBOARD"
+    ],
+    "solution_elements": [
+      "Support.UI",
+      "UI.Accessible"
+    ],
+    "preconditions": "Delivered app on selected Mac; identified evaluator; no pointing device used.",
+    "fixture": "All controls/dialogs, long form, dirty/invalid/pending/rejected/uncertain states and restore/file-selection/help journeys.",
+    "stimulus": "Execute complete lifecycle/query/backup/restore/help; traverse Tab/reverse traversal, open/dismiss all modals.",
+    "verification_method": "Actual keyboard-only observations per journey/state, with focus evidence and explicit deviations; AX labels alone cannot establish keyboard usability."
+  },
+  {
+    "id": "SC-VISUAL-ACCESSIBILITY",
+    "requirements": [
+      "NFR-A11Y-003"
+    ],
+    "kind": "accessibility",
+    "description": "Contrast and doubled text remain usable at required window size.",
+    "expected": "Normal text≥4.5:1, large≥3:1, meaningful boundaries/state indicators≥3:1 under listed WCAG2.2 exceptions. No essential clipping/unreachable action at200%; criteria1.4.3/1.4.4/1.4.11 pass. No full-WCAG claim.",
+    "check_ids": [
+      "C-VISUAL"
+    ],
+    "solution_elements": [
+      "Support.UI",
+      "UI.Accessible"
+    ],
+    "preconditions": "Delivered app active at1280×720 logical pixels, measured externally.",
+    "fixture": "Every text/control/state/dialog including focus/error/disabled exceptions; normal and200% text size.",
+    "stimulus": "Measure foreground/background ratios; inspect and complete operations after text enlargement.",
+    "verification_method": "Identified native visual evaluator, measured colors/geometry and screenshots; browser-only resizing cannot substitute."
+  },
+  {
+    "id": "SC-BENCH-P1",
+    "requirements": [
+      "NFR-PERF-002"
+    ],
+    "kind": "benchmark",
+    "description": "Warm-cache delivered launch p95≤2000ms.",
+    "expected": "Every default view correct/input-ready; record all samples,p50,p95,max; nearest-rank p95≤2000ms. Any operation error fails regardless latency; no pooled host or discarded slow sample.",
+    "check_ids": [
+      "C-P1"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Verify"
+    ],
+    "preconditions": "Qualified selected reference host and release package; benchmark.md protocol P1.",
+    "fixture": "Frozen D1; active1280×720 window, AC/normal,≥15GiB free same localSSD, no concurrent build/benchmark.",
+    "stimulus": "Five warm-up launches then30 measured, fully exit between; OS cache retained.",
+    "verification_method": "External monotonic process-creation→correct-rendered-input-ready measurement and frozen independent D1 oracle; no instrumented-package substitution."
+  },
+  {
+    "id": "SC-BENCH-P2",
+    "requirements": [
+      "NFR-PERF-003"
+    ],
+    "kind": "benchmark",
+    "description": "Each delivered interaction class meets separate p95 budget.",
+    "expected": "Each five mutation-class p95≤200ms including commit acknowledgment; each four query-class p95≤250ms including debounce. UI-action→correct-settled-result samples kept separately; deletion begins after confirmation. Every result correct.",
+    "check_ids": [
+      "C-P2"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Verify"
+    ],
+    "preconditions": "Qualified release/reference host and benchmark.md P2.",
+    "fixture": "D1-derived9999 create baseline; real changes/valid starting statuses; reset outside timing; exact independent result sets/order.",
+    "stimulus": "For each create/edit/complete/reopen/delete/search/status-filter/date-filter/order:10 warm-ups then100 measured.",
+    "verification_method": "External UI observer; all raw timings/errors/warm-ups/reset identities retained, threshold failures cannot be invalidated as outliers."
+  },
+  {
+    "id": "SC-BENCH-P3",
+    "requirements": [
+      "NFR-PERF-004"
+    ],
+    "kind": "benchmark",
+    "description": "Export/restore delivered p95≤5000ms with distinct replacement oracle.",
+    "expected": "Export starts after selection/overwrite consent; restore includes selected-file validation and pauses only for user confirmation. Stop after durable completion and correct reset view. Each direction p95≤5000ms; every output/restore semantically equals independent expected complete map.",
+    "check_ids": [
+      "C-P3"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Verify"
+    ],
+    "preconditions": "Qualified release/reference host and benchmark.md P3.",
+    "fixture": "Distinct frozen D1A/D1B IDs/content, both10000 with required distributions; localSSD destinations.",
+    "stimulus": "Three warm-ups each, then30 measured exports and30 restores; alternate A→B→A with reset outside timing.",
+    "verification_method": "External timing and independent parse/round-trip/result oracle for every cycle; no-op restore, omitted validation or pooled export/restore samples fail."
+  },
+  {
+    "id": "SC-RELEASE-HANDOFF",
+    "requirements": [
+      "NFR-QUAL-001",
+      "NFR-QUAL-002"
+    ],
+    "kind": "manual",
+    "description": "Complete evidence and reproducible handoff bind delivered revision/packages.",
+    "expected": "All51 active IDs mapped to passing delivered-revision verification, all golden scenarios explicitly executed once per declared check, no skipped/filtered/omitted required case or Must defect accepted. Report identifies commit/package digests, requirements/spec baselines and instrumented-versus-release evidence; local docs explain compatibility and commands.",
+    "check_ids": [
+      "C-HANDOFF"
+    ],
+    "solution_elements": [
+      "Support.Build",
+      "BL.Verify",
+      "BL.Reproduce"
+    ],
+    "preconditions": "All product checks actually executed on declared environments; exact source/spec/contract identities.",
+    "fixture": "Complete requirement/scenario matrix, raw benchmarks/native/manual evidence, dependency/compatibility/user docs and package digests.",
+    "stimulus": "Independent developer reproduces clean build/verification commands and audits release report against actual results.",
+    "verification_method": "Identified independent observer and actual receipts/logs; no aggregateGREEN or harness selftest substitutes for product acceptance."
+  }
+]
